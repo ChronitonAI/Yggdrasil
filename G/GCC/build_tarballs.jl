@@ -22,6 +22,11 @@ cd ${WORKSPACE}/srcdir/gcc-*/
 for proj in mpfr mpc isl gmp; do
     mv ${proj}-* ${proj}
 done
+# Target library configure scripts must not run what they compile: it is linked against the
+# image's glibc, which the build machine does not have. (As BinaryBuilder2's GCC recipe does.)
+for f in $(find . -name configure); do
+    sed -i -e 's&cross_compiling=no&cross_compiling=yes&g' "${f}"
+done
 
 # The sysroot the target libraries are built against: our Glibc and LinuxKernelHeaders,
 # installed as the image's /usr in ${prefix}/ygglet-sysroot/usr. (Not in ${prefix} itself:
