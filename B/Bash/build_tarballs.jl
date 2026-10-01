@@ -12,10 +12,12 @@ sources = [
 
 script = raw"""
 cd $WORKSPACE/srcdir/bash-*
-# Bash's own readline and its termcap replacement: no dependencies beyond libc.
+# Bash's own readline, on Ncurses' terminfo: bash's termcap replacement (lib/termcap) does not
+# build with GCC 14 (implicit declarations) and would need an /etc/termcap in the image.
 ./configure --prefix=${prefix} --build=${MACHTYPE} --host=${target} \
     --without-bash-malloc \
     --with-installed-readline=no \
+    --with-curses \
     --disable-nls
 make -j${nproc}
 make install
@@ -29,6 +31,8 @@ products = [
     ExecutableProduct("bash", :bash),
 ]
 
-dependencies = Dependency[]
+dependencies = [
+    Dependency("Ncurses_jll"),
+]
 
 build_tarballs(ARGS, name, version, sources, script, platforms, products, dependencies; julia_compat="1.6")
