@@ -24,9 +24,10 @@ for proj in mpfr mpc isl gmp; do
 done
 
 # The sysroot the target libraries are built against: our Glibc and LinuxKernelHeaders,
-# installed in ${prefix} as the image's /usr.
-mkdir -p ${WORKSPACE}/srcdir/sysroot
-ln -s ${prefix} ${WORKSPACE}/srcdir/sysroot/usr
+# installed as the image's /usr in ${prefix}/ygglet-sysroot/usr. (Not in ${prefix} itself:
+# the compiler wrappers put ${prefix}'s include and lib directories on every command line,
+# and the image's libc must not leak into the compiler's own build.)
+sysroot=${prefix}/ygglet-sysroot
 
 # The software ticks plugin of the toolchain that compiles for this platform.
 toolchain_plugin="$(dirname "$(dirname "$(realpath "$(which ${CC})")")")/softticks/lib/softticks_gcc.so"
@@ -37,7 +38,7 @@ fi
 
 mkdir -p ${WORKSPACE}/srcdir/gcc_build
 cd ${WORKSPACE}/srcdir/gcc_build
-${WORKSPACE}/srcdir/gcc-*/configure \
+if ! ${WORKSPACE}/srcdir/gcc-*/configure \
     --prefix=${prefix} \
     --build=${MACHTYPE} \
     --host=${target} \
@@ -52,11 +53,14 @@ ${WORKSPACE}/srcdir/gcc-*/configure \
     --with-arch=x86-64 \
     --with-sysroot=/ \
     --with-native-system-header-dir=/usr/include \
-    --with-build-sysroot=${WORKSPACE}/srcdir/sysroot \
+    --with-build-sysroot=${sysroot} \
     CC_FOR_BUILD="${HOSTCC}" \
     CXX_FOR_BUILD="${HOSTCXX}" \
     CFLAGS_FOR_TARGET="-g -O2 -fplugin=${toolchain_plugin}" \
-    CXXFLAGS_FOR_TARGET="-g -O2 -fplugin=${toolchain_plugin}"
+    CXXFLAGS_FOR_TARGET="-g -O2 -fplugin=${toolchain_plugin}"; then
+    cat config.log
+    exit 1
+fi
 
 make -j${nproc} MAKEINFO=true
 make install MAKEINFO=true
@@ -160,8 +164,8 @@ build_tarballs(;
     extract_spec_generator,
     # The image's libc, headers and binutils: what this GCC compiles against and runs with.
     target_dependencies = [
-        JLLSource("Glibc_jll"),
-        JLLSource("LinuxKernelHeaders_jll"),
+        JLLSource("Glibc_jll"; target="ygglet-sysroot/usr"),
+        JLLSource("LinuxKernelHeaders_jll"; target="ygglet-sysroot/usr"),
         JLLSource("Binutils_jll"),
     ],
     host_toolchains = [CToolchain(; vendor=:gcc), HostToolsToolchain()],
