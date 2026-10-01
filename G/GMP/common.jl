@@ -40,7 +40,9 @@ if [[ ${bb_full_target} == *-sanitize+memory* ]]; then
     # Install msan runtime (for clang)
     cp -vrL ${libdir}/linux/* /opt/x86_64-linux-musl/lib/clang/*/lib/linux/
 fi
-autoreconf
+# -fi: also refresh ltmain.sh, which must match the build machine's libtool macros
+# (BinaryBuilder2 ships libtool 2.4.7, the tarball 2.4.6)
+autoreconf -fi
 ./configure --prefix=$prefix --build=${MACHTYPE} --host=${target} ${flags[@]}
 
 make -j${nproc}
