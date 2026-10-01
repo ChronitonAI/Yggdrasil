@@ -166,7 +166,8 @@ build_tarballs(;
     target_dependencies = [
         JLLSource("Glibc_jll"; target="ygglet-sysroot/usr"),
         JLLSource("LinuxKernelHeaders_jll"; target="ygglet-sysroot/usr"),
-        JLLSource("Binutils_jll"),
+        # Runtime dependency only; out of ${prefix}, whose include/ansidecl.h would shadow GCC's.
+        JLLSource("Binutils_jll"; target="ygglet-binutils"),
     ],
     host_toolchains = [CToolchain(; vendor=:gcc), HostToolsToolchain()],
     target_toolchains = [CToolchain(; vendor=:gcc)],
