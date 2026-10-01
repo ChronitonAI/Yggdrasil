@@ -38,6 +38,22 @@ ${WORKSPACE}/srcdir/glibc-*/configure \
 make -j${nproc}
 make install install_root=${WORKSPACE}/srcdir/glibc_root
 
+# Shared objects without compiled C (gconv tables, libmvec's assembly, the libnss_files and
+# libnss_dns compatibility stubs) have no software ticks note, since the plugin emits it
+# with the code it instruments. They hold no loops of instrumented code; mark them as
+# conforming, so the image audit can require the note of every shared object.
+note=${WORKSPACE}/srcdir/rr-note
+# namesz=3, descsz=4, type=1, "rr\0" padded to 4, desc = ABI version 1
+printf '\x03\x00\x00\x00\x04\x00\x00\x00\x01\x00\x00\x00rr\x00\x00\x01\x00\x00\x00' > ${note}
+for f in $(find ${WORKSPACE}/srcdir/glibc_root -name '*.so*' -type f); do
+    if ${READELF:-readelf} -h "${f}" >/dev/null 2>&1 && ! ${READELF:-readelf} -n "${f}" 2>/dev/null | grep -q '^  rr '; then
+        echo "adding the software ticks note to ${f#${WORKSPACE}/srcdir/glibc_root}"
+        ${OBJCOPY:-objcopy} --add-section .note.rrsoftticks=${note} \
+                --set-section-flags .note.rrsoftticks=readonly \
+                --set-section-alignment .note.rrsoftticks=4 "${f}"
+    fi
+done
+
 # The JLL prefix is the image's /usr.
 cp -a ${WORKSPACE}/srcdir/glibc_root/usr/. ${prefix}/
 if [[ -d ${WORKSPACE}/srcdir/glibc_root/etc ]]; then

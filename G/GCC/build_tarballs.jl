@@ -23,9 +23,11 @@ for proj in mpfr mpc isl gmp; do
     mv ${proj}-* ${proj}
 done
 # Target library configure scripts must not run what they compile: it is linked against the
-# image's glibc, which the build machine does not have. (As BinaryBuilder2's GCC recipe does.)
-for f in $(find . -name configure); do
-    sed -i -e 's&cross_compiling=no&cross_compiling=yes&g' "${f}"
+# image's glibc, which the build machine does not have. Only the target libraries': GCC's
+# own configure must still see a native compiler (a "cross" one looks for target-prefixed
+# tools, e.g. collect2 for `target-ld`, and links C++ without libgcc_s).
+for d in libgcc libstdc++-v3 libgomp libatomic libquadmath libssp libitm libvtv; do
+    [[ -f ${d}/configure ]] && sed -i -e 's&cross_compiling=no&cross_compiling=yes&g' ${d}/configure
 done
 
 # The sysroot the target libraries are built against: our Glibc and LinuxKernelHeaders,
@@ -89,10 +91,8 @@ ${CXX} -std=gnu++17 -O2 -fPIC -fno-rtti -fno-exceptions -shared \
     gcc/softticks_gcc.cc -o ${gcc_libdir}/plugin/softticks_gcc.so
 install -m 644 include/rr_softticks.h ${prefix}/include/rr_softticks.h
 cat > ${gcc_libdir}/specs <<'END'
-%rename cc1_options softticks_cc1_options
-
 *cc1_options:
-%(softticks_cc1_options) -fplugin=%:find-file(plugin/softticks_gcc.so)
++ -fplugin=%:find-file(plugin/softticks_gcc.so)
 
 END
 
