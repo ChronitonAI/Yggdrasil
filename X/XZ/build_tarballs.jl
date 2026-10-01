@@ -7,8 +7,10 @@ version = v"5.8.4"
 
 # Collection of sources required to complete build
 sources = [
-    GitSource("https://github.com/tukaani-project/xz",
-              "d3e650e63c110e830fd5391e7f8b45df0b91d3da")
+    # ygglet (BinaryBuilder2): the release tarball, which has a generated `configure`, so
+    # the build needs no `autopoint`/`po4a` (BB2's Debian rootfs has no `apk`).
+    ArchiveSource("https://github.com/tukaani-project/xz/releases/download/v$(version)/xz-$(version).tar.xz",
+                  "4ce24038fd4221e0d13bc1a2de7a4db56e90b92b3bf75321f6c14be73f65de4b")
 ]
 
 # Bash recipe for building across all platforms
@@ -16,11 +18,6 @@ script = raw"""
 cd $WORKSPACE/srcdir/xz*
 install_license COPYING
 
-if [[ "${target}" != "*mingw32*" ]]; then
-    # install `autopoint`
-    apk update && apk add gettext-dev po4a
-fi
-./autogen.sh
 
 BUILD_FLAGS=(--prefix=${prefix} --build=${MACHTYPE} --host=${target} --with-pic)
 
