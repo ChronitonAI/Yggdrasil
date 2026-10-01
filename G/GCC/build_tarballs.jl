@@ -5,7 +5,9 @@
 #   compiled with the software ticks plugin like everything else in the image.
 # - `GCC`: the image's native C/C++ compiler (`/usr/bin/gcc`, `g++`, `cc`). Its `specs` file
 #   loads the software ticks plugin (installed in its plugin directory) into every
-#   compilation, so code built in the image is instrumented too.
+#   compilation, so code built in the image is instrumented too. (By path: the short
+#   `-fplugin=softticks_gcc` needs the `-iplugindir` that the driver only passes for a
+#   `-fplugin` on its own command line.)
 #
 # The compiler itself is compiled by BinaryBuilder2's software ticks toolchain (instrumented).
 # The target libraries are compiled by the GCC being built, so they are given the toolchain's
@@ -81,7 +83,7 @@ cat > ${gcc_libdir}/specs <<'END'
 %rename cc1_options softticks_cc1_options
 
 *cc1_options:
-%(softticks_cc1_options) -fplugin=softticks_gcc
+%(softticks_cc1_options) -fplugin=%:find-file(plugin/softticks_gcc.so)
 
 END
 
