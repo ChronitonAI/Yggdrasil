@@ -16,7 +16,9 @@ script = raw"""
 cd $WORKSPACE/srcdir/coreutils*
 
 # Fix `configure: error: you should not run configure as root (set FORCE_UNSAFE_CONFIGURE=1 in environment to bypass this check)`
-if [[ ${target} == x86_64-linux-musl* ]]; then
+# (configure checks whenever it does not think it is cross compiling: the musl host build, and
+# BinaryBuilder2's x86_64-linux-gnu builds, where build and host triplets agree)
+if [[ ${target} == x86_64-linux-musl* ]] || [[ "${MACHTYPE}" == "${target}" ]]; then
     export FORCE_UNSAFE_CONFIGURE=1
 fi
 
