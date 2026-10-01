@@ -7,7 +7,8 @@ version = v"6.6.0"
 
 # Collection of sources required to build Ncurses
 sources = [
-    ArchiveSource("https://ftpmirror.gnu.org/pub/gnu/ncurses/ncurses-$(version.major).$(version.minor).tar.gz",
+    # ygglet: ftp.gnu.org (the mirror redirector picks mirrors without /pub/gnu)
+    ArchiveSource("https://ftp.gnu.org/gnu/ncurses/ncurses-$(version.major).$(version.minor).tar.gz",
                   "355b4cbbed880b0381a04c46617b7656e362585d52e9cf84a67e2009b749ff11"),
 ]
 
@@ -34,6 +35,11 @@ args=(
     --without-manpages
     --without-tests
 )
+if [[ "${bb_full_target}" == *rr_softticks* ]]; then
+    # ygglet images install this prefix as /usr: look for terminfo there (and in the usual
+    # system places) rather than only in the build prefix compiled in as the default.
+    args+=(--with-terminfo-dirs=/usr/share/terminfo:/etc/terminfo:/lib/terminfo)
+fi
 
 if [[ ${target} == *-darwin* ]]; then
     args+=(
@@ -56,6 +62,9 @@ fi
 # running in a container). This breaks our `TERMINFO_DIRS` mechanism
 # below.
 export cf_cv_multiuser=yes
+# BinaryBuilder2's build environment sets TERMINFO=/lib/terminfo, which configure would take
+# as the terminfo directory to install into (outside the prefix).
+unset TERMINFO
 
 ./configure --build=${MACHTYPE} --host=${target} --prefix=${prefix} "${args[@]}"
 make -j${nproc}
@@ -66,6 +75,9 @@ if [[ "${target}" == *-mingw* ]]; then
     ${target}-nm -A /workspace/destdir/lib/libncursesw.dll.a | grep -w 'mbrtowc$' && false
 fi
 
+# ygglet images (rr_softticks platforms) live on case-sensitive Linux filesystems and need
+# e.g. the `linux` and `ansi` entries, so they keep them all.
+if [[ "${bb_full_target}" != *rr_softticks* ]]; then
 # Remove duplicates that don't work on case-insensitive filesystems
 rm -f  ${prefix}/share/terminfo/2/2621a
 rm -rf ${prefix}/share/terminfo/a
@@ -78,6 +90,7 @@ rm -rf ${prefix}/share/terminfo/n
 rm -rf ${prefix}/share/terminfo/p
 rm -rf ${prefix}/share/terminfo/q
 rm -rf ${prefix}/share/terminfo/X
+fi
 
 # Install pc files and fool packages looking for non-wide-character ncurses
 for lib in ncurses form panel menu; do
