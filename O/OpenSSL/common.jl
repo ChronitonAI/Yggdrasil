@@ -47,7 +47,20 @@ if [[ ${target} == *mingw* ]]; then
    export CFLAGS='-DSIO_UDP_NETRESET=2550136847UL'
 fi
 
-./Configure shared --prefix=$prefix --libdir=${libdir} $(translate_target)
+extra_args=()
+if ! perl -MPod::Usage -e 1 2>/dev/null; then
+    # BinaryBuilder2's Perl_jll lacks Pod::Usage, which configdata.pm loads (only to print
+    # its own --help): a stub.
+    mkdir -p ${WORKSPACE}/perl5/Pod
+    printf 'package Pod::Usage;\nuse Exporter "import";\nour @EXPORT = qw(pod2usage);\nsub pod2usage { exit 0 }\n1;\n' > ${WORKSPACE}/perl5/Pod/Usage.pm
+    export PERL5LIB="${WORKSPACE}/perl5${PERL5LIB:+:${PERL5LIB}}"
+fi
+if [[ "${bb_full_target}" == *rr_softticks* ]]; then
+    # ygglet images: the system OpenSSL, whose configuration and CA certificates live in
+    # /etc/ssl (the default would be /usr/local/ssl).
+    extra_args+=(--openssldir=/etc/ssl)
+fi
+./Configure shared --prefix=$prefix --libdir=${libdir} "${extra_args[@]}" $(translate_target)
 make -j${nproc}
 make install_sw
 
