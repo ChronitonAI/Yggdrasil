@@ -61,6 +61,17 @@ if [[ "${bb_full_target}" == *rr_softticks* ]]; then
     extra_args+=(--openssldir=/etc/ssl)
 fi
 ./Configure shared --prefix=$prefix --libdir=${libdir} "${extra_args[@]}" $(translate_target)
+if [[ "${bb_full_target}" == *rr_softticks* ]]; then
+    # libcrypto calls OPENSSL_cpuid_setup from its .init section, which runs before the .init_array
+    # constructor that maps the software ticks countdown page in instrumented code. Outside an
+    # ygglet image (whose ld.so maps the page first) -- e.g. as the host OpenSSL of a later
+    # BinaryBuilder2 build, where host tools resolve to this JLL -- instrumented code there
+    # crashes. So cpuid.c (the setup, its env-string parsing and the C CRYPTO_memcmp) and the
+    # ctype.c lookups it uses -- short, deterministic leaf code -- are built without the plugin.
+    make -j${nproc} build_generated
+    BB_SOFTTICKS_DISABLE=1 make -j${nproc} crypto/libcrypto-lib-cpuid.o crypto/libcrypto-shlib-cpuid.o \
+        crypto/libcrypto-lib-ctype.o crypto/libcrypto-shlib-ctype.o
+fi
 make -j${nproc}
 make install_sw
 
