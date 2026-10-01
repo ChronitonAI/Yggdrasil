@@ -32,6 +32,9 @@ build_tarballs(;
     make install MAKEINFO=true
     # The native tools under their plain names only (/usr/bin/ld, not x86_64-linux-gnu-ld).
     rm -rf ${prefix}/${target}
+    # ld is a hard link to ld.bfd; a symlink keeps the audit (which rewrites RPATHs) from
+    # reading one file under two names.
+    ln -sf ld.bfd ${prefix}/bin/ld
     install_license COPYING*
     """,
     platforms = [Platform("x86_64", "linux"; rr_softticks="1")],
