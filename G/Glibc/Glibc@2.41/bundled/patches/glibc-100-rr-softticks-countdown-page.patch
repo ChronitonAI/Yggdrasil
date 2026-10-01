@@ -1,0 +1,47 @@
+diff -ru A/sysdeps/x86_64/dl-machine.h b/sysdeps/x86_64/dl-machine.h
+--- a/sysdeps/x86_64/dl-machine.h
++++ b/sysdeps/x86_64/dl-machine.h
+@@ -139,6 +139,18 @@
+ .globl _start\n\
+ .globl _dl_start_user\n\
+ _start:\n\
++	# rr software ticks: map the countdown page (0x70001800) before any\n\
++	# code runs that decrements it. mmap(0x70001000, 4096, PROT_READ|PROT_WRITE,\n\
++	# MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED_NOREPLACE, -1, 0); under rr (or when\n\
++	# this process has the page already) it fails with EEXIST, which is fine.\n\
++	movl $9, %eax\n\
++	movl $0x70001000, %edi\n\
++	movl $4096, %esi\n\
++	movl $3, %edx\n\
++	movl $0x100022, %r10d\n\
++	movq $-1, %r8\n\
++	xorl %r9d, %r9d\n\
++	syscall\n\
+ 	mov %" RSP_LP ", %" RDI_LP "\n\
+ 	call _dl_start\n\
+ _dl_start_user:\n\
+diff -ru A/sysdeps/x86_64/start.S b/sysdeps/x86_64/start.S
+--- a/sysdeps/x86_64/start.S
++++ b/sysdeps/x86_64/start.S
+@@ -57,6 +57,21 @@
+ ENTRY (_start)
+ 	/* Clearing frame pointer is insufficient, use CFI.  */
+ 	cfi_undefined (rip)
++	/* rr software ticks: map the countdown page (0x70001800) before any code
++	   runs that decrements it, as the dynamic loader does in RTLD_START: for a
++	   static program nothing has mapped it yet.  EEXIST (under rr, or a
++	   dynamic program whose loader mapped it) is fine.  %rdx holds rtld_fini,
++	   which the syscall must not lose.  */
++	movq %rdx, %r12
++	movl $9, %eax		/* __NR_mmap */
++	movl $0x70001000, %edi
++	movl $4096, %esi
++	movl $3, %edx		/* PROT_READ | PROT_WRITE */
++	movl $0x100022, %r10d	/* MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE */
++	movq $-1, %r8
++	xorl %r9d, %r9d
++	syscall
++	movq %r12, %rdx
+ 	/* Clear the frame pointer.  The ABI suggests this be done, to mark
+ 	   the outermost frame obviously.  */
+ 	xorl %ebp, %ebp
