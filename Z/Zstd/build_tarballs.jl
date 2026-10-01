@@ -15,6 +15,14 @@ cd ${WORKSPACE}/srcdir/zstd-*
 # zstd uses `qsort_r` which is not available from musl <https://github.com/facebook/zstd/issues/4311>.
 atomic_patch -p1 $WORKSPACE/srcdir/patches/qsort_r.patch
 
+if ! command -v meson >/dev/null; then
+    # ygglet (BinaryBuilder2): BB2 has no meson toolchain; zstd's own Makefiles build the
+    # same library and programs. `-lrt` for `clock_gettime` on the glibc 2.17 sysroot.
+    make -j${nproc} PREFIX=${prefix} LDLIBS=-lrt lib-release zstd-release
+    make PREFIX=${prefix} LDLIBS=-lrt install
+    install_license LICENSE
+else
+
 mkdir build-zstd && cd build-zstd
 
 if [[ "${target}" == *86*-linux-gnu ]]; then
@@ -39,6 +47,7 @@ sed -i.bak 's/csrDT/csrD/' build.ninja
 
 ninja -j${nproc}
 ninja install
+fi
 """
 
 platforms = supported_platforms()
