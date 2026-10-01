@@ -111,6 +111,48 @@ make install
 install_license ${WORKSPACE}/srcdir/Python-*/LICENSE
 """
 
+# ygglet (BinaryBuilder2, rr_softticks platforms, x86_64 Linux only): a native build. The
+# build machine runs x86_64 Linux code too, so `configure` is not cross compiling and the
+# build runs its own (instrumented) `python` instead of a miniconda one; BB2's Debian rootfs
+# has no `apk`, and nothing is cross compiled, so neither the configure.ac patch nor
+# autoreconf is needed. No PGO (`--enable-optimizations`): the profiling run would be the
+# test suite. Readline and Ncurses for the `readline` and `curses` modules.
+const ygglet = any(contains("rr_softticks"), ARGS)
+if ygglet
+    sources = sources[1:1]
+    script = raw"""
+cd ${WORKSPACE}/srcdir/Python-*/
+# The modules' import checks during the build load our dependencies' libraries.
+export LD_LIBRARY_PATH="${libdir}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+export CPPFLAGS="${CPPFLAGS} -I${includedir} -I${includedir}/ncursesw"
+export LDFLAGS="${LDFLAGS} -L${libdir}"
+mkdir build_target && cd build_target
+../configure --prefix="${prefix}" --build="${MACHTYPE}" --host="${target}" \
+    --enable-shared \
+    --with-ensurepip=no \
+    --disable-test-modules \
+    --with-system-expat \
+    --with-system-ffi \
+    --with-openssl="${prefix}" \
+    --with-readline=readline \
+    ac_cv_file__dev_ptmx=yes \
+    ac_cv_file__dev_ptc=no \
+    py_cv_module__crypt=n/a
+# (no `_crypt`: the image's glibc 2.41 has no libcrypt; the module is deprecated anyway)
+make -j${nproc}
+make install
+# libpython3.so (the stable ABI library) is linked from libpython3.12.so alone, with no object
+# of its own, so it would lack the software ticks note that every ELF in an ygglet image needs:
+# relink it with one (empty, compiled with the plugin) object.
+echo 'void _ygglet_libpython3_note(void) {}' > note.c
+${CC} -shared -fPIC -o ${libdir}/libpython3.so -Wl,-soname,libpython3.so note.c \
+    -Wl,--no-as-needed -L${libdir} -lpython3.12
+# The modules rr's test harness (pexpect) and the rest of a development container need.
+LD_LIBRARY_PATH="${libdir}" ${bindir}/python3 -c "import _ssl, _ctypes, readline, _sqlite3, zlib, lzma, bz2, pty, termios, select, curses, _decimal, pyexpat"
+install_license ${WORKSPACE}/srcdir/Python-*/LICENSE
+"""
+end
+
 # These are the platforms we will build for by default, unless further
 # platforms are passed in on the command line
 platforms = supported_platforms()
@@ -125,17 +167,26 @@ products = Product[
     ExecutableProduct("python3", :python),
     LibraryProduct("libpython3", :libpython),
 ]
+if ygglet
+    # libpython3.so (the stable ABI library) links to libpython3.12, which the auditor wants
+    # listed as a product too
+    push!(products, LibraryProduct("lib/libpython3.12.so.1.0", :libpython3_12))
+end
 
 # Dependencies that must be installed before this package can be built
 dependencies = [
     Dependency("Expat_jll"; compat="2.6.5"),
     Dependency("Bzip2_jll"; compat="1.0.9"),
-    Dependency("Libffi_jll"; compat="~3.4.7"),
+    # ygglet builds Libffi 3.5.
+    Dependency("Libffi_jll"; compat=ygglet ? "3.4.7" : "~3.4.7"),
     Dependency("SQLite_jll"),
     Dependency("Zlib_jll"),
     Dependency("XZ_jll"),
     Dependency("OpenSSL_jll"; compat="3.0.16"),
 ]
+if ygglet
+    append!(dependencies, [Dependency("Readline_jll"), Dependency("Ncurses_jll")])
+end
 
 init_block = raw"""
 ENV["PYTHONHOME"] = artifact_dir
