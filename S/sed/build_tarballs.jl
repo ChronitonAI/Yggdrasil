@@ -30,7 +30,8 @@ products = [
 ]
 
 # Dependencies that must be installed before this package can be built
-dependencies = [
+# ygglet (rr_softticks platforms): glibc's iconv suffices; no Libiconv_jll there.
+dependencies = any(contains("rr_softticks"), ARGS) ? Dependency[] : [
     Dependency("Libiconv_jll"),
 ]
 
