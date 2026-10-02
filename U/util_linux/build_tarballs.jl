@@ -182,6 +182,32 @@ dependencies = [
     Dependency("Zlib_jll"),
 ]
 
+# ygglet (BinaryBuilder2, rr_softticks platforms): the image takes libuuid from Libuuid_jll and
+# kill from procps_jll, so build no libraries, only a set of programs: those a development
+# container and rr's test suite use (renice, script, more, setsid, ...). No SQLite (only
+# lastlog2 needs it); Ncurses for more.
+if any(contains("rr_softticks"), ARGS)
+    ygglet_programs = ["renice", "script", "scriptreplay", "more", "setsid", "flock", "getopt",
+                       "taskset", "chrt", "ionice", "nsenter", "unshare", "lscpu", "column",
+                       "rev", "hexdump", "logger", "prlimit", "setarch"]
+    script = raw"""
+    cd $WORKSPACE/srcdir/util-linux-*
+    ./configure --prefix=${prefix} --build=${MACHTYPE} --host=${target} \
+        --disable-all-programs \
+        $(for p in """ * join(ygglet_programs, " ") * raw"""; do echo --enable-${p}; done) \
+        --disable-nls --disable-makeinstall-chown --disable-makeinstall-setuid \
+        --without-python --without-systemd --without-udev \
+        --disable-liblastlog2
+    make -j${nproc}
+    make install
+    rm -rf ${prefix}/share/man ${prefix}/share/doc ${prefix}/share/bash-completion
+    install_license COPYING
+    """
+    products = [ExecutableProduct(p, Symbol(p, "_exe")) for p in ("renice", "script", "more", "setsid", "flock", "nsenter", "unshare", "taskset")]
+    # more's terminal handling
+    dependencies = [Dependency("Ncurses_jll")]
+end
+
 # Build the tarballs, and possibly a `build.jl` as well.
 build_tarballs(ARGS, name, version, sources, script, platforms, products, dependencies;
                julia_compat="1.6", preferred_gcc_version=v"5")
