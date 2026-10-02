@@ -9,8 +9,10 @@ build_tarballs(;
     src_name = "Rift",
     src_version = v"0.1.0",
     sources = [
-        # rift main d5b8f85, `make dist`
-        ArchiveSource("https://github.com/ChronitonAI/ygglet-registry/releases/download/rift-d5b8f85/rift-d5b8f85-x86_64-linux.tar.gz",
+        # rift main d5b8f85, `make dist`: the asset rift-d5b8f85-x86_64-linux.tar.gz of the
+        # private release dist-d5b8f85 of ChronitonAI/rift, by its API URL (BinaryBuilder2
+        # authenticates with GITHUB_TOKEN or GH_TOKEN).
+        ArchiveSource("https://api.github.com/repos/ChronitonAI/rift/releases/assets/604619509",
                       "eec3353a9f33106292aab432e1ee58ee6324435191e4d5224e5cb93e88f9d9a0"),
     ],
     script = raw"""
