@@ -21,7 +21,7 @@ install_license COPYING
 platforms = supported_platforms(; exclude=p -> !Sys.islinux(p))
 
 products = [
-    ExecutableProduct("which", :which),
+    ExecutableProduct("which", :which_exe),  # `which` is taken by Base
 ]
 
 dependencies = Dependency[]
