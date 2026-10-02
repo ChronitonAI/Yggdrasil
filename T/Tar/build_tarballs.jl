@@ -37,7 +37,8 @@ products = [
 
 # Dependencies that must be installed before this package can be built
 dependencies = [
-    Dependency("Attr_jll"),
+    # ygglet (rr_softticks platforms): no xattr support, so no Attr_jll to build first.
+    any(contains("rr_softticks"), ARGS) ? nothing : Dependency("Attr_jll"),
     Dependency("Libiconv_jll", platforms=filter(Sys.isapple, platforms)),
 ]
 
