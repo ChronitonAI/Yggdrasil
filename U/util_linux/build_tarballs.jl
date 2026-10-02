@@ -195,7 +195,7 @@ if any(contains("rr_softticks"), ARGS)
         --disable-liblastlog2 --disable-pam-lastlog2 \
         --disable-login --disable-su --disable-sulogin --disable-runuser \
         --disable-chfn-chsh --disable-newgrp --disable-wall --disable-write \
-        --disable-mount --disable-eject \
+        --disable-mount --disable-eject --disable-cramfs \
         --disable-nls --disable-makeinstall-chown --disable-makeinstall-setuid \
         --without-python --without-systemd --without-udev
     make -j${nproc}
