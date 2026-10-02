@@ -33,6 +33,44 @@ make -j${nproc} all
 make install
 """
 
+# ygglet (BinaryBuilder2, rr_softticks platforms, x86_64 Linux only): GDB 16.3 (rr's test
+# suite drives a recent gdb; 12.1 predates Python 3.12), a native build (build and host are
+# both x86_64 Linux) configured with the target's own Python 3.12, which runs here with
+# our libraries on LD_LIBRARY_PATH, instead of the spoofed python-config. The Python home
+# lies under the prefix, so gdb relocates it (to /usr in the image). No docs (`makeinfo`),
+# NLS or simulators. (The top-level configure takes --with-gmp/--with-mpfr as paths: a bare
+# `--with-mpfr` links against `yes/lib`.)
+const ygglet = any(contains("rr_softticks"), ARGS)
+if ygglet
+    version_string = "16.3"
+    version = v"16.3"
+    sources = [
+        ArchiveSource("https://ftp.gnu.org/gnu/gdb/gdb-$(version_string).tar.xz",
+                      "bcfcd095528a987917acf9fff3f1672181694926cc18d609c99d0042c00224c5"),
+    ]
+    script = raw"""
+cd $WORKSPACE/srcdir/gdb-*/
+install_license COPYING
+export LD_LIBRARY_PATH="${libdir}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+export CPPFLAGS="${CPPFLAGS} -I${includedir}"
+export LDFLAGS="${LDFLAGS} -L${libdir}"
+mkdir build && cd build
+../configure --prefix=${prefix} --build=${MACHTYPE} --host=${target} \
+    --with-expat --with-libexpat-prefix=${prefix} \
+    --with-system-zlib \
+    --with-gmp=${prefix} --with-libgmp-prefix=${prefix} \
+    --with-mpfr=${prefix} --with-libmpfr-prefix=${prefix} \
+    --with-python=${bindir}/python3 \
+    --disable-nls \
+    --disable-sim \
+    --disable-werror \
+    MAKEINFO=true
+make -j${nproc} all MAKEINFO=true
+make install MAKEINFO=true
+${bindir}/gdb --batch -ex 'python import sys; print(sys.version)'
+"""
+end
+
 # These are the platforms we will build for by default, unless further
 # platforms are passed in on the command line
 platforms = [
@@ -59,6 +97,18 @@ dependencies = [
     Dependency("Python_jll"; compat="~3.10.14"),
     Dependency("Zlib_jll")
 ]
+if ygglet
+    dependencies = [
+        Dependency("GMP_jll"),
+        Dependency("MPFR_jll"),
+        Dependency("Expat_jll"),
+        Dependency("Python_jll"; compat="3.12"),
+        Dependency("Ncurses_jll"),
+        Dependency("Zlib_jll"),
+        # configure finds liblzma (in the prefix for Python) and links it, for MiniDebugInfo
+        Dependency("XZ_jll"),
+    ]
+end
 
 # Build the tarballs, and possibly a `build.jl` as well.
 build_tarballs(ARGS, name, version, sources, script, platforms, products, dependencies;
