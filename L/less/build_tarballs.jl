@@ -7,19 +7,21 @@ version = v"679.0.0"
 
 # Collection of sources required to complete build
 sources = [
-    DirectorySource("./bundled")
-    GitSource("https://github.com/gwsw/less.git", "70f0ca12511098674d937436e70bff9672398daf")
+    DirectorySource("./bundled"),
+    # ygglet (BinaryBuilder2): the release tarball of the same version, which has the files
+    # `make -f Makefile.aut distfiles` generates (that needs groff, and BB2's Debian rootfs
+    # has no `apk`).
+    ArchiveSource("https://www.greenwoodsoftware.com/less/less-$(version.major).tar.gz",
+                  "9b68820c34fa8a0af6b0e01b74f0298bcdd40a0489c61649b47058908a153d78"),
 ]
 
 # Bash recipe for building across all platforms
 script = raw"""
-cd $WORKSPACE/srcdir/less
+cd $WORKSPACE/srcdir/less*/
 for f in ${WORKSPACE}/srcdir/patches/*.patch; do
     atomic_patch -p1 ${f}
 done
-apk add groff
 autoreconf --install
-make -f Makefile.aut distfiles
 ./configure --prefix=${prefix} --build=${MACHTYPE} --host=${target}
 if [[ ${COMPILER_TARGET} == *-mingw* ]]; then
 echo "#define MSDOS_COMPILER WIN32C" >> defines.h
