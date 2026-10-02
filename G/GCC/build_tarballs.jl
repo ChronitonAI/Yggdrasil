@@ -97,10 +97,12 @@ install -m 644 include/rr_softticks.h ${prefix}/include/rr_softticks.h
 # A specs file in the library directory replaces the built-in specs entirely: the driver
 # then skips its built-in initialization (which adds --eh-frame-hdr to the link and
 # libgcc_s to the libraries), so it must be a complete dump, with the plugin added to
-# cc1_options. The build tree's xgcc runs here; the installed driver needs the image's glibc.
+# cpp_unique_options: the preprocessor options of compilations, of -E and of assembler-with-
+# cpp (.S) files alike, so the plugin's __RR_SOFTTICKS__ is defined for all of them. The
+# build tree's xgcc runs here; the installed driver needs the image's glibc.
 ${WORKSPACE}/srcdir/gcc_build/gcc/xgcc -dumpspecs | awk '
     { print }
-    /^\*cc1_options:$/ { getline; print $0 " -fplugin=%:find-file(plugin/softticks_gcc.so)" }
+    /^\*cpp_unique_options:$/ { getline; print $0 " -fplugin=%:find-file(plugin/softticks_gcc.so)" }
 ' > ${gcc_libdir}/specs
 grep -q -- '-fplugin=%:find-file(plugin/softticks_gcc.so)' ${gcc_libdir}/specs
 grep -q -- '--eh-frame-hdr' ${gcc_libdir}/specs
