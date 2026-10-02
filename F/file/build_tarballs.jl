@@ -19,6 +19,11 @@ cd $WORKSPACE/srcdir/file/
 
 autoreconf -i -f
 ./configure --prefix=${prefix} --host=${target}
+if [[ "${bb_full_target}" == *rr_softticks* ]]; then
+    # ygglet images install this prefix as /usr: compile in the magic database's path there,
+    # not in the build prefix.
+    sed -i 's|^MAGIC = .*|MAGIC = /usr/share/misc/magic|' src/Makefile
+fi
 make -j${nproc}
 make install
 
