@@ -13,11 +13,25 @@ sources = [
 # Bash recipe for building across all platforms
 script = raw"""
 cd $WORKSPACE/srcdir/ninja
+if ! command -v python3 >/dev/null; then
+    # ygglet (BinaryBuilder2): no Python in the build environment for configure.py (and a host
+    # Python_jll does not resolve next to the universe's Libffi 3.5); ninja's CMake build
+    # makes the same binary.
+    # (-include cstdlib: emhash's hash_table8.hpp uses malloc without including it, which
+    # GCC 14's libstdc++ headers no longer pull in for it)
+    cmake -B build -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TARGET_TOOLCHAIN} -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_CXX_FLAGS="-include cstdlib" -DBUILD_TESTING=OFF
+    # (not `cmake --build`: BB2's cmake wrapper prepends -DCMAKE_TOOLCHAIN_FILE=..., which breaks it)
+    make -C build -j${nproc}
+    mkdir -p ${bindir}
+    install build/ninja${exeext} ${bindir}
+else
 shorttarget=$(echo $target | grep -o 'linux\|darwin\|mingw\|freebsd')
 env CXXFLAGS=-std=c++14 ./configure.py --host=linux --platform=$shorttarget
 ninja -j${nproc}
 mkdir -p ${bindir}
 install ninja${exeext} ${bindir}
+fi
 """
 
 # These are the platforms we will build for by default, unless further
