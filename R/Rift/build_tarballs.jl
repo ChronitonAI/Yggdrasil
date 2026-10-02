@@ -3,17 +3,15 @@
 # (`make dist`, a juliac-trimmed executable that bundles its runtime) under /usr/lib/rift,
 # with /usr/bin/rift linking to it. It is the tracer, so it is not instrumented (ygglet's
 # audit exempts it); it runs on the image's glibc.
-#
-# TODO: host the tarball (a ChronitonAI release asset) instead of the local build.
 using BinaryBuilder2
 
 build_tarballs(;
     src_name = "Rift",
     src_version = v"0.1.0",
     sources = [
-        # rift softticks-gcc14 (b4720f1), `make dist`
-        ArchiveSource("file:///workspace/rift/build/dist/rift-b4720f1-x86_64-linux.tar.gz",
-                      "34c743324616a886192f74f7f84039c22a14805515a304728f9d329214f3edf1"),
+        # rift main d5b8f85, `make dist`
+        ArchiveSource("https://github.com/ChronitonAI/ygglet-registry/releases/download/rift-d5b8f85/rift-d5b8f85-x86_64-linux.tar.gz",
+                      "eec3353a9f33106292aab432e1ee58ee6324435191e4d5224e5cb93e88f9d9a0"),
     ],
     script = raw"""
     mkdir -p ${prefix}/lib/rift ${bindir}
