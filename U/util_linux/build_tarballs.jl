@@ -185,7 +185,7 @@ dependencies = [
 # ygglet (BinaryBuilder2, rr_softticks platforms): the image takes libuuid from Libuuid_jll and
 # kill from procps_jll, so build no libraries, only a set of programs: those a development
 # container and rr's test suite use (renice, script, more, setsid, ...). No SQLite (only
-# lastlog2 needs it); Ncurses for more.
+# lastlog2 needs it); Ncurses for more. libsmartcols (lscpu, column) does not clash.
 if any(contains("rr_softticks"), ARGS)
     ygglet_programs = ["renice", "script", "scriptreplay", "more", "setsid", "flock", "getopt",
                        "taskset", "chrt", "ionice", "nsenter", "unshare", "lscpu", "column",
@@ -197,7 +197,7 @@ if any(contains("rr_softticks"), ARGS)
         $(for p in """ * join(ygglet_programs, " ") * raw"""; do echo --enable-${p}; done) \
         --disable-nls --disable-makeinstall-chown --disable-makeinstall-setuid \
         --without-python --without-systemd --without-udev \
-        --disable-liblastlog2
+        --disable-liblastlog2 --enable-libsmartcols
     make -j${nproc}
     make install
     rm -rf ${prefix}/share/man ${prefix}/share/doc ${prefix}/share/bash-completion
