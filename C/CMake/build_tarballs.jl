@@ -23,8 +23,10 @@ cmake -B build -G Ninja \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TARGET_TOOLCHAIN} \
     -DBUILD_TESTING:BOOL=OFF
-cmake --build build --parallel ${nproc}
-cmake --install build
+# ninja directly rather than `cmake --build`/`cmake --install`: BinaryBuilder2's cmake wrapper
+# prepends -DCMAKE_TOOLCHAIN_FILE=... to every cmake command line, which breaks those modes.
+ninja -C build -j${nproc}
+ninja -C build install
 
 install_license LICENSE.rst
 """
