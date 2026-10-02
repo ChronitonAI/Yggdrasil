@@ -22,6 +22,12 @@ CFLAGS="-Wall -Winline -O2 -g -D_FILE_OFFSET_BITS=64 -fPIC"
 OBJS="blocksort.o huffman.o crctable.o randtable.o compress.o decompress.o bzlib.o"
 make CC=${CC} CFLAGS="${CFLAGS}" -j${nproc} ${OBJS}
 make CC=${CC} CFLAGS="${CFLAGS}" PREFIX=${prefix} install
+# bzip2's install makes bzcmp, bzegrep, bzfgrep and bzless absolute links into ${prefix}.
+for f in ${bindir}/*; do
+    if [[ -L "${f}" && "$(readlink "${f}")" == /* ]]; then
+        ln -sf "$(basename "$(readlink "${f}")")" "${f}"
+    fi
+done
 
 # Build dynamic library
 if [[ "${target}" == *-darwin* ]]; then

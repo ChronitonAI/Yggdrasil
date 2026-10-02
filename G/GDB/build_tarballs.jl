@@ -66,7 +66,9 @@ mkdir build && cd build
     --disable-werror \
     MAKEINFO=true
 make -j${nproc} all MAKEINFO=true
-make install MAKEINFO=true
+# Only gdb and gdbserver: a plain `make install` also installs the bfd, opcodes and ctf
+# libraries and headers, which are Binutils_jll's.
+make install-gdb install-gdbserver MAKEINFO=true
 ${bindir}/gdb --batch -ex 'python import sys; print(sys.version)'
 """
 end
@@ -107,6 +109,8 @@ if ygglet
         Dependency("Zlib_jll"),
         # configure finds liblzma (in the prefix for Python) and links it, for MiniDebugInfo
         Dependency("XZ_jll"),
+        # gdb is C++: libstdc++ and libgcc_s.
+        Dependency("CompilerSupportLibraries_jll"),
     ]
 end
 

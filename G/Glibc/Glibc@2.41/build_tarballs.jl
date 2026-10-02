@@ -37,6 +37,9 @@ ${WORKSPACE}/srcdir/glibc-*/configure \
 
 make -j${nproc}
 make install install_root=${WORKSPACE}/srcdir/glibc_root
+# The C.UTF-8 locale (/usr/lib/locale/C.utf8), which programs that ask for a UTF-8 locale
+# (LANG=C.UTF-8) need; built by this glibc's own localedef.
+make localedata/install-locale-files LOCALES="C.UTF-8/UTF-8" install_root=${WORKSPACE}/srcdir/glibc_root
 
 # Shared objects without compiled C (gconv tables, libmvec's assembly, the libnss_files and
 # libnss_dns compatibility stubs) have no software ticks note, since the plugin emits it
