@@ -182,29 +182,29 @@ dependencies = [
     Dependency("Zlib_jll"),
 ]
 
-# ygglet (BinaryBuilder2, rr_softticks platforms): the image takes libuuid from Libuuid_jll and
-# kill from procps_jll, so build no libraries, only a set of programs: those a development
-# container and rr's test suite use (renice, script, more, setsid, ...). No SQLite (only
-# lastlog2 needs it); Ncurses for more. libsmartcols (lscpu, column) does not clash.
+# ygglet (BinaryBuilder2, rr_softticks platforms): the programs of a development container
+# (renice and script, which rr's test suite uses; more, setsid, flock, nsenter, unshare,
+# taskset, ...), without what the image gets elsewhere or a single-user container doesn't
+# need: libuuid and its tools (Libuuid_jll), kill (procps_jll), lastlog2 (SQLite), and the
+# login/setuid/mount tools. Ncurses for more.
 if any(contains("rr_softticks"), ARGS)
-    ygglet_programs = ["renice", "script", "scriptreplay", "more", "setsid", "flock", "getopt",
-                       "taskset", "chrt", "ionice", "nsenter", "unshare", "lscpu", "column",
-                       "rev", "hexdump", "logger", "prlimit", "setarch"]
     script = raw"""
     cd $WORKSPACE/srcdir/util-linux-*
     ./configure --prefix=${prefix} --build=${MACHTYPE} --host=${target} \
-        --disable-all-programs \
-        $(for p in """ * join(ygglet_programs, " ") * raw"""; do echo --enable-${p}; done) \
+        --disable-libuuid --disable-uuidd --disable-kill \
+        --disable-liblastlog2 --disable-pam-lastlog2 \
+        --disable-login --disable-su --disable-sulogin --disable-runuser \
+        --disable-chfn-chsh --disable-newgrp --disable-wall --disable-write \
+        --disable-mount --disable-eject \
         --disable-nls --disable-makeinstall-chown --disable-makeinstall-setuid \
-        --without-python --without-systemd --without-udev \
-        --disable-liblastlog2 --enable-libsmartcols
+        --without-python --without-systemd --without-udev
     make -j${nproc}
     make install
     rm -rf ${prefix}/share/man ${prefix}/share/doc ${prefix}/share/bash-completion
     install_license COPYING
     """
-    products = [ExecutableProduct(p, Symbol(p, "_exe")) for p in ("renice", "script", "more", "setsid", "flock", "nsenter", "unshare", "taskset")]
-    # more's terminal handling
+    products = [ExecutableProduct(p, Symbol(p, "_exe")) for p in
+                ("renice", "script", "more", "setsid", "flock", "nsenter", "unshare", "taskset")]
     dependencies = [Dependency("Ncurses_jll")]
 end
 
