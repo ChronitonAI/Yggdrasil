@@ -190,7 +190,13 @@ dependencies = [
 if any(contains("rr_softticks"), ARGS)
     script = raw"""
     cd $WORKSPACE/srcdir/util-linux-*
+    # As above: the build sysroot's glibc 2.17 headers lack copy_file_range, AF_VSOCK and
+    # IPPROTO_MPLS, and its kernel headers AUDIT_ARCH_RISCV64.
+    perl -pi -e 's/AUDIT_ARCH_RISCV64/(243|__AUDIT_ARCH_64BIT|__AUDIT_ARCH_LE)/g' include/audit-arch.h
+    perl -pi -e 's/IPPROTO_MPLS/137/g' lsfd-cmd/sock-xinfo.c
+    perl -pi -e 's/^\s*if test "x\$build_copyfilerange" = xyes; then$/if false; then/' configure
     ./configure --prefix=${prefix} --build=${MACHTYPE} --host=${target} \
+        --disable-lsfd --disable-copyfilerange \
         --disable-libuuid --disable-uuidd --disable-kill \
         --disable-liblastlog2 --disable-pam-lastlog2 \
         --disable-login --disable-su --disable-sulogin --disable-runuser \
