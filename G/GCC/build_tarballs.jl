@@ -177,7 +177,10 @@ build_tarballs(;
     platforms = [Platform("x86_64", "linux"; rr_softticks="1")],
     extract_spec_generator,
     # The image's libc, headers and binutils: what this GCC compiles against and runs with.
-    target_dependencies = [
+    # Build-time only: BinaryBuilder2 makes a build's runtime dependencies dependencies of
+    # every JLL it produces, and CompilerSupportLibraries_jll must not pull glibc and binutils
+    # into the builds of everything that links libstdc++. Images list them explicitly.
+    target_build_time_dependencies = [
         JLLSource("Glibc_jll"; target="ygglet-sysroot/usr"),
         JLLSource("LinuxKernelHeaders_jll"; target="ygglet-sysroot/usr"),
         # Runtime dependency only; out of ${prefix}, whose include/ansidecl.h would shadow GCC's.
