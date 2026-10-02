@@ -94,11 +94,16 @@ ${CXX} -std=gnu++17 -O2 -fPIC -fno-rtti -fno-exceptions -shared \
     -I${WORKSPACE}/srcdir/gcc_build/gmp -Iinclude \
     gcc/softticks_gcc.cc -o ${gcc_libdir}/plugin/softticks_gcc.so
 install -m 644 include/rr_softticks.h ${prefix}/include/rr_softticks.h
-cat > ${gcc_libdir}/specs <<'END'
-*cc1_options:
-+ -fplugin=%:find-file(plugin/softticks_gcc.so)
-
-END
+# A specs file in the library directory replaces the built-in specs entirely: the driver
+# then skips its built-in initialization (which adds --eh-frame-hdr to the link and
+# libgcc_s to the libraries), so it must be a complete dump, with the plugin added to
+# cc1_options. The build tree's xgcc runs here; the installed driver needs the image's glibc.
+${WORKSPACE}/srcdir/gcc_build/gcc/xgcc -dumpspecs | awk '
+    { print }
+    /^\*cc1_options:$/ { getline; print $0 " -fplugin=%:find-file(plugin/softticks_gcc.so)" }
+' > ${gcc_libdir}/specs
+grep -q -- '-fplugin=%:find-file(plugin/softticks_gcc.so)' ${gcc_libdir}/specs
+grep -q -- '--eh-frame-hdr' ${gcc_libdir}/specs
 
 install_license ${WORKSPACE}/srcdir/gcc-*/COPYING*
 """
