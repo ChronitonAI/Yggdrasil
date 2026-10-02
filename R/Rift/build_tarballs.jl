@@ -9,11 +9,11 @@ build_tarballs(;
     src_name = "Rift",
     src_version = v"0.1.0",
     sources = [
-        # rift main 51a4ff9, `make dist`: the asset rift-51a4ff9-x86_64-linux.tar.gz of the
-        # private release dist-51a4ff9 of ChronitonAI/rift, by its API URL (BinaryBuilder2
+        # rift main 04192a2, `make dist`: the asset rift-04192a2-x86_64-linux.tar.gz of the
+        # private release dist-04192a2 of ChronitonAI/rift, by its API URL (BinaryBuilder2
         # authenticates with GITHUB_TOKEN or GH_TOKEN).
-        ArchiveSource("https://api.github.com/repos/ChronitonAI/rift/releases/assets/606014740",
-                      "16273657f91d9a928f42c68f338d0afd26a03f8134b74e8e62d06b6237f390dc"),
+        ArchiveSource("https://api.github.com/repos/ChronitonAI/rift/releases/assets/606512133",
+                      "e6050095c8416c3c7299136cb1f59f1c5ba96a75e0fcfa266b2e62a32156fdc6"),
     ],
     script = raw"""
     mkdir -p ${prefix}/lib/rift ${bindir}
