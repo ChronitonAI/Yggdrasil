@@ -35,8 +35,9 @@ make install
 
 # ygglet (BinaryBuilder2, rr_softticks platforms, x86_64 Linux only): GDB 16.3 (rr's test
 # suite drives a recent gdb; 12.1 predates Python 3.12), a native build (build and host are
-# both x86_64 Linux) configured with the target's own Python 3.12, which runs here with
-# our libraries on LD_LIBRARY_PATH, instead of the spoofed python-config. The Python home
+# both x86_64 Linux) configured with the target's own Python 3.12, which runs here (its
+# RPATH finds our libraries; no LD_LIBRARY_PATH, which would hand the build machine's own
+# tools the image's libstdc++), instead of the spoofed python-config. The Python home
 # lies under the prefix, so gdb relocates it (to /usr in the image). No docs (`makeinfo`),
 # NLS or simulators. (The top-level configure takes --with-gmp/--with-mpfr as paths: a bare
 # `--with-mpfr` links against `yes/lib`.)
@@ -51,7 +52,6 @@ if ygglet
     script = raw"""
 cd $WORKSPACE/srcdir/gdb-*/
 install_license COPYING
-export LD_LIBRARY_PATH="${libdir}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 export CPPFLAGS="${CPPFLAGS} -I${includedir}"
 export LDFLAGS="${LDFLAGS} -L${libdir}"
 mkdir build && cd build
