@@ -80,6 +80,10 @@ fi
 rm -f ${prefix}/lib/*.la
 rm -rf ${prefix}/share/man ${prefix}/share/info
 ln -sf gcc ${prefix}/bin/cc
+# collect2 looks for real-ld and collect-ld next to it, then (in this build) a target-prefixed
+# name, never a plain `ld`: point real-ld at the image's /usr/bin/ld (from Binutils).
+gcc_libexecdir=${prefix}/libexec/gcc/${target}/$(echo ${WORKSPACE}/srcdir/gcc-* | sed 's/.*gcc-//')
+ln -sf ../../../../bin/ld ${gcc_libexecdir}/real-ld
 
 # The software ticks plugin for this GCC, built against its own plugin headers (gmp.h
 # comes from the in-tree GMP), and the specs that load it by default.
