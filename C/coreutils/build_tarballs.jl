@@ -81,7 +81,7 @@ products = [
     ExecutableProduct("link", :link),
     ExecutableProduct("users", :users),
     ExecutableProduct("printenv", :printenv),
-    ExecutableProduct("head", :head),
+    ExecutableProduct("head", :head_bin),  # `head` is in Base (Julia 1.14)
     ExecutableProduct("split", :split_bin),
     ExecutableProduct("sha224sum", :sha224sum),
     ExecutableProduct("shuf", :shuf),
