@@ -9,11 +9,11 @@ build_tarballs(;
     src_name = "RiftRecord",
     src_version = v"0.1.0",
     sources = [
-        # rift main 77ef888, `make dist RIFT_RECORD_ONLY=1`: the asset
-        # rift-record-77ef888-x86_64-linux.tar.gz of the public release rift-record-77ef888 of
+        # rift main 3facb88, `make dist RIFT_RECORD_ONLY=1`: the asset
+        # rift-record-3facb88-x86_64-linux.tar.gz of the public release rift-record-3facb88 of
         # ChronitonAI/rift-action, by its API URL (like R/Rift's).
-        ArchiveSource("https://api.github.com/repos/ChronitonAI/rift-action/releases/assets/636130491",
-                      "e540d3414e3aa63b0c8be0bde1d50bad06d44b8b8fa92bf01523a4e4b7120632"),
+        ArchiveSource("https://api.github.com/repos/ChronitonAI/rift-action/releases/assets/716377400",
+                      "d4de5d1c8439a564b96cbfbe4362ea5e0924d23963f88c618b7305aede3d6333"),
     ],
     script = raw"""
     mkdir -p ${prefix}/lib/rift ${bindir}
