@@ -225,6 +225,12 @@ function build_libcurl(ARGS, name::String, version::VersionNumber; with_zstd=fal
         push!(dependencies, Dependency("Zstd_jll"))
     end
 
+    # ygglet (BinaryBuilder2, rr_softticks platforms): its build environment has no pkg-config,
+    # which curl's configure uses to find its dependencies.
+    if any(contains("rr_softticks"), ARGS)
+        push!(dependencies, HostBuildDependency("pkgconf_jll"))
+    end
+
     if this_is_curl_jll
         # Curl_jll depends on LibCURL_jll
         push!(dependencies, Dependency("LibCURL_jll"; compat="$(version)"))

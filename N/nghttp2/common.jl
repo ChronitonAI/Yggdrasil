@@ -52,6 +52,11 @@ function configure_nghttp2_build(version; kwargs...)
     dependencies = [
         BuildDependency(PackageSpec(name="LLVMCompilerRT_jll", uuid="4e17d02c-6bf5-513e-be62-445f41c75a11", version=string(llvm_version)); platforms=filter(p -> sanitize(p)=="memory", platforms)),
     ]
+    # ygglet (BinaryBuilder2, rr_softticks platforms): its build environment has no pkg-config,
+    # whose pkg.m4 `autoreconf` needs for PKG_PROG_PKG_CONFIG.
+    if any(contains("rr_softticks"), ARGS)
+        dependencies = vcat(dependencies, [HostBuildDependency("pkgconf_jll")])
+    end
 
     return name, version, sources, script, platforms, products, dependencies
 end
