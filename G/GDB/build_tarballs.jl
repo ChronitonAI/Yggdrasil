@@ -52,6 +52,9 @@ if ygglet
     script = raw"""
 cd $WORKSPACE/srcdir/gdb-*/
 install_license COPYING
+# The build runs the target's Python, whose standard library is in the prefix: writing
+# bytecode would put Python_jll's __pycache__ files into this package as well.
+export PYTHONDONTWRITEBYTECODE=1
 export CPPFLAGS="${CPPFLAGS} -I${includedir}"
 export LDFLAGS="${LDFLAGS} -L${libdir}"
 mkdir build && cd build
