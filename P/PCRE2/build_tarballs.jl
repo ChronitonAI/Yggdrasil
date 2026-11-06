@@ -14,11 +14,17 @@ sources = [
     # presumably immutable, and (b) the git source uses submodules.
     ArchiveSource("https://github.com/PCRE2Project/pcre2/releases/download/pcre2-$(version.major).$(version.minor)/pcre2-$(version.major).$(version.minor).tar.bz2",
                   "53c156e1ba416a20da8e65395daa132da0d80e76910424caca3fcdae7831d384"),
+    DirectorySource("./bundled"),
 ]
 
 # Bash recipe for building across all platforms
 script = raw"""
 cd $WORKSPACE/srcdir/pcre2*
+
+# rr software ticks in the JIT's generated code. It only does something when the compiler
+# predefines __RR_SOFTTICKS__ (the softticks plugin on rr_softticks platforms); elsewhere
+# the library is unchanged.
+atomic_patch -p1 ${WORKSPACE}/srcdir/patches/pcre2-10.49-jit-rr-softticks.patch
 
 if [[ ${bb_full_target} == *-sanitize+memory* ]]; then
     # Install msan runtime (for clang)
