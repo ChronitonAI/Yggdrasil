@@ -173,7 +173,7 @@ build_tarballs(;
                       target="gcc-14.2.0"),
         # The software ticks plugin (tools/softticks).
         GitSource("https://github.com/ChronitonAI/rift.git",
-                  "977ecf2b307a2d191e345fde9e45b1944073d9f2"),
+                  "3facb88e7ebc2b5ba14be7496dcec93b692c2f58"),
     ],
     script,
     platforms = [Platform("x86_64", "linux"; rr_softticks="1")],
