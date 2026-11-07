@@ -17,6 +17,12 @@
 # (the platform is the triplet of the `CrossPlatform` below):
 #   YGGLET_UNIVERSE=ygglet-toolchain scripts/bb2-build G/GCCRuntimes-toolchain \
 #       x86_64-linux-gnu-target_arch+x86_64-target_libc+glibc-target_os+linux-target_rr_softticks+1
+# For Fortran on the build's host side too (a `FortranToolchain`'s `$HOSTFC` links against
+# libgfortran, which the pinned GCC_support_libraries_jll does not have), add the plain
+# x86_64 runtimes to the same run: a run's JLLs only keep the artifacts of its platforms.
+#   YGGLET_UNIVERSE=ygglet-toolchain scripts/bb2-build G/GCCRuntimes-toolchain \
+#       x86_64-linux-gnu-target_arch+x86_64-target_libc+glibc-target_os+linux-target_rr_softticks+1,x86_64-linux-gnu-target_arch+x86_64-target_libc+glibc-target_os+linux
+# Plain host builds then use these plain runtimes (and GCC) instead of the pinned ones.
 using BinaryBuilder2, BinaryBuilderToolchains
 using BinaryBuilder2: JLLSource
 
