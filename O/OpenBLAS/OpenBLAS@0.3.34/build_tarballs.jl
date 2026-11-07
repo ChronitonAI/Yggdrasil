@@ -52,8 +52,11 @@ for (n,platform) in enumerate(platforms)
         preferred_gcc_version
     pref_llvm = sanitize(platform) == "memory" ? msan_preferred_llvm_version : preferred_llvm_version
 
+    # (`:fortran`: LAPACK is in Fortran. BinaryBuilder 1 ignores it, as its `:c` brings gfortran
+    # already; BinaryBuilder2 needs it for its Fortran toolchain.)
     build_tarballs(args, name, version, sources, scr, [platform], products, deps;
-                   julia_compat="1.11", lock_microarchitecture=false, preferred_gcc_version=pref_gcc, preferred_llvm_version=pref_llvm)
+                   julia_compat="1.11", lock_microarchitecture=false, preferred_gcc_version=pref_gcc, preferred_llvm_version=pref_llvm,
+                   compilers=[:c, :fortran])
 end
 
 # Build trigger: 0
