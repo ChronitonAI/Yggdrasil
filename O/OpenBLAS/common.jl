@@ -251,7 +251,12 @@ function openblas_script(;num_64bit_threads::Integer=32, openblas32::Bool=false,
         # The segment
         #     LOAD  0x0000000001fba508 0x0000000001fbb508 ... RW  0x8000
         # is not properly aligned. The two addresses are supposed to differ by a multiple of the alignment (0x8000) but they do not.
-        export LDFLAGS="${LDFLAGS} -fuse-ld=lld"
+        #
+        # BinaryBuilder2's GCC toolchain (rr_softticks, ygglet) has no lld, only binutils' ld
+        # (2.41); the alignment of its output is checked after the build instead.
+        if [[ "${bb_full_target}" != *rr_softticks* ]]; then
+            export LDFLAGS="${LDFLAGS} -fuse-ld=lld"
+        fi
     elif [[ ${target} == *apple* ]]; then
         export LDFLAGS="${LDFLAGS} -Wl,-rpath,@loader_path/"
     fi
@@ -274,6 +279,45 @@ function openblas_script(;num_64bit_threads::Integer=32, openblas32::Bool=false,
 
     # Build the actual library
     make "${flags[@]}" shared
+
+    # rr_softticks (ygglet): check what the build cannot see by itself.
+    if [[ "${bb_full_target}" == *rr_softticks* ]]; then
+        # Built with GNU ld (see LDFLAGS above): each LOAD segment's file offset and address
+        # must be congruent modulo its alignment.
+        readelf -lW ${LIBPREFIX}.so | while read -r -a seg; do
+            [[ "${seg[0]}" == LOAD ]] || continue
+            if (( (seg[2] - seg[1]) % seg[${#seg[@]}-1] )); then
+                echo "OpenBLAS: misaligned segment in ${LIBPREFIX}.so: ${seg[*]}" >&2
+                exit 1
+            fi
+        done
+        # LAPACK in Fortran: every object compiled from lapack-netlib's Fortran sources must
+        # have been compiled with the software ticks plugin (its note), as the toolchain's
+        # gfortran wrapper does; a Fortran object without it in the library would go unnoticed.
+        # (f_check's results: without gfortran, lapack-netlib/SRC's f2c translations are
+        # compiled instead, to the same object names)
+        if ! grep -qx 'F_COMPILER=GFORTRAN' Makefile.conf || grep -q '^NOFORTRAN' Makefile.conf; then
+            echo "OpenBLAS: not built with gfortran (C_LAPACK):" >&2
+            cat Makefile.conf >&2
+            exit 1
+        fi
+        fortran_objs=0
+        unticked_objs=()
+        for f in lapack-netlib/SRC/*.f lapack-netlib/SRC/*.f90; do
+            o="${f%.*}.o"
+            [[ -f "${o}" ]] || continue
+            fortran_objs=$((fortran_objs + 1))
+            readelf -SW "${o}" | grep -q ' \.note\.rrsoftticks ' && continue
+            # Without functions there is nothing to tick (la_constants.f90: a module of constants)
+            readelf -sW "${o}" | awk '$4 == "FUNC" && $7 != "UND" { f = 1 } END { exit !f }' || continue
+            unticked_objs+=("${o}")
+        done
+        echo "OpenBLAS: ${fortran_objs} LAPACK objects from Fortran, ${#unticked_objs[@]} with functions but without software ticks"
+        if (( fortran_objs == 0 || ${#unticked_objs[@]} > 0 )); then
+            printf '  %s\n' "${unticked_objs[@]}" | head -20 >&2
+            exit 1
+        fi
+    fi
 
     # Install the library
     make "${flags[@]}" "PREFIX=$prefix" install
@@ -341,7 +385,8 @@ end
 function openblas_dependencies(platforms; llvm_compilerrt_version=v"13.0.1", kwargs...)
     return [
         Dependency(PackageSpec(name="CompilerSupportLibraries_jll", uuid="e66e0078-7015-5450-92f7-15fbd957f2ae")),
-        HostBuildDependency(PackageSpec(name="FlangClassic_jll", uuid="b3f849d4-7198-5f76-a9c5-8e4f35f75d39")),
+        # Only the msan build uses flang; elsewhere a flang on PATH could be what `f_check` finds
+        HostBuildDependency(PackageSpec(name="FlangClassic_jll", uuid="b3f849d4-7198-5f76-a9c5-8e4f35f75d39"); platforms=filter(p -> sanitize(p)=="memory", platforms)),
         BuildDependency(PackageSpec(name="LLVMCompilerRT_jll", uuid="4e17d02c-6bf5-513e-be62-445f41c75a11", version=llvm_compilerrt_version); platforms=filter(p -> sanitize(p)=="memory", platforms)),
         BuildDependency(PackageSpec(name="FlangClassic_RTLib_jll", uuid="48abaad9-6585-5455-9ce3-84cd0709264b"); platforms=filter(p -> sanitize(p)=="memory", platforms))
     ]
