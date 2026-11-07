@@ -1,0 +1,120 @@
+diff --git a/src/x86_64/getcontext.S b/src/x86_64/getcontext.S
+index a08fccd..7fdfb54 100644
+--- a/src/x86_64/getcontext.S
++++ b/src/x86_64/getcontext.S
+@@ -25,6 +25,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
+ 
+ #include "ucontext_i.h"
++#include "softticks_i.h"
+ 
+ /*  int _Ux86_64_getcontext (ucontext_t *ucp)
+ 
+@@ -38,6 +39,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
+ 	.type _Ux86_64_getcontext, @function
+ _Ux86_64_getcontext:
+ 	.cfi_startproc
++	UNW_SOFTTICK
+ 
+ 	/* Callee saved: RBX, RBP, R12-R15  */
+ 	movq %r12, UC_MCONTEXT_GREGS_R12(%rdi)
+@@ -117,6 +119,7 @@ _Ux86_64_getcontext:
+ 	.type _Ux86_64_getcontext_trace, @function
+ _Ux86_64_getcontext_trace:
+ 	.cfi_startproc
++	UNW_SOFTTICK
+ 
+ 	/* Save only RBP, RBX, RSP, RIP - exclude this call. */
+ 	movq %rbp, UC_MCONTEXT_GREGS_RBP(%rdi)
+diff --git a/src/x86_64/longjmp.S b/src/x86_64/longjmp.S
+index 274778f..dea1100 100644
+--- a/src/x86_64/longjmp.S
++++ b/src/x86_64/longjmp.S
+@@ -23,9 +23,12 @@ LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
+ 
++#include "softticks_i.h"
++
+ 	.globl _UI_longjmp_cont
+ 	.type _UI_longjmp_cont, @function
+ _UI_longjmp_cont:
++	UNW_SOFTTICK
+ 	push %rax		/* push target IP as return address */
+ 	mov %rdx, %rax		/* set up return-value */
+ 	retq
+diff --git a/src/x86_64/setcontext.S b/src/x86_64/setcontext.S
+index 17c4b94..5b604a2 100644
+--- a/src/x86_64/setcontext.S
++++ b/src/x86_64/setcontext.S
+@@ -25,6 +25,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
+ 
+ #include "ucontext_i.h"
++#include "softticks_i.h"
+ 
+ /*  int _Ux86_64_setcontext (const ucontext_t *ucp)
+ 
+@@ -36,6 +37,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
+ 	.type _Ux86_64_setcontext, @function
+ 
+ _Ux86_64_setcontext:
++	UNW_SOFTTICK
+ 
+ #if defined __linux__ || defined __sun
+         /* restore fp state */
+diff --git a/src/x86_64/siglongjmp.S b/src/x86_64/siglongjmp.S
+index c75d027..3c241e0 100644
+--- a/src/x86_64/siglongjmp.S
++++ b/src/x86_64/siglongjmp.S
+@@ -27,9 +27,12 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
+ #define SIG_SETMASK 3
+ #endif
+ 
++#include "softticks_i.h"
++
+ 	.globl _UI_siglongjmp_cont
+ 	.type _UI_siglongjmp_cont, @function
+ _UI_siglongjmp_cont:
++	UNW_SOFTTICK
+ #if defined(__linux__) || defined(__QNX__)
+ 	retq
+ #elif defined(__FreeBSD__)
+diff --git a/src/x86_64/softticks_i.h b/src/x86_64/softticks_i.h
+new file mode 100644
+index 0000000..efb3158
+--- /dev/null
++++ b/src/x86_64/softticks_i.h
+@@ -0,0 +1,32 @@
++/* rr software ticks for the x86-64 assembly (getcontext.S, setcontext.S,
++   longjmp.S, siglongjmp.S).
++
++   A program built with a software-ticks compiler pass counts its own progress
++   instead of relying on the CPU's branch counter: the pass ticks compiled code
++   at every function entry and loop header, so that no instruction runs twice
++   in the same stack frame without a tick in between. These functions have no
++   loops, but each is a function that a frame can call more than once, so each
++   ticks at its entry (UNW_SOFTTICK) as compiled code does. The compiler's
++   plugin predefines __RR_SOFTTICKS__ (the ABI version), also for .S files;
++   without it UNW_SOFTTICK is empty and the object code is unchanged.
++
++   The sequence is ABI version 1's x86-64 tick (RR_SOFTTICKS_X64_TICK_ASM in
++   rr's softticks.h), byte for byte. It clobbers the flags only, which no
++   function here reads before writing them, and neither getcontext nor
++   setcontext saves or restores them on Linux. Its end label is 7731, not the
++   ABI string's 1, which a file's own `1:` labels could collide with.  */
++
++#ifndef UNW_X86_64_SOFTTICKS_I_H
++#define UNW_X86_64_SOFTTICKS_I_H
++
++#if defined(__RR_SOFTTICKS__)
++# if __RR_SOFTTICKS__ != 1
++#  error "libunwind: unsupported software-ticks ABI version"
++# endif
++# define UNW_SOFTTICK \
++	testb $0x80, 0x70001807; jnz 7731f; decq 0x70001800; jnz 7731f; int3; 7731:
++#else
++# define UNW_SOFTTICK
++#endif
++
++#endif /* UNW_X86_64_SOFTTICKS_I_H */

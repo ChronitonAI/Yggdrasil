@@ -30,6 +30,13 @@ atomic_patch -p1 ${WORKSPACE}/srcdir/patches/libunwind-revert_prelink_unwind.pat
 
 atomic_patch -p1 ${WORKSPACE}/srcdir/patches/libunwind-disable-initial-exec-tls.patch
 
+# rr software ticks for the x86-64 assembly (getcontext.S, setcontext.S, longjmp.S,
+# siglongjmp.S): a tick at each function's entry, which the compiler's ticks plugin cannot
+# add to assembly. Only where the compiler predefines __RR_SOFTTICKS__ (the plugin, on the
+# rr_softticks platforms); elsewhere the objects are byte-identical. The static liblzma
+# linked in below comes from XZ_jll, whose own patch ticks its one inline-asm loop.
+atomic_patch -p1 ${WORKSPACE}/srcdir/patches/libunwind-rr-softticks.patch
+
 if [[ ${bb_full_target} == *-sanitize+memory* ]]; then
     # Install msan runtime (for clang)
     cp -rL ${libdir}/linux/* /opt/x86_64-linux-musl/lib/clang/*/lib/linux/
