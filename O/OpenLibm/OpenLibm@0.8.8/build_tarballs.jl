@@ -42,6 +42,50 @@ flags+=("CC=$CC")
 # Build the library
 make "${flags[@]}" -j${nproc}
 
+# rr_softticks: fail the build if the software ticks did not land, which it would not notice
+# otherwise (the patch is a no-op without __RR_SOFTTICKS__, and a hunk can apply in the wrong
+# place after a version bump): every amd64/*.S object ticks at its entry, and the fprem/fprem1
+# loops' (fmod*, remainder*, remquo*) once more. Only amd64's assembly has ticks: another
+# architecture's (i387/*.S) must not be built here (aarch64 has none).
+if [[ "${bb_full_target}" == *rr_softticks* ]]; then
+    # The software ticks (rr's x86-64 sequence of ABI version 1: testb $0x80,0x70001807;
+    # jne; decq 0x70001800; jne; int3) in an object's code
+    count_ticks() {
+        local d
+        d=$(${OBJDUMP:-objdump} -d --no-show-raw-insn "$1") || return 1
+        awk '{ sub(/^ *[0-9a-f]+:[ \t]+/, ""); gsub(/[ \t]+/, " "); gsub(/, /, ","); sub(/ $/, "") }
+             /^testb \$-?0x80,0x70001807$/ { s = 1; next }
+             s == 1 && /^jne / { s = 2; next }
+             s == 2 && /^decq 0x70001800$/ { s = 3; next }
+             s == 3 && /^jne / { s = 4; next }
+             s == 4 && /^int3$/ { n++ }
+             { s = 0 }
+             END { print n + 0 }' <<< "${d}"
+    }
+    asm_objs=($(find . -name '*.S.o' | sort))
+    if [[ "${target}" != x86_64-* ]]; then
+        if (( ${#asm_objs[@]} )); then
+            echo "OpenLibm: only the amd64 assembly has software ticks, not ${asm_objs[*]}" >&2
+            exit 1
+        fi
+    elif (( ${#asm_objs[@]} == 0 )); then
+        echo "OpenLibm: no amd64 assembly objects (*.S.o) to check" >&2
+        exit 1
+    fi
+    for o in "${asm_objs[@]}"; do
+        case "${o}" in
+            ./amd64/e_fmod*|./amd64/e_remainder*|./amd64/s_remquo*) want=2 ;;
+            ./amd64/*) want=1 ;;
+            *) echo "OpenLibm: ${o}: assembly without software ticks" >&2; exit 1 ;;
+        esac
+        n=$(count_ticks "${o}") || exit 1
+        if [[ "${n}" != "${want}" ]]; then
+            echo "OpenLibm: ${o} has ${n} software ticks, not ${want}" >&2
+            exit 1
+        fi
+    done
+fi
+
 # Install the library
 make "${flags[@]}" install
 
