@@ -36,6 +36,13 @@ if [[ ${proc_family} == intel ]]; then
     flags+=(--enable-fat)
 fi
 
+# rr_softticks (ygglet) platforms: the compiler ticks the C, and the x86-64 assembly ticks
+# by hand (GMP@6.3.0's rr-softticks patches, see softticks/regen.sh); other assembly does
+# not tick, and configure refuses it with a ticking compiler, so it is left out there.
+if [[ ${bb_full_target} == *rr_softticks* && ${target} != x86_64-* ]]; then
+    flags=(--enable-cxx --enable-shared --disable-static --disable-assembly)
+fi
+
 if [[ ${bb_full_target} == *-sanitize+memory* ]]; then
     # Install msan runtime (for clang)
     cp -vrL ${libdir}/linux/* /opt/x86_64-linux-musl/lib/clang/*/lib/linux/
