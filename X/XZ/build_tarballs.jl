@@ -10,13 +10,20 @@ sources = [
     # ygglet (BinaryBuilder2): the release tarball, which has a generated `configure`, so
     # the build needs no `autopoint`/`po4a` (BB2's Debian rootfs has no `apk`).
     ArchiveSource("https://github.com/tukaani-project/xz/releases/download/v$(version)/xz-$(version).tar.xz",
-                  "4ce24038fd4221e0d13bc1a2de7a4db56e90b92b3bf75321f6c14be73f65de4b")
+                  "4ce24038fd4221e0d13bc1a2de7a4db56e90b92b3bf75321f6c14be73f65de4b"),
+    DirectorySource("./bundled"),
 ]
 
 # Bash recipe for building across all platforms
 script = raw"""
 cd $WORKSPACE/srcdir/xz*
 install_license COPYING
+
+# rr software ticks (rr_softticks platforms): the compiler pass ticks the C code but not
+# the loop in rc_direct()'s x86-64 inline asm, the one cycle without a tick that the binary
+# tick check finds in liblzma; the patch ticks it by hand. It only acts where the compiler
+# predefines __RR_SOFTTICKS__; elsewhere the objects are byte-identical.
+atomic_patch -p1 ${WORKSPACE}/srcdir/patches/rr-softticks-rc_direct.patch
 
 
 BUILD_FLAGS=(--prefix=${prefix} --build=${MACHTYPE} --host=${target} --with-pic)
