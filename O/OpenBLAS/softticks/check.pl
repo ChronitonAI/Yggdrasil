@@ -6,6 +6,7 @@
 # covers the hand-written kernels (the ticks of 90/91-rr-softticks-*.patch) and whatever else.
 #
 #   check.pl [--jobs N] [--so LIB] ARCHIVE|OBJECT...
+#   check.pl --selftest
 #
 # Per object and executable section, from `objdump -d -r -t -h` (GNU or LLVM; $OBJDUMP):
 #   unticked_scc    a cycle of the instruction-level CFG with no tick on it
@@ -28,7 +29,11 @@
 #
 # --so LIB: also check that the shared library carries the software ticks note (ABI
 # version 1) and the initializer that maps the countdown's page outside rr.
-# Exits 1 if anything is found, 2 on usage or tool errors.
+# --selftest: assembles (with $CC, else cc) an object with one fault of each kind the
+# hand-written kernels could have (an unticked loop, an entry path without a tick, a flag
+# live after a tick, a stray countdown access) and one without, and checks that exactly
+# those are found: that this objdump's output is read as this script expects.
+# Exits 1 if anything is found, 2 on usage or tool errors (or a failed self-test).
 use strict;
 use warnings;
 no warnings 'portable';    # hex() of 64-bit addresses
@@ -36,9 +41,9 @@ use File::Temp qw(tempdir);
 use POSIX ();
 use Getopt::Long;
 
-my ($so, $jobs) = (undef, 1);
-GetOptions("so=s" => \$so, "jobs=i" => \$jobs) or exit 2;
-die "usage: $0 [--jobs N] [--so LIB] ARCHIVE|OBJECT...\n" unless @ARGV;
+my ($so, $jobs, $selftest) = (undef, 1, 0);
+GetOptions("so=s" => \$so, "jobs=i" => \$jobs, "selftest" => \$selftest) or exit 2;
+die "usage: $0 [--jobs N] [--so LIB] ARCHIVE|OBJECT... | --selftest\n" unless @ARGV || $selftest;
 my $OBJDUMP = $ENV{OBJDUMP} || "objdump";
 
 # ---------------------------------------------------------------- flags
@@ -221,7 +226,7 @@ sub analyze_section {
         } else {
             # the countdown (absolute 0x70001800-0x70001807) touched outside a whole tick
             push @{$P{bad_tick}}, sprintf("%x", $ins->[$i][0])
-                if $ins->[$i][2] =~ /(?:^|[,(\s])(?:0x)?700018[0-7](?:$|[,(\s])/;
+                if $ins->[$i][2] =~ /(?:^|[,(\s])(?:0x)?7000180[0-7](?:$|[,(\s])/;
             $i++;
         }
     }
@@ -431,6 +436,87 @@ sub extract_archive {
     }
     return @out;
 }
+
+# ---------------------------------------------------------------- self-test
+my $SELFTEST_TICK = "testb \$0x80, 0x70001807; jnz 7731f; decq 0x70001800; jnz 7731f; int3; 7731:";
+my %SELFTEST = (
+    good => [<<'EOS', {}],
+	.text
+	.globl good1
+	.type good1, @function
+good1:	TICK
+	movl $10, %ecx
+1:	TICK
+	addl $1, %eax
+	decl %ecx
+	jnz 1b
+	cmpl $1, %edi
+	je 2f
+	addl $1, %eax
+2:	ret
+	.size good1, .-good1
+EOS
+    bad => [<<'EOS', {unticked_scc => 1, entry_unticked => 1, flags_live => 1, bad_tick => 1}],
+	.text
+	.globl loop
+	.type loop, @function
+loop:	TICK
+	movl $10, %ecx
+1:	addl $1, %eax
+	decl %ecx
+	jnz 1b
+	ret
+	.globl entry
+	.type entry, @function
+entry:	testl %edi, %edi
+	jz 2f
+	TICK
+2:	ret
+	.globl flags
+	.type flags, @function
+flags:	TICK
+	cmpl $1, %edi
+	TICK
+	je 3f
+	addl $1, %eax
+3:	ret
+	.globl stray
+	.type stray, @function
+stray:	TICK
+	movq 0x70001800, %rax
+	ret
+EOS
+);
+
+sub selftest {
+    my $dir = tempdir(CLEANUP => 1);
+    my $cc = $ENV{CC} || "cc";
+    my $ok = 1;
+    for my $name (sort keys %SELFTEST) {
+        my ($src, $want) = @{$SELFTEST{$name}};
+        $src =~ s/\bTICK\b/$SELFTEST_TICK/g;
+        open(my $fh, ">", "$dir/$name.s") or die "$dir/$name.s: $!\n";
+        print $fh $src;
+        close $fh;
+        system("$cc -c -o $dir/$name.o $dir/$name.s") == 0 or die "$cc failed on the self-test\n";
+        my $r = check_object("$dir/$name.o", "$name.o");
+        my %got;
+        my $ticks = 0;
+        for my $s (@{$r->{results}}) {
+            $ticks += $s->{ticks};
+            $got{$_} += scalar @{$s->{problems}{$_}} for keys %{$s->{problems}};
+        }
+        my $g = join(" ", map { "$_=$got{$_}" } sort keys %got);
+        my $w = join(" ", map { "$_=$want->{$_}" } sort keys %$want);
+        my $t = () = $src =~ /7731:/g;
+        my $pass = $g eq $w && $ticks == $t && $r->{asm};
+        printf "softticks check self-test %s: %d of %d ticks, findings {%s}, %s\n", $name, $ticks,
+            $t, $g, $pass ? "as expected" : "expected {$w}";
+        $ok &&= $pass;
+    }
+    return $ok ? 0 : 2;
+}
+exit selftest() if $selftest;
 
 # ---------------------------------------------------------------- main
 my $tmp = tempdir(CLEANUP => 1);

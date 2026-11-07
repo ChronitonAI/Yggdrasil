@@ -325,7 +325,9 @@ function openblas_script(;num_64bit_threads::Integer=32, openblas32::Bool=false,
             exit 1
         fi
         # The hand-written kernels' ticks (and the compiled code's), in the archive the library
-        # is linked from, and the library's note and initializer
+        # is linked from, and the library's note and initializer; first, that the check finds
+        # what it should with this toolchain's objdump
+        perl ${WORKSPACE}/srcdir/softticks/check.pl --selftest
         perl ${WORKSPACE}/srcdir/softticks/check.pl --jobs ${nproc} \
             --so ${LIBPREFIX}.so ${LIBPREFIX}.a
     fi
