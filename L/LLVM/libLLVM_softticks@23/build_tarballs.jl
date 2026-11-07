@@ -113,6 +113,36 @@ CMAKE_FLAGS+=(-DCMAKE_CXX_FLAGS="-fno-gnu-unique")
 
 cmake -GNinja ${LLVM_SRCDIR} "${CMAKE_FLAGS[@]}"
 ninja -j${nproc}
+
+# rr_softticks: fail the build if BLAKE3's software ticks did not land, which it would not
+# notice otherwise (the patch is a no-op without __RR_SOFTTICKS__, and a hunk can apply in
+# the wrong place after a version bump): each x86-64 kernel's object must carry all of its
+# ticks, at the entry of every function and the head of every loop (aarch64's kernel is C).
+if [[ "${bb_full_target}" == *rr_softticks* && "${target}" == x86_64-* ]]; then
+    # The software ticks (rr's x86-64 sequence of ABI version 1: testb $0x80,0x70001807;
+    # jne; decq 0x70001800; jne; int3) in an object's code
+    count_ticks() {
+        local d
+        d=$(${OBJDUMP:-objdump} -d --no-show-raw-insn "$1") || return 1
+        awk '{ sub(/^ *[0-9a-f]+:[ \t]+/, ""); gsub(/[ \t]+/, " "); gsub(/, /, ","); sub(/ $/, "") }
+             /^testb \$-?0x80,0x70001807$/ { s = 1; next }
+             s == 1 && /^jne / { s = 2; next }
+             s == 2 && /^decq 0x70001800$/ { s = 3; next }
+             s == 3 && /^jne / { s = 4; next }
+             s == 4 && /^int3$/ { n++ }
+             { s = 0 }
+             END { print n + 0 }' <<< "${d}"
+    }
+    for k in sse2:11 sse41:11 avx2:9 avx512:20; do
+        o=lib/Support/BLAKE3/CMakeFiles/LLVMSupportBlake3.dir/blake3_${k%:*}_x86-64_unix.S.o
+        n=$(count_ticks "${o}") || exit 1
+        if [[ "${n}" != "${k#*:}" ]]; then
+            echo "libLLVM: ${o} has ${n} software ticks, not ${k#*:}" >&2
+            exit 1
+        fi
+    done
+fi
+
 ninja install
 
 install_license ${WORKSPACE}/srcdir/llvm-project/llvm/LICENSE.TXT
