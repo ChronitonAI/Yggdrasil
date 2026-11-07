@@ -110,9 +110,12 @@ dependencies = [
                v"5.12.0";  # build version
                compat="5.8.0"),
     BuildDependency("LLVMCompilerRT_jll",platforms=[Platform("x86_64", "linux"; sanitize="memory")]),
-    # Need the most recent 3.29.3+1 version (or later) to get libblastrampoline support
-    HostBuildDependency(PackageSpec(; name="CMake_jll"))
 ]
+# Need the most recent 3.29.3+1 version (or later) to get libblastrampoline support
+# (ygglet's BinaryBuilder2 environment, on rr_softticks platforms, has CMake 4 already)
+if !any(contains("rr_softticks"), ARGS)
+    push!(dependencies, HostBuildDependency(PackageSpec(; name="CMake_jll")))
+end
 
 # Generate a common build script for most SuiteSparse packages.
 # use_omp=true will enable OpenMP, this may default to true in the future.
@@ -126,8 +129,10 @@ function build_script(; use_omp::Bool = false, use_cuda::Bool = false, build_32b
     return "USE_OMP=$(use_omp)\nUSE_CUDA=$(use_cuda)\nUSE_32BIT_BLAS=$(build_32bit_blas)\n" * raw"""
 cd $WORKSPACE/srcdir/SuiteSparse
 
-# Needs cmake >= 3.29 provided by jll
-apk del cmake
+# Needs cmake >= 3.29 provided by jll (ygglet's BinaryBuilder2 environment has CMake 4, and no apk)
+if [[ "${bb_full_target}" != *rr_softticks* ]]; then
+    apk del cmake
+fi
 
 FLAGS+=(INSTALL="${prefix}" INSTALL_LIB="${libdir}" INSTALL_INCLUDE="${prefix}/include")
 
