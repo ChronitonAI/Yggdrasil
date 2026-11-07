@@ -17,7 +17,9 @@ sources = [
 # Bash recipe for building across all platforms
 script = raw"""
 cd $WORKSPACE/srcdir/UASM*/
-make -f gccLinux64.mak
+# GCC 14 (BinaryBuilder2's toolchain) makes these errors by default, and defaults to
+# -fno-common (since GCC 10) while UASM defines globals in its headers.
+make -f gccLinux64.mak CFLAGS="-fcommon -Wno-error=implicit-function-declaration -Wno-error=int-conversion -Wno-error=incompatible-pointer-types"
 install -Dvm 0755 "GccUnixR/uasm" "${bindir}/uasm${exeext}"
 """
 
