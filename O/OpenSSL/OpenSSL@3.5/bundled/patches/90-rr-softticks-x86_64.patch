@@ -1,0 +1,786 @@
+diff --git a/crypto/bn/asm/x86_64-gcc.c b/crypto/bn/asm/x86_64-gcc.c
+index 1e123ed..7bc9f56 100644
+--- a/crypto/bn/asm/x86_64-gcc.c
++++ b/crypto/bn/asm/x86_64-gcc.c
+@@ -68,6 +68,29 @@
+ #undef mul
+ #undef mul_add
+ 
++#if defined(__RR_SOFTTICKS__)
++#if __RR_SOFTTICKS__ != 1
++#error "unsupported rr software ticks ABI (rr's include/rr/softticks.h)"
++#endif
++/*
++ * rr software ticks: a compiler with a software-ticks pass ticks the C
++ * code, but not the loops in the asm statements below, so they tick at
++ * their head (RR_SOFTTICKS_X64_TICK_ASM, with a label that does not capture
++ * the loop's "1b"). Their carry crosses the back edge, and the tick
++ * clobbers the flags, so CF waits in the low byte of %0, which the loop
++ * writes before it reads it: setc keeps CF, shrb $1 restores it.
++ */
++#define BN_LOOP_HEAD "1:     setc    %b0             \n" \
++                     "       testb   $0x80,0x70001807\n" \
++                     "       jnz     7731f           \n" \
++                     "       decq    0x70001800      \n" \
++                     "       jnz     7731f           \n" \
++                     "       int3                    \n" \
++                     "7731:  shrb    $1,%b0          \n"
++#else
++#define BN_LOOP_HEAD "1:\n"
++#endif
++
+ /*-
+  * "m"(a), "+m"(r)      is the way to favor DirectPath µ-code;
+  * "g"(0)               let the compiler to decide where does it
+@@ -218,7 +241,8 @@ BN_ULONG bn_add_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+     asm volatile("       subq    %0,%0           \n" /* clear carry */
+                  "       jmp     1f              \n"
+                  ".p2align 4                     \n"
+-                 "1:     movq    (%4,%2,8),%0    \n"
++                 BN_LOOP_HEAD
++                 "       movq    (%4,%2,8),%0    \n"
+                  "       adcq    (%5,%2,8),%0    \n"
+                  "       movq    %0,(%3,%2,8)    \n"
+                  "       lea     1(%2),%2        \n"
+@@ -245,7 +269,8 @@ BN_ULONG bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+     asm volatile("       subq    %0,%0           \n" /* clear borrow */
+                  "       jmp     1f              \n"
+                  ".p2align 4                     \n"
+-                 "1:     movq    (%4,%2,8),%0    \n"
++                 BN_LOOP_HEAD
++                 "       movq    (%4,%2,8),%0    \n"
+                  "       sbbq    (%5,%2,8),%0    \n"
+                  "       movq    %0,(%3,%2,8)    \n"
+                  "       lea     1(%2),%2        \n"
+diff --git a/crypto/perlasm/x86_64-softticks.pl b/crypto/perlasm/x86_64-softticks.pl
+new file mode 100644
+index 0000000..cb6268e
+--- /dev/null
++++ b/crypto/perlasm/x86_64-softticks.pl
+@@ -0,0 +1,685 @@
++#! /usr/bin/env perl
++# Copyright 2026 The OpenSSL Project Authors. All Rights Reserved.
++#
++# Licensed under the Apache License 2.0 (the "License").  You may not use
++# this file except in compliance with the License.  You can obtain a copy
++# in the file LICENSE in the source distribution or at
++# https://www.openssl.org/source/license.html
++#
++# rr software ticks for x86_64-xlate.pl's ELF output (rr's
++# include/rr/softticks.h, ABI version 1).
++#
++# A compiler with a software-ticks pass predefines __RR_SOFTTICKS__ (the ABI
++# version), and the code it compiles counts its own progress: no instruction
++# executes twice in the same frame (at the same pc and %rsp) without a tick in
++# between. x86_64-xlate.pl calls softticks_insert() on its whole output when
++# $ENV{CC}, which the build passes to the perlasm scripts, is such a compiler;
++# otherwise nothing changes. A tick goes in
++#
++#   - every block that starts at a label which a jump at or after it (in the
++#     same section) targets: in a linear layout every cycle contains such a
++#     backward jump (the code has no indirect jumps; any is an error), and
++#   - the first block of every function (.type @function, .globl, or a call
++#     target), after its endbr64: a leaf called twice from one frame would
++#     run its first instructions at the same pc and %rsp.
++#
++# The tick is RR_SOFTTICKS_X64_TICK_ASM, byte for byte (rr recognizes it by
++# its bytes), and it sets all arithmetic flags. So it goes where in its block
++# no flag is live, if there is such a point. Where every point of the block
++# has a live flag, as in the multi-word carry chains of the bn Montgomery
++# code (adc/sbb, adcx/adox, whose carry crosses the loop's back edge with
++# inc/dec/lea/jrcxz counters), it goes where CF and OF at most are live and
++# a register is dead for each (the rest of the block writes it whole before
++# it reads it), which keeps the flag: setc/seto before the tick, and after it
++# shrb $1 (CF, and OF = 0) and decb of 0x80 or 0 (OF; CF is kept), or addb
++# $0x7f (OF alone). Anything else is an error.
++#
++# The liveness of the flags follows the code, in instructions and those that
++# x86_64-xlate.pl and the scripts encode with .byte/.long (an instruction
++# this does not know counts as reading every flag); a call's successor is
++# the callee's entry. Errors: an indirect jump, a jump between sections, a
++# flag read right after a call or a popf (pushf counts as reading none: the
++# PadLock code inspects only bit 30 of what it pushes), an exported function
++# that reads a flag at its entry.
++#
++# Each object gets the initializer and the note (in their COMDAT group, as
++# the compiler emits them), and an .init section calls the initializer first:
++# x86_64cpuid.pl's calls OPENSSL_cpuid_setup, which ticks, and .init runs
++# before .init_array, where the initializer is.
++#
++# With RR_SOFTTICKS_REPORT set to a file, a line per tick is appended to it.
++
++package x86_64_softticks;
++
++use strict;
++use warnings;
++
++# Is $cc a software-ticks compiler? Its ABI version, or 0.
++sub softticks_enabled {
++    my ($cc) = @_;
++    return 0 if (!defined($cc) || $cc eq "");
++    my $v = `echo __RR_SOFTTICKS__ | $cc -E -P -x c - 2>/dev/null`;
++    $v =~ s/\s+//g;
++    return 0 if ($v eq "" || $v eq "__RR_SOFTTICKS__");
++    die "x86_64-softticks.pl: unsupported rr software ticks ABI \"$v\"\n" if ($v ne "1");
++    return 1;
++}
++
++# The arithmetic flags, as bits.
++my ($C, $P, $A, $Z, $S, $O) = (1, 2, 4, 8, 16, 32);
++my $ALL = 63;
++
++my %cc = (o=>$O, no=>$O, b=>$C, c=>$C, nae=>$C, ae=>$C, nb=>$C, nc=>$C,
++	  e=>$Z, z=>$Z, ne=>$Z, nz=>$Z, be=>$C|$Z, na=>$C|$Z, a=>$C|$Z, nbe=>$C|$Z,
++	  s=>$S, ns=>$S, p=>$P, pe=>$P, np=>$P, po=>$P, l=>$S|$O, nge=>$S|$O,
++	  ge=>$S|$O, nl=>$S|$O, le=>$Z|$S|$O, ng=>$Z|$S|$O, g=>$Z|$S|$O, nle=>$Z|$S|$O);
++# By opcode's low nibble (jcc, setcc, cmovcc).
++my @ccn = ($O, $O, $C, $C, $Z, $Z, $C|$Z, $C|$Z, $S, $S, $P, $P, $S|$O, $S|$O,
++	   $Z|$S|$O, $Z|$S|$O);
++
++# The flags a condition-code suffix (with an optional size suffix) reads:
++# every reading of an ambiguous spelling counts.
++sub cc_reads {
++    my ($s, $sizes) = @_;
++    my $r = 0;
++    $r |= $cc{$s} if (exists($cc{$s}));
++    $r |= $cc{$1} if ($sizes ne "" && $s =~ /^(.+)[$sizes]$/ && exists($cc{$1}));
++    return $r;
++}
++
++# Control: "n" (falls through), "ret", "stop", "jmp", "jcc", "call",
++# "prefix" (a prefix only, of the next instruction), "endbr".
++# Returns (control, flags read, flags written).
++sub insn_flags {
++    my ($m, $o) = @_;
++    return ("ret", 0, 0)		if ($m =~ /^ret[lq]?$/);
++    return ("stop", 0, 0)		if ($m =~ /^(?:ud2|hlt)$/);
++    return ("endbr", 0, 0)		if ($m eq "endbr64");
++    return ("jmp", 0, 0)		if ($m =~ /^jmp[q]?$/);
++    return ("call", 0, $ALL)		if ($m =~ /^call[q]?$/);
++    return ("jcc", 0, 0)		if ($m =~ /^j[er]?cxz$/ || $m =~ /^loop[lq]?$/);
++    return ("jcc", $Z, 0)		if ($m =~ /^loopn?[ez][lq]?$/);
++    if ($m =~ /^j(.+)$/) {
++	my $r = cc_reads($1, "");
++	die "x86_64-softticks.pl: unknown jump $m\n" if (!$r);
++	return ("jcc", $r, 0);
++    }
++    if ($m =~ /^set(.+)$/ && (my $r = cc_reads($1, "b")))	{ return ("n", $r, 0); }
++    if ($m =~ /^cmov(.+)$/ && (my $r = cc_reads($1, "wlq")))	{ return ("n", $r, 0); }
++    return ("n", $ALL, 0)		if ($m =~ /^fcmov/);
++    return ("n", $C, $ALL)		if ($m =~ /^(?:adc|sbb)[bwlq]?$/);
++    return ("n", $C, $C)		if ($m =~ /^adcx[lq]?$/);
++    return ("n", $O, $O)		if ($m =~ /^adox[lq]?$/);
++    return ("n", $C, 0)			if ($m =~ /^(?:rcl|rcr)[bwlq]?$/);
++    return ("n", $ALL & ~$O, 0)		if ($m eq "lahf");
++    return ("n", 0, 0)			if ($m =~ /^pushf[wlq]?$/);	# see below
++    return ("n", $C, $C)		if ($m eq "cmc");
++    return ("n", 0, $C)			if ($m =~ /^(?:clc|stc)$/);
++    return ("n", 0, $ALL & ~$O)		if ($m eq "sahf");
++    return ("n", 0, $ALL)		if ($m =~ /^popf[wlq]?$/);
++    return ("n", 0, $ALL & ~$C)		if ($m =~ /^(?:inc|dec)[bwlq]?$/);
++    if ($m =~ /^(?:shl|shr|sal|sar|shld|shrd|rol|ror)[bwlq]?$/) {
++	return ("n", 0, 0)		if ($o =~ /%cl\b/);	# the count may be 0
++	return ("n", 0, $C|$O)		if ($m =~ /^ro/);
++	return ("n", 0, $ALL);
++    }
++    return ("n", 0, $ALL)		if ($m =~ /^(?:add|sub|and|or|xor|cmp|test|neg|mul|imul|div|idiv|bt|bts|btr|btc|bsf|bsr|popcnt|lzcnt|tzcnt|andn|bextr|blsi|blsmsk|blsr|bzhi|xadd|cmpxchg|cmpxchg8b|cmpxchg16b|rdrand|rdseed)[bwlq]?$/);
++    return ("n", 0, $ALL)		if ($m =~ /^(?:v?u?comis[sd]|v?ptest|vtestp[sd]|kortest[bwdq]|ktest[bwdq])$/);
++    return ("n", 0, $ALL)		if ($m =~ /^(?:cmps|scas)[bwlq]?$/);	# without rep
++    return ("n", 0, 0);			# moves, SIMD, mulx, shlx, rorx, lea, ...
++}
++
++my %legacy_prefix = map { $_ => 1 } (0x26, 0x2e, 0x36, 0x3e, 0x64, 0x65, 0x66, 0x67, 0xf0, 0xf2, 0xf3);
++
++# The length of a ModRM byte at $b->[$i] with its SIB and displacement.
++sub modrm_len {
++    my ($b, $i) = @_;
++    return undef if ($i >= @$b);
++    my ($mod, $rm) = ($b->[$i] >> 6, $b->[$i] & 7);
++    return 1 if ($mod == 3);
++    my $l = 1;
++    if ($rm == 4) {
++	return undef if ($i + 1 >= @$b);
++	$l++;
++	$l += 4 if ($mod == 0 && ($b->[$i + 1] & 7) == 5);
++    } elsif ($mod == 0 && $rm == 5) {
++	$l += 4;			# %rip relative
++    }
++    $l += $mod == 1 ? 1 : $mod == 2 ? 4 : 0;
++    return $l;
++}
++
++# The instruction at $b->[$i]: (length, control, flags read, flags written),
++# or () if this does not know it. Only the flags' readers must all be known;
++# where the writers are not, the flags count as not written.
++sub decode_one {
++    my ($b, $i0) = @_;
++    my ($i, %p, $w) = ($i0);
++    while ($i < @$b && $legacy_prefix{$b->[$i]}) { $p{$b->[$i++]} = 1; }
++    if ($i < @$b && $b->[$i] >= 0x40 && $b->[$i] <= 0x4f) { $w = $b->[$i] & 8; $i++; }
++    return ($i - $i0, "prefix", 0, 0)	if ($i == @$b);
++    my $op = $b->[$i++];
++    my $r = $i < @$b ? ($b->[$i] >> 3) & 7 : -1;	# ModRM's reg field
++    my $mr = sub { my $l = modrm_len($b, $i); return defined($l) ? ($i + $l + ($_[0] // 0) - $i0) : undef; };
++    my $ret = sub { my ($l, @f) = @_; return defined($l) && $i0 + $l <= @$b ? ($l, @f) : (); };
++    my $imm = $p{0x66} ? 2 : 4;
++    # one-byte opcodes
++    if ($op < 0x40 && ($op & 7) < 6) {	# add, or, adc, sbb, and, sub, xor, cmp
++	my $rd = ($op >> 3) == 2 || ($op >> 3) == 3 ? $C : 0;
++	my $l = ($op & 7) < 4 ? $mr->() : ($i - $i0) + (($op & 7) == 4 ? 1 : $imm);
++	return $ret->($l, "n", $rd, $ALL);
++    }
++    return $ret->($i - $i0, "n", 0, 0)	if ($op >= 0x50 && $op <= 0x5f);	# push, pop
++    return $ret->($mr->(), "n", 0, 0)	if ($op == 0x63);			# movslq
++    return $ret->($mr->($op == 0x69 ? $imm : 1), "n", 0, $ALL) if ($op == 0x69 || $op == 0x6b);	# imul
++    if ($op >= 0x80 && $op <= 0x83 && $op != 0x82) {
++	return $ret->($mr->($op == 0x81 ? $imm : 1), "n", $r == 2 || $r == 3 ? $C : 0, $ALL);
++    }
++    return $ret->($mr->(), "n", 0, $ALL)	if ($op == 0x84 || $op == 0x85);	# test
++    return $ret->($mr->(), "n", 0, 0)	if ($op >= 0x86 && $op <= 0x8b || $op == 0x8d);	# xchg, mov, lea
++    return $ret->($i - $i0, "n", 0, 0)	if ($op >= 0x90 && $op <= 0x99);	# nop, xchg, cltq, cqto
++    return $ret->($i - $i0, "n", 0, $ALL & ~$O) if ($op == 0x9e);	# sahf
++    return $ret->($i - $i0, "n", $ALL & ~$O, 0) if ($op == 0x9f);	# lahf
++    if ($op >= 0xa4 && $op <= 0xaf) {	# string instructions
++	return $ret->($i - $i0, "n", 0, ($op == 0xa6 || $op == 0xa7 || $op >= 0xae) && !$p{0xf3} && !$p{0xf2} ? $ALL : 0)
++	    if ($op != 0xa8 && $op != 0xa9);
++	return $ret->($i - $i0 + ($op == 0xa8 ? 1 : $imm), "n", 0, $ALL);	# test imm
++    }
++    return $ret->($i - $i0 + 1, "n", 0, 0)	if ($op >= 0xb0 && $op <= 0xb7);
++    return $ret->($i - $i0 + ($w ? 8 : $imm), "n", 0, 0) if ($op >= 0xb8 && $op <= 0xbf);
++    if ($op == 0xc0 || $op == 0xc1 || $op >= 0xd0 && $op <= 0xd3) {	# shifts, rotates
++	my $l = $mr->($op <= 0xc1 ? 1 : 0);
++	return $ret->($l, "n", $C, 0)	if ($r == 2 || $r == 3);	# rcl, rcr
++	return $ret->($l, "n", 0, 0)	if ($op == 0xd2 || $op == 0xd3);	# by %cl
++	return $ret->($l, "n", 0, $r < 2 ? $C | $O : $ALL);
++    }
++    return $ret->($i - $i0, "ret", 0, 0)	if ($op == 0xc3);
++    return $ret->($mr->($op == 0xc6 ? 1 : $imm), "n", 0, 0) if (($op == 0xc6 || $op == 0xc7) && $r == 0);
++    return $ret->($i - $i0, "n", 0, 0)	if ($op == 0xcc);		# int3
++    return $ret->($i - $i0, "n", $C, $C)	if ($op == 0xf5);	# cmc
++    if ($op == 0xf6 || $op == 0xf7) {
++	return $ret->($mr->($op == 0xf6 ? 1 : $imm), "n", 0, $ALL) if ($r <= 1);	# test
++	return $ret->($mr->(), "n", 0, $r == 2 ? 0 : $ALL);	# not, neg, mul, imul, div, idiv
++    }
++    return $ret->($i - $i0, "n", 0, $C)	if ($op == 0xf8 || $op == 0xf9);	# clc, stc
++    return $ret->($i - $i0, "n", 0, 0)	if ($op >= 0xfa && $op <= 0xfd);	# cli, sti, cld, std
++    if ($op == 0xfe || $op == 0xff) {
++	return $ret->($mr->(), "n", 0, $ALL & ~$C) if ($r <= 1);	# inc, dec
++	return $ret->($mr->(), "n", 0, 0)	if ($op == 0xff && $r == 6);	# push
++	return ();				# indirect call or jump
++    }
++    if ($op == 0xc4 || $op == 0xc5 || $op == 0x62 || $op == 0x8f && $i < @$b && ($b->[$i] & 0x1f) >= 8) {
++	# VEX, EVEX, XOP: none reads the flags
++	my $n = $op == 0xc5 ? 1 : $op == 0x62 ? 3 : 2;
++	return () if ($i + $n >= @$b);
++	my $map = $op == 0xc5 ? 1 : $op == 0x62 ? $b->[$i] & 7 : $b->[$i] & 0x1f;
++	$i += $n;
++	my $o = $b->[$i++];
++	my $im = $map == 3 || $map == 8 || $map == 1 && ($o >= 0x70 && $o <= 0x73 || $o == 0xc2 || $o >= 0xc4 && $o <= 0xc6) ? 1 : $map == 10 ? 4 : 0;
++	return $ret->($mr->($im), "n", 0, 0);
++    }
++    return $ret->($mr->(), "n", 0, 0)	if ($op == 0x8f && $r == 0);	# pop
++    return ()				if ($op != 0x0f || $i >= @$b);
++    my $o2 = $b->[$i++];
++    $r = $i < @$b ? ($b->[$i] >> 3) & 7 : -1;
++    if ($o2 == 0x38) {
++	return () if ($i >= @$b);
++	my $o3 = $b->[$i++];
++	if ($o3 == 0xf6) {
++	    return $ret->($mr->(), "n", $O, $O) if ($p{0xf3});		# adox
++	    return $ret->($mr->(), "n", $C, $C) if ($p{0x66});		# adcx
++	    return ();
++	}
++	return $ret->($mr->(), "n", 0, $o3 == 0x17 ? $ALL : 0);	# ptest; SSSE3, SSE4, AES-NI, SHA, movbe
++    }
++    if ($o2 == 0x3a) {
++	return () if ($i >= @$b);
++	my $o3 = $b->[$i++];
++	return $ret->($mr->(1), "n", 0, $o3 >= 0x60 && $o3 <= 0x63 ? $ALL : 0);	# pcmp?str?; palignr, pclmulqdq, ...
++    }
++    return $ret->($i - $i0 + 1, "endbr", 0, 0) if ($o2 == 0x1e && $p{0xf3} && $i < @$b && $b->[$i] == 0xfa);
++    return $ret->($i - $i0, "stop", 0, 0)	if ($o2 == 0x0b);	# ud2
++    return $ret->($i - $i0, "n", 0, 0)	if ($o2 == 0xa2 || $o2 == 0x31);	# cpuid, rdtsc
++    return $ret->($i - $i0 + 1, "n", 0, 0)	if ($o2 == 0x01 && $i < @$b && $b->[$i] == 0xd0);	# xgetbv
++    return $ret->($i - $i0 + 1, "n", 0, 0)	if ($o2 == 0xa6 || $o2 == 0xa7);	# PadLock
++    return $ret->($mr->(), "n", 0, $ALL)	if ($o2 == 0xc7 && ($r == 6 || $r == 7));	# rdrand, rdseed
++    return $ret->($mr->(), "n", $ccn[$o2 & 15], 0) if ($o2 >= 0x40 && $o2 <= 0x4f || $o2 >= 0x90 && $o2 <= 0x9f);	# cmovcc, setcc
++    return ()				if ($o2 >= 0x80 && $o2 <= 0x8f);	# jcc
++    return $ret->($mr->(), "n", 0, $ALL)	if ($o2 == 0xa3 || $o2 == 0xab || $o2 == 0xb3 || $o2 == 0xbb ||
++					    $o2 == 0xaf || $o2 == 0xb8 || $o2 == 0xbc || $o2 == 0xbd ||
++					    $o2 == 0xb0 || $o2 == 0xb1 || $o2 == 0xc0 || $o2 == 0xc1);	# bt*, imul, popcnt, bsf, bsr, cmpxchg, xadd
++    return $ret->($mr->(1), "n", 0, $ALL)	if ($o2 == 0xba || $o2 == 0xa4 || $o2 == 0xac);	# bt* imm, shld, shrd imm
++    return $ret->($mr->(), "n", 0, 0)	if ($o2 == 0xa5 || $o2 == 0xad);	# shld, shrd by %cl
++    return $ret->($i - $i0, "n", 0, 0)	if ($o2 >= 0xc8 && $o2 <= 0xcf);	# bswap
++    return $ret->($mr->(), "n", 0, $ALL)	if ($o2 == 0x2e || $o2 == 0x2f);	# (u)comis
++    return $ret->($mr->(), "n", 0, 0)	if ($o2 == 0xb6 || $o2 == 0xb7 || $o2 == 0xbe || $o2 == 0xbf ||
++					    $o2 == 0x18 || $o2 == 0x1f || $o2 == 0xae);	# movz, movs, prefetch, nop, fences
++    return $ret->($mr->($o2 >= 0x70 && $o2 <= 0x73 || $o2 == 0xc2 || $o2 >= 0xc4 && $o2 <= 0xc6 ? 1 : 0), "n", 0, 0)
++	if ($o2 >= 0x10 && $o2 <= 0x17 || $o2 >= 0x28 && $o2 <= 0x2d || $o2 >= 0x50 && $o2 <= 0x7f ||
++	    $o2 >= 0xc2 && $o2 <= 0xc6 || $o2 >= 0xd0);	# SSE
++    return ();
++}
++
++# The instructions encoded in bytes, as one: (control, flags read, flags
++# written), or () if this does not know them all. Only the last may be a
++# control transfer; a prefix alone is one of the next instruction.
++sub bytes_flags {
++    my @b = @_;
++    my @ins;
++    my $i = 0;
++    while ($i < @b) {
++	my @d = decode_one(\@b, $i);
++	return () if (!@d || $d[0] <= 0);
++	push @ins, [@d[1 .. 3]];
++	$i += $d[0];
++    }
++    return @{$ins[0]} if (@ins == 1);
++    my ($rd, $wr) = (0, 0);
++    for my $k (0 .. $#ins) {
++	my ($c, $r, $w) = @{$ins[$k]};
++	return () if ($c eq "prefix" || $c ne "n" && $c ne "endbr" && $k < $#ins);
++	$rd |= $r & ~$wr;
++	$wr |= $w;
++    }
++    my $c = $ins[-1][0];
++    return ($c eq "endbr" ? "n" : $c, $rd, $wr);
++}
++
++sub tick_asm {
++    my ($l) = @_;
++    return "\ttestb\t\$0x80,0x70001807\n\tjnz\t$l\n\tdecq\t0x70001800\n\tjnz\t$l\n\tint3\n$l:";
++}
++
++# RR_SOFTTICKS_X64_INIT_ASM: the initializer, its .init_array entry and the note.
++my $INIT_ASM = <<'___';
++	.pushsection .text.__rr_softticks_init,"axG",@progbits,__rr_softticks_init,comdat
++	.weak __rr_softticks_init
++	.hidden __rr_softticks_init
++	.type __rr_softticks_init,%function
++	.p2align 4
++__rr_softticks_init:
++	movl $9, %eax
++	movl $0x70001000, %edi
++	movl $4096, %esi
++	movl $3, %edx
++	movl $0x100022, %r10d
++	movq $-1, %r8
++	xorl %r9d, %r9d
++	syscall
++	cmpq $0x70001000, %rax
++	je 1f
++	cmpq $-4095, %rax
++	jae 1f
++	movq %rax, %rdi
++	movl $11, %eax
++	movl $4096, %esi
++	syscall
++1:	ret
++	.size __rr_softticks_init,.-__rr_softticks_init
++	.section .init_array.00001,"awG",@init_array,__rr_softticks_init,comdat
++	.p2align 3
++	.quad __rr_softticks_init
++	.section .note.rrsoftticks,"aG",@note,__rr_softticks_init,comdat
++	.p2align 2
++	.long 3
++	.long 4
++	.long 1
++	.asciz "rr"
++	.p2align 2
++	.long 1
++	.popsection
++___
++
++my $sym = qr/[A-Za-z_.\$][\w.\$]*/;
++
++# Directives that emit nothing into a code path (alignment emits padding,
++# which falls through).
++my $nocode = qr/^(?:cfi_\w+|type|size|globl|global|hidden|protected|weak|extern|comm|lcomm|local|file|ident|align|p2align|balign|set|equ|loc|text|section|previous|pushsection|popsection)$/;
++
++sub split_ops {
++    my ($o) = @_;
++    my @r;
++    my ($d, $cur) = (0, "");
++    for my $ch (split(//, $o)) {
++	if ($ch eq "," && !$d) { push @r, $cur; $cur = ""; next; }
++	$d++ if ($ch eq "(");
++	$d-- if ($ch eq ")");
++	$cur .= $ch;
++    }
++    push @r, $cur if ($cur ne "");
++    s/^\s+|\s+$//g for @r;
++    return @r;
++}
++
++# General-purpose registers, by their 64-bit names; and their other names.
++my @gpr = qw(rax rbx rcx rdx rsi rdi rbp r8 r9 r10 r11 r12 r13 r14 r15);
++my (%gpr_of, %whole);
++{
++    my %low = (rax=>[qw(eax ax al ah)], rbx=>[qw(ebx bx bl bh)], rcx=>[qw(ecx cx cl ch)],
++	       rdx=>[qw(edx dx dl dh)], rsi=>[qw(esi si sil)], rdi=>[qw(edi di dil)],
++	       rbp=>[qw(ebp bp bpl)], rsp=>[qw(esp sp spl)]);
++    for my $r (@gpr, "rsp") {
++	$gpr_of{$r} = $whole{$r} = $r;
++	if ($r =~ /^r\d+$/) { $gpr_of{"$r$_"} = $r for ("d", "w", "b"); $whole{"${r}d"} = $r; }
++	else { $gpr_of{$_} = $r for (@{$low{$r}}); $whole{$low{$r}->[0]} = $r; }
++    }
++}
++my %byte_name = (rax=>"al", rbx=>"bl", rcx=>"cl", rdx=>"dl", rsi=>"sil", rdi=>"dil",
++		 rbp=>"bpl", map { ("r$_" => "r${_}b") } 8 .. 15);
++
++# The general-purpose registers an instruction reads, and those it writes
++# whole (64 or 32 bits) without reading them, as ({name => 1}, {name => 1});
++# () if this does not know it. A register written in part counts as read.
++sub insn_regs {
++    my ($m, $o) = @_;
++    my @ops = split_ops($o);
++    my (%rd, %wr);
++    my $reads = sub {
++	for my $t (@_) { while ($t =~ /%(\w+)/g) { $rd{$gpr_of{$1}} = 1 if (exists($gpr_of{$1})); } }
++    };
++    my $write = sub {	# a whole write of a register operand, else a read
++	my $t = shift;
++	if ($t =~ /^%(\w+)$/ && exists($whole{$1})) { $wr{$whole{$1}} = 1; } else { $reads->($t); }
++    };
++    my $done = sub { delete $wr{$_} for (keys %rd); return (\%rd, \%wr); };
++    return () if (grep { /%(?:[cdefgs]s|st|cr|dr)\b/ } @ops);
++    if ($m =~ /^(?:mov[bwlq]?|movabsq|movz[bw][wlq]?|movs[bw][wlq]|movs?lq|lea[wlq]?|v?mov[dq])$/ && @ops == 2) {
++	$reads->($ops[0]);
++	$write->($ops[1]);
++	return $done->();
++    }
++    if ($m =~ /^(?:xor|sub)[lq]$/ && @ops == 2 && $ops[0] eq $ops[1] && $ops[1] =~ /^%(\w+)$/ && exists($whole{$1})) {
++	$wr{$whole{$1}} = 1;
++	return $done->();
++    }
++    if ($m =~ /^pop[q]?$/ && @ops == 1) { $rd{rsp} = 1; $write->($ops[0]); return $done->(); }
++    if ($m =~ /^push[q]?$/ && @ops == 1) { $rd{rsp} = 1; $reads->($ops[0]); return $done->(); }
++    if ($m =~ /^(?:mulx|rorx|shlx|shrx|sarx|andn|bzhi|bextr|pdep|pext)[lq]?$/ && @ops == 3) {
++	$reads->($ops[0]);
++	$rd{rdx} = 1 if ($m =~ /^mulx/);
++	if ($m =~ /^mulx/) { $write->($ops[1]); } else { $reads->($ops[1]); }
++	$write->($ops[2]);
++	return $done->();
++    }
++    if ($m =~ /^imul[wlq]?$/ && @ops == 3) { $reads->(@ops[0, 1]); $write->($ops[2]); return $done->(); }
++    if ($m =~ /^(?:mul|imul|div|idiv)[lq]$/ && @ops == 1) {
++	$reads->($ops[0]);
++	$rd{rax} = 1;
++	$rd{rdx} = 1 if ($m =~ /div/);
++	$wr{rax} = $wr{rdx} = 1;
++	return $done->();
++    }
++    if ($m =~ /^(?:add|adc|sub|sbb|and|or|xor|adcx|adox|cmp|test|neg|not|inc|dec|shl|shr|sal|sar|rol|ror|rcl|rcr|shld|shrd|imul|bt|bts|btr|btc|bswap|xchg|xadd|cmov\w+|set\w+|popcnt|lzcnt|tzcnt|bsf|bsr)[bwlq]?$/ &&
++	@ops >= 1 && @ops <= 3) {
++	$reads->(@ops);
++	$rd{rcx} = 1 if ($m =~ /^(?:shl|shr|sal|sar|rol|ror|rcl|rcr|shld|shrd)/ && $o =~ /%cl\b/);
++	return $done->();
++    }
++    return $done->() if (@ops == 0 && $m =~ /^(?:nop|vzeroupper|vzeroall|lfence|mfence|sfence|int3|endbr64)$/);
++    if ($m =~ /^(?:prefetch\w*|clflush)$/ && @ops == 1) { $reads->($ops[0]); return $done->(); }
++    # SIMD: GPR operands count as read (as do those in addresses)
++    if ($m =~ /^(?:v\w+|p(?!ush|op)\w+|aes\w+|sha\w+|movdq\w|mov[au]p[sd]|movhlps|movlhps|shufp[sd]|unpck\w+|xorp[sd]|andn?p[sd]|orp[sd]|k\w+)$/ &&
++	$m !~ /^(?:pcmp[ei]str\w|vpcmp[ei]str\w|vmaskmov\w+|maskmov\w+)$/) {
++	$reads->(@ops);
++	return $done->();
++    }
++    return ();
++}
++
++sub softticks_insert {
++    my ($text, $name) = @_;
++    my $err = sub { die "x86_64-softticks.pl: $name: $_[0]\n"; };
++    my @lines = split(/\n/, $text, -1);
++
++    # Items: labels and statements, with their line and section.
++    my (@kind, @lab, @mn, @op, @sec, @iline, %def);
++    my ($cur, $prev) = (".text", ".text");
++    my @stack;
++    for my $li (0 .. $#lines) {
++	my $s = $lines[$li];
++	$s =~ s/\s+#.*$// if ($s !~ /["']/);
++	while ($s =~ s/^\s*($sym|\d+):(?!:)//) {
++	    my $l = $1;
++	    push @kind, "L"; push @lab, $l; push @mn, undef; push @op, undef;
++	    push @sec, $cur; push @iline, $li;
++	    if ($l =~ /^\d+$/) { $err->("numeric label $l in code") if ($cur =~ /^\.(?:text|init|fini)\b/); next; }
++	    $err->("label $l defined twice") if (exists($def{$l}));
++	    $def{$l} = $#kind;
++	}
++	$s =~ s/^\s+|\s+$//g;
++	next if ($s eq "");
++	if ($s =~ /^\.(\w+)\s*(.*)$/) {
++	    my ($d, $a) = ($1, $2);
++	    if ($d =~ /^(?:text|data|bss)$/) { ($prev, $cur) = ($cur, ".$d"); }
++	    elsif ($d eq "section") { $a =~ /^"?([^",\s]+)/; ($prev, $cur) = ($cur, $1); }
++	    elsif ($d eq "previous") { ($prev, $cur) = ($cur, $prev); }
++	    elsif ($d eq "pushsection") { push @stack, [$cur, $prev]; $a =~ /^"?([^",\s]+)/; ($prev, $cur) = ($cur, $1); }
++	    elsif ($d eq "popsection") { ($cur, $prev) = @{pop(@stack)}; }
++	    push @kind, "D"; push @lab, undef; push @mn, $d; push @op, $a;
++	} else {
++	    my @w = split(/\s+/, $s, 2);
++	    my ($m, $o) = ($w[0], $w[1] // "");
++	    push @kind, "I"; push @lab, undef; push @mn, $m; push @op, $o;
++	}
++	push @sec, $cur; push @iline, $li;
++    }
++    my $n = scalar(@kind);
++    my $code = sub { $_[0] =~ /^\.(?:text|init|fini)\b/ };
++
++    # Instructions: control, flags.
++    my (@ctl, @rd, @wr, @tgt);
++    my (%func, %glob);
++    for my $i (0 .. $n - 1) {
++	if ($kind[$i] eq "D") {
++	    if ($mn[$i] eq "type" && $op[$i] =~ /^($sym)\s*,\s*[\@%]function/) { $func{$1} = 1; }
++	    elsif ($mn[$i] =~ /^glob(?:a)?l$/) { $glob{$_} = 1 for (split(/\s*,\s*/, $op[$i])); }
++	    elsif ($mn[$i] =~ /^(?:byte|value|word|long)$/ && $code->($sec[$i])) {
++		# instructions encoded as data
++		my $sz = $mn[$i] eq "byte" ? 1 : $mn[$i] eq "long" ? 4 : 2;
++		my @v = map { /^0x[0-9a-f]+$/i ? hex($_) : /^\d+$/ ? $_ + 0 : -1 } split(/\s*,\s*/, $op[$i]);
++		next if (grep({ $_ < 0 || $_ >= 256 ** $sz } @v) || @v * $sz > 15);
++		my @b = map { my $v = $_; map { ($v >> (8 * $_)) & 255 } 0 .. $sz - 1 } @v;
++		my @f = bytes_flags(@b);
++		if (@f) { $kind[$i] = "I"; ($ctl[$i], $rd[$i], $wr[$i]) = @f; }
++	    }
++	    next;
++	}
++	next if ($kind[$i] ne "I");
++	my ($m, $o) = ($mn[$i], $op[$i]);
++	my $rep = 0;
++	while ($m =~ /^\{\w+\}$/ || $m =~ /^(?:rep|repe|repz|repne|repnz|lock|notrack|bnd|data16|addr32)$/) {
++	    $rep = 1 if ($m =~ /^rep/);
++	    $err->("prefix without instruction: $m") if ($o eq "");
++	    ($m, $o) = split(/\s+/, $o, 2); $o //= "";
++	}
++	($mn[$i], $op[$i]) = ($m, $o);
++	my @f = insn_flags($m, $o);
++	@f[1, 2] = (0, 0) if ($rep && $m =~ /^(?:cmps|scas)/);
++	($ctl[$i], $rd[$i], $wr[$i]) = @f;
++	if ($f[0] =~ /^(?:jmp|jcc|call)$/) {
++	    if ($o =~ /^\*/) {
++		$err->("indirect jump: $m $o") if ($f[0] ne "call");
++	    } elsif ($o =~ /^($sym)$/) {
++		$tgt[$i] = $1;
++	    } else {
++		$err->("jump to an expression: $m $o");
++	    }
++	}
++    }
++
++    # Per section, the items in order; the next instruction an item falls into.
++    my (%order, @pos);
++    for my $i (0 .. $n - 1) { push @{$order{$sec[$i]}}, $i; $pos[$i] = $#{$order{$sec[$i]}}; }
++    my @at;	# item -> the instruction it falls into (-1: data or the end)
++    for my $s (keys %order) {
++	my $nx = -1;
++	for my $k (reverse @{$order{$s}}) {
++	    if ($kind[$k] eq "I") { $nx = $k; }
++	    elsif ($kind[$k] eq "D" && $mn[$k] !~ $nocode) { $nx = -1; }
++	    $at[$k] = $nx;
++	}
++    }
++    my $next = sub {	# the instruction after instruction i in its section
++	my $i = shift;
++	my $l = $order{$sec[$i]};
++	return $pos[$i] < $#$l ? $at[$l->[$pos[$i] + 1]] : -1;
++    };
++
++    # Successors for the flags' liveness (backward, to a fixpoint). -1 is
++    # data, or the end of a section: all flags live. A call's successor is
++    # the callee's entry when it is here, and nothing may read the flags it
++    # returns (checked below); a jump out of the file is a tail call.
++    my (@succ, @pred);
++    my @ins = grep { $kind[$_] eq "I" && $code->($sec[$_]) } 0 .. $n - 1;
++    for my $i (@ins) {
++	my $c = $ctl[$i];
++	my $t = $tgt[$i];
++	my $local = defined($t) && exists($def{$t});
++	$err->("jump from $sec[$i] to $sec[$def{$t}]: $mn[$i] $t") if ($local && $sec[$def{$t}] ne $sec[$i]);
++	my @s;
++	if ($c eq "ret" || $c eq "stop") { }
++	elsif ($c eq "jmp") { push @s, $at[$def{$t}] if ($local); }
++	elsif ($c eq "jcc") { push @s, $next->($i); push @s, $at[$def{$t}] if ($local); }
++	elsif ($c eq "call" && $local) { push @s, $at[$def{$t}]; $wr[$i] = 0; }
++	else { push @s, $next->($i); }
++	$succ[$i] = \@s;
++	push @{$pred[$_]}, $i for (grep { $_ >= 0 } @s);
++    }
++    my @live;	# live in
++    my @work = reverse @ins;
++    my %inwork = map { $_ => 1 } @ins;
++    while (@work) {
++	my $i = pop @work;
++	delete $inwork{$i};
++	my $out = 0;
++	for my $s (@{$succ[$i]}) { $out |= $s < 0 ? $ALL : ($live[$s] // 0); }
++	my $in = $rd[$i] | ($out & ~$wr[$i]);
++	next if (defined($live[$i]) && $live[$i] == $in);
++	$live[$i] = $in;
++	for my $p (@{$pred[$i] // []}) { push @work, $p if (!$inwork{$p}++); }
++    }
++    for my $i (@ins) {
++	# The flags a callee returns, and those that popf restores, are dead.
++	next if ($ctl[$i] ne "call" && $mn[$i] !~ /^popf/);
++	my $nx = $next->($i);
++	$err->("flags read after $mn[$i] $op[$i]") if ($nx >= 0 && $live[$nx]);
++    }
++
++    # The instructions that start a block (a label precedes them).
++    my %blockstart;
++    for my $i (0 .. $n - 1) { $blockstart{$at[$i]} = 1 if ($kind[$i] eq "L" && $at[$i] >= 0); }
++
++    # The tick sites: function entries and the targets of backward jumps.
++    my %site;	# label item -> why
++    for my $i (@ins) {
++	next if ($ctl[$i] !~ /^(?:jmp|jcc|call)$/ || !defined($tgt[$i]) || !exists($def{$tgt[$i]}));
++	my $d = $def{$tgt[$i]};
++	if ($ctl[$i] eq "call") { $site{$d} //= "entry"; }
++	elsif ($pos[$d] <= $pos[$i]) { $site{$d} = "loop"; }
++    }
++    for my $f (keys %func, keys %glob) {
++	next if (!exists($def{$f}) || !$code->($sec[$def{$f}]));
++	$site{$def{$f}} //= "entry";
++    }
++    for my $d (keys %site) {	# exported functions must not read the flags
++	my $s = $at[$d];
++	$err->("tick site $lab[$d] is no code") if ($s < 0);
++	$err->("$lab[$d] reads the flags at its entry") if ($glob{$lab[$d]} && $live[$s]);
++    }
++
++    # Per site, the place in its block (before instruction k), and the
++    # registers that keep the flags live there.
++    my %regs;	# instruction -> [read, written] or []
++    my $dead = sub {	# the registers dead before instruction k
++	my $k = shift;
++	my %fate;	# register -> 0 (read first) or 1 (written first)
++	for (my $j = $k; $j >= 0; ) {
++	    last if ($ctl[$j] eq "call" || $ctl[$j] eq "prefix");
++	    $regs{$j} //= [$mn[$j] !~ /^(?:byte|value|word|long)$/ ? insn_regs($mn[$j], $op[$j]) : ()];
++	    last if (!@{$regs{$j}});
++	    my ($r, $w) = @{$regs{$j}};
++	    for my $g (@gpr) { $fate{$g} //= 0 if ($r->{$g}); $fate{$g} //= 1 if ($w->{$g}); }
++	    $fate{rcx} //= 0 if ($mn[$j] =~ /^(?:j[er]?cxz|loop\w*)$/);
++	    last if ($ctl[$j] ne "n");
++	    $j = $next->($j);
++	    last if ($j >= 0 && $blockstart{$j});
++	}
++	return grep { $fate{$_} } @gpr;
++    };
++    my (%tick_at, @report);
++    for my $d (sort { $a <=> $b } keys %site) {
++	my $k = $at[$d];
++	$k = $next->($k) if ($ctl[$k] eq "endbr");
++	$err->("tick site $lab[$d] has no instruction") if ($k < 0);
++	my ($best, $bc, $bkeep, $prevk) = (-1, 99, undef, -1);
++	for (my $j = $k; $j >= 0; ) {
++	    if (!($prevk >= 0 && $ctl[$prevk] eq "prefix")) {
++		my $l = $live[$j];
++		my ($c, @keep) = (0);
++		if ($l & ~($C | $O)) { $c = 99; }
++		elsif ($l) {
++		    my @r = $dead->($j);
++		    my $f = $l == ($C | $O) ? 2 : 1;
++		    if (@r >= $f) { @keep = map { "%" . $byte_name{$_} } @r[0 .. $f - 1]; $c = $l == $C ? 1 : $l == $O ? 2 : 3; }
++		    else { $c = 99; }
++		}
++		($best, $bc, $bkeep) = ($j, $c, \@keep) if ($c < $bc);
++		last if ($c == 0);
++	    }
++	    last if ($ctl[$j] ne "n" && $ctl[$j] ne "call" && $ctl[$j] ne "prefix");
++	    ($prevk, $j) = ($j, $next->($j));
++	    last if ($j >= 0 && $blockstart{$j});
++	}
++	$err->("no place for the tick at $lab[$d]: flags live everywhere in its block, and no dead register") if ($best < 0);
++	my $l = $live[$best];
++	push @report, sprintf("%s %s %s live=%s keep=%s moved=%d", $name, $site{$d}, $lab[$d],
++			      join("", map { $l & $_->[0] ? $_->[1] : "" } ([$C,"C"],[$O,"O"])),
++			      join(",", @$bkeep), $best != $k ? 1 : 0);
++	$tick_at{$best} //= [$l, $bkeep];
++    }
++    # The first instruction of each .init section calls the initializer.
++    my %init_call;
++    for my $i (0 .. $n - 1) {
++	next if ($kind[$i] ne "D" || $mn[$i] !~ /^(?:section|pushsection)$/ || $sec[$i] ne ".init");
++	$init_call{$at[$i]} = 1 if ($at[$i] >= 0);
++    }
++
++    # The output.
++    my %before;	# line -> [items with a tick before them]
++    for my $k (keys %tick_at) { push @{$before{$iline[$k]}}, $k; }
++    for my $k (keys %init_call) { push @{$before{$iline[$k]}}, $k; }
++    my ($nt, @out) = (0);
++    for my $li (0 .. $#lines) {
++	if (!$before{$li}) { push @out, $lines[$li]; next; }
++	# the line's labels, then the tick, then its statement
++	my $s = $lines[$li];
++	my $labs = "";
++	while ($s =~ s/^(\s*(?:$sym|\d+):(?!:))//) { $labs .= $1; }
++	push @out, $labs if ($labs ne "");
++	my ($k) = @{$before{$li}};
++	if ($init_call{$k}) {
++	    push @out, "\tcall\t__rr_softticks_init";
++	} else {
++	    my ($l, $keep) = @{$tick_at{$k}};
++	    my ($pre, $post) = ("", "");
++	    my ($c, $o) = $l == $O ? (undef, $keep->[0]) : @$keep;
++	    $pre = "\tsetc\t$c\n" if ($l & $C);
++	    $pre .= "\tseto\t$o\n" if ($l & $O);
++	    if ($l == ($C | $O))	{ $post = "\n\tshlb\t\$7,$o\n\tshrb\t\$1,$c\n\tdecb\t$o"; }
++	    elsif ($l == $C)	{ $post = "\n\tshrb\t\$1,$c"; }
++	    elsif ($l == $O)	{ $post = "\n\taddb\t\$0x7f,$o"; }
++	    $nt++;
++	    push @out, $pre . tick_asm(".Lrr_softtick$nt") . $post;
++	}
++	push @out, $s;
++    }
++    push @out, $INIT_ASM if ($nt || %init_call);
++    if (defined($ENV{RR_SOFTTICKS_REPORT})) {
++	open(my $fh, ">>", $ENV{RR_SOFTTICKS_REPORT}) or die;
++	print $fh "$_\n" for (@report);
++	close($fh);
++    }
++    return join("\n", @out);
++}
++
++1;
+diff --git a/crypto/perlasm/x86_64-xlate.pl b/crypto/perlasm/x86_64-xlate.pl
+index 94ba8ad..5b90bff 100755
+--- a/crypto/perlasm/x86_64-xlate.pl
++++ b/crypto/perlasm/x86_64-xlate.pl
+@@ -121,6 +121,21 @@ elsif (`$ENV{CC} -V 2>/dev/null`
+     $gnuas=1;
+ }
+ 
++# rr software ticks (x86_64-softticks.pl): with a compiler that has them,
++# the output goes through softticks_insert(); otherwise it is unchanged.
++my ($softticks, $softticks_stdout, $softticks_buf) = (0);
++if ($elf && ($flavour // "") ne "elf32") {
++    require File::Spec;
++    my $pl = $0; $pl =~ s/x86_64-xlate\.pl$/x86_64-softticks.pl/;
++    require(File::Spec->rel2abs($pl));
++    $softticks = x86_64_softticks::softticks_enabled($ENV{CC});
++}
++if ($softticks) {
++    open($softticks_stdout, ">&", \*STDOUT) or die "can't dup STDOUT: $!";
++    close STDOUT;
++    open(STDOUT, ">", \$softticks_buf) or die "can't buffer STDOUT: $!";
++}
++
+ my $cet_property;
+ if ($flavour =~ /elf/) {
+ 	# Always generate .note.gnu.property section for ELF outputs to
+@@ -1478,6 +1493,14 @@ print "$cet_property"			if ($cet_property);
+ print "\n$current_segment\tENDS\n"	if ($current_segment && $masm);
+ print "END\n"				if ($masm);
+ 
++if ($softticks) {
++    close STDOUT;
++    open(STDOUT, ">&", $softticks_stdout) or die "can't restore STDOUT: $!";
++    my $out = eval { x86_64_softticks::softticks_insert($softticks_buf, $output // "-") };
++    if (!defined($out)) { close STDOUT; unlink($output) if (defined($output)); die $@; }
++    print $out;
++}
++
+ close STDOUT or die "error closing STDOUT: $!;"
+ 
+ #################################################

@@ -3,9 +3,9 @@ script = raw"""
 cd $WORKSPACE/srcdir/openssl-*/
 
 # A version's bundled patches. OpenSSL@3.5's add rr software ticks to the x86-64 assembly
-# (the perlasm translator and bn's inline asm), which only does something when the compiler
-# predefines __RR_SOFTTICKS__ (the softticks plugin on rr_softticks platforms); elsewhere the
-# libraries are byte-identical.
+# (the perlasm translator's output and the loops of bn's inline asm), which only does
+# something when the compiler predefines __RR_SOFTTICKS__ (the softticks plugin on
+# rr_softticks platforms); elsewhere the libraries are byte-identical.
 if [[ -d ${WORKSPACE}/srcdir/patches ]]; then
     for p in ${WORKSPACE}/srcdir/patches/*.patch; do
         atomic_patch -p1 ${p}
@@ -71,13 +71,15 @@ if [[ "${bb_full_target}" == *rr_softticks* ]]; then
     extra_args+=(--openssldir=/etc/ssl)
 fi
 ./Configure shared --prefix=$prefix --libdir=${libdir} "${extra_args[@]}" $(translate_target)
-if [[ "${bb_full_target}" == *rr_softticks* ]]; then
+if [[ "${bb_full_target}" == *rr_softticks* && ! ( ${target} == x86_64-* && -f crypto/perlasm/x86_64-softticks.pl ) ]]; then
     # libcrypto calls OPENSSL_cpuid_setup from its .init section, which runs before the .init_array
     # constructor that maps the software ticks countdown page in instrumented code. Outside an
     # ygglet image (whose ld.so maps the page first) -- e.g. as the host OpenSSL of a later
     # BinaryBuilder2 build, where host tools resolve to this JLL -- instrumented code there
     # crashes. So cpuid.c (the setup, its env-string parsing and the C CRYPTO_memcmp) and the
     # ctype.c lookups it uses -- short, deterministic leaf code -- are built without the plugin.
+    # Not on x86_64 with OpenSSL@3.5's bundled patch: there the .init section calls the
+    # initializer first (crypto/perlasm/x86_64-softticks.pl), and they are instrumented too.
     make -j${nproc} build_generated
     BB_SOFTTICKS_DISABLE=1 make -j${nproc} crypto/libcrypto-lib-cpuid.o crypto/libcrypto-shlib-cpuid.o \
         crypto/libcrypto-lib-ctype.o crypto/libcrypto-shlib-ctype.o
