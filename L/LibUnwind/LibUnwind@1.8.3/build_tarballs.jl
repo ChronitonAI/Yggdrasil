@@ -80,9 +80,16 @@ llvm_version = v"13.0.1"
 # Dependencies that must be installed before this package can be built
 dependencies = [
     Dependency("Zlib_jll"),
-    BuildDependency(PackageSpec(name="XZ_jll",
-                                uuid="ffd25f8a-64ca-5728-b0f7-c24cf3aae800",
-                                version="5.8.1")),
+    # ygglet (BinaryBuilder2, rr_softticks platforms): the static liblzma comes from the
+    # universe's own XZ_jll, whatever its version (a pinned version the universe does not
+    # have makes BinaryBuilder2 resolve all of the dependencies from upstream instead).
+    if any(contains("rr_softticks"), ARGS)
+        BuildDependency("XZ_jll")
+    else
+        BuildDependency(PackageSpec(name="XZ_jll",
+                                    uuid="ffd25f8a-64ca-5728-b0f7-c24cf3aae800",
+                                    version="5.8.1"))
+    end,
     BuildDependency(PackageSpec(name="LLVMCompilerRT_jll",
                                 uuid="4e17d02c-6bf5-513e-be62-445f41c75a11",
                                 version=string(llvm_version));
