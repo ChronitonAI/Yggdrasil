@@ -1,0 +1,74 @@
+rr software ticks (rr's include/rr/softticks.h, ABI version 1) for zstd's hand-written x86-64
+assembly, lib/decompress/huf_decompress_amd64.S: the 4-stream Huffman fast loops
+HUF_decompress4X1_usingDTable_internal_fast_asm_loop and ..._4X2_..., ticked at their entry
+and once per iteration of their loop (which also covers the loop around it). A no-op unless
+the compiler predefines __RR_SOFTTICKS__ (the software-ticks plugin does, also for .S files):
+without it the objects are byte-identical.
+
+diff --git a/lib/decompress/huf_decompress_amd64.S b/lib/decompress/huf_decompress_amd64.S
+index 656aada..1a3ef44 100644
+--- a/lib/decompress/huf_decompress_amd64.S
++++ b/lib/decompress/huf_decompress_amd64.S
+@@ -40,6 +40,25 @@
+ 
+ #if ZSTD_ENABLE_ASM_X86_64_BMI2
+ 
++/* rr software ticks (rr's include/rr/softticks.h, ABI version 1). Code built for rr's
++ * software-ticks mode counts its own progress: no instruction may run twice in the same
++ * frame without a tick in between. The compiler plugin ticks C code and predefines
++ * __RR_SOFTTICKS__ (the ABI version), for .S files too; this file ticks by hand: at each
++ * function's entry and once per iteration of its loop (at the bottom, so that the loop
++ * keeps its alignment), which every cycle of the function passes. Without __RR_SOFTTICKS__
++ * RR_SOFTTICK is empty and the code is unchanged.
++ * The tick clobbers the flags (only): it goes where no flag is live. It ends at the local
++ * label 7731, which nothing else here uses, so it captures no other label reference. */
++#if defined(__RR_SOFTTICKS__)
++# if __RR_SOFTTICKS__ != 1
++#  error "unsupported rr software ticks ABI version"
++# endif
++/* the byte-exact x86-64 RR_SOFTTICKS_TICK_ASM */
++# define RR_SOFTTICK testb $0x80, 0x70001807; jnz 7731f; decq 0x70001800; jnz 7731f; int3; 7731:
++#else
++# define RR_SOFTTICK
++#endif
++
+ /* Calling convention:
+  *
+  * %rdi (or %rcx on Windows) contains the first argument: HUF_DecompressAsmArgs*.
+@@ -117,6 +136,7 @@ ZSTD_HIDE_ASM_FUNCTION(_HUF_decompress4X1_usingDTable_internal_fast_asm_loop)
+ _HUF_decompress4X1_usingDTable_internal_fast_asm_loop:
+ HUF_decompress4X1_usingDTable_internal_fast_asm_loop:
+     ZSTD_CET_ENDBRANCH
++    RR_SOFTTICK
+     /* Save all registers - even if they are callee saved for simplicity. */
+     push %rax
+     push %rbx
+@@ -316,6 +336,10 @@ HUF_decompress4X1_usingDTable_internal_fast_asm_loop:
+     movq %ip3, 16(%rsp)
+     GET_NEXT_DELT(3)
+ 
++    /* One tick per iteration, which also covers the outer loop: that runs through here
++     * back to .L_4X1_compute_olimit, which needs no tick of its own. */
++    RR_SOFTTICK
++
+     /* If op3 < olimit: continue the loop */
+     cmp %op3, 24(%rsp)
+     ja .L_4X1_loop_body
+@@ -376,6 +400,7 @@ HUF_decompress4X1_usingDTable_internal_fast_asm_loop:
+ _HUF_decompress4X2_usingDTable_internal_fast_asm_loop:
+ HUF_decompress4X2_usingDTable_internal_fast_asm_loop:
+     ZSTD_CET_ENDBRANCH
++    RR_SOFTTICK
+     /* Save all registers - even if they are callee saved for simplicity. */
+     push %rax
+     push %rbx
+@@ -550,6 +575,9 @@ HUF_decompress4X2_usingDTable_internal_fast_asm_loop:
+ 
+     FOR_EACH_STREAM(RELOAD_BITS)
+ 
++    /* One tick per iteration, which also covers the outer loop: that runs through here
++     * back to .L_4X2_compute_olimit, which needs no tick of its own. */
++    RR_SOFTTICK
+     cmp %op3, 48(%rsp)
+     ja .L_4X2_loop_body
+     jmp .L_4X2_compute_olimit

@@ -14,11 +14,19 @@ sources = [
     ArchiveSource("https://github.com/ip7z/7zip/releases/download/$(upstream_version)/7z$(compact_version)-src.tar.xz",
                   "0b6080b8c3e7a579161d2d495224c0e51c467576cb4c7048b0ab485ef44cc22e";
                   unpack_target="7z"),
+    DirectorySource("./bundled"),
 ]
 
 # Bash recipe for building across all platforms
 script = raw"""
-cd 7z/CPP/7zip/Bundles/Alone
+# rr software ticks for the hand-written x86-64 assembly (Asm/x86, assembled by uasm): it only
+# does something where the C compiler predefines __RR_SOFTTICKS__ (the softticks plugin, on
+# rr_softticks platforms), which uasm is told below; elsewhere the objects are byte-identical.
+# The patch is against the sources with LF line ends; uasm reads either.
+cd 7z
+sed -i 's/\r$//' Asm/x86/*.asm
+atomic_patch -p1 ${WORKSPACE}/srcdir/patches/rr-softticks-asm.patch
+cd CPP/7zip/Bundles/Alone
 
 # RAR has a custom license
 export DISABLE_RAR=1
@@ -35,12 +43,20 @@ if [[ "${bb_full_target}" == *rr_softticks* ]]; then
     MAKE_FLAGS+=(LFLAGS_STRIP=)
 fi
 
+# uasm does not see the C compiler's predefined macros: pass on __RR_SOFTTICKS__ (the
+# software-ticks ABI version), which the assembly's ticks are conditional on.
+MY_ASM=uasm
+rr_softticks=$(echo __RR_SOFTTICKS__ | ${CC} -E -P -x c - | tr -d '[:space:]')
+if [[ "${rr_softticks}" =~ ^[0-9]+$ ]]; then
+    MY_ASM="uasm -D__RR_SOFTTICKS__=${rr_softticks}"
+fi
+
 if [[ "${target}" == x86_64-apple-darwin* ]]; then
     # For some reason USE_ASM doesn't work on this platform
     make -j${nproc} -f makefile.gcc "${MAKE_FLAGS[@]}"
 else
     if [[ "${target}" == x86_64-* ]]; then
-        make -j${nproc} -f makefile.gcc IS_X64=1 USE_ASM=1 MY_ASM="uasm" "${MAKE_FLAGS[@]}"
+        make -j${nproc} -f makefile.gcc IS_X64=1 USE_ASM=1 MY_ASM="${MY_ASM}" "${MAKE_FLAGS[@]}"
     elif [[ "${target}" == aarch64-* ]]; then
         make -j${nproc} -f makefile.gcc IS_ARM64=1 USE_ASM=1 "${MAKE_FLAGS[@]}"
     else
