@@ -37,7 +37,34 @@ checks that the library has the note and the initializer. The rewriter is textua
 on the object code, is what catches a loop idiom it does not know (it caught cpp aliases of
 jump mnemonics and labels pasted together from macro arguments). It needs an objdump that
 decodes everything the kernels use (AMX, AVX-512): binutils 2.41 does, 2.35 does not
-(`undecodable`).
+(`undecodable`). The recipe runs `check.pl --selftest` first: an object with one fault of each
+kind and one without, which must give exactly those findings, so that an objdump whose output
+the script misreads cannot pass as "no findings".
+
+## What is ticked (0.3.34, DYNAMIC_ARCH on x86-64)
+
+The 14 cores the recipe builds (Prescott to Sapphire Rapids) assemble 1374 objects from 141
+`.S` files: 1374 functions, each with an entry tick, and 14693 loop-header ticks. 564 compiled
+objects from 122 microkernel files carry 4803 inline-asm loop-header ticks (a few more sites
+sit in static functions GCC drops as unused). 109 `.S` files and 5 inline-asm files are ticked
+but not built in this configuration. Per core:
+
+| core | `.S` functions | their loop ticks | inline-asm objects | their loop ticks |
+|---|---:|---:|---:|---:|
+| Prescott | 148 | 1695 | 1 | 3 |
+| Core2 | 140 | 1747 | 1 | 3 |
+| Nehalem | 130 | 1372 | 14 | 25 |
+| Barcelona | 140 | 1647 | 1 | 3 |
+| Sandybridge | 94 | 987 | 31 | 68 |
+| Bulldozer | 103 | 1108 | 53 | 124 |
+| Piledriver | 105 | 1121 | 51 | 126 |
+| Steamroller, Excavator | 97 each | 1051 each | 57 each | 136 each |
+| Haswell | 65 | 638 | 68 | 567 |
+| Zen | 69 | 656 | 68 | 567 |
+| SkylakeX, Cooperlake, SapphireRapids | 62 each | 540 each | 54 each | 1015 each |
+
+The gemm3m kernels (`?gemm3m_kernel`) and `sdsdot_k` are ticked but unreachable here: with
+`TARGET=GENERIC` the `?gemm3m` interface calls the plain gemm, and `sdsdot` calls `dsdot_k`.
 
 ## A new OpenBLAS version
 
