@@ -2,17 +2,19 @@
 # The software ticks check of an x86-64 OpenBLAS built with a software-ticks compiler pass:
 # rr's tracee ABI (include/rr/softticks.h, version 1) needs a tick on every cycle of the
 # code, at every function entry, and a tick must not clobber flags that are still live.
-# The pass takes care of compiled C; this checks the object code, so that it covers the
-# hand-written kernels (the ticks of 90/91-rr-softticks-*.patch) and whatever else.
+# The pass takes care of compiled C and Fortran; this checks the object code, so that it
+# covers the hand-written kernels (the ticks of 90/91-rr-softticks-*.patch) and whatever else.
 #
-#   check.pl [--allow FILE] [--jobs N] [--so LIB] ARCHIVE|OBJECT...
+#   check.pl [--jobs N] [--so LIB] ARCHIVE|OBJECT...
 #
 # Per object and executable section, from `objdump -d -r -t -h` (GNU or LLVM; $OBJDUMP):
 #   unticked_scc    a cycle of the instruction-level CFG with no tick on it
 #   entry_unticked  a path from a function symbol to an exit without a tick
 #   flags_live      an arithmetic flag live after a tick (which clobbers them all)
-#   bad_tick        a tick-like sequence that is not the ABI's bytes (by length)
-#   no_note         compiled C (a .comment) without the software ticks note
+#   bad_tick        a tick-like sequence that is not the ABI's bytes (by length), or an
+#                   access to the countdown (0x70001800-0x70001807) outside a whole tick
+#   no_note         compiled code (a .comment) without the software ticks note
+#   undecodable     an instruction objdump cannot decode (too old for AMX, AVX-512 FP16)
 # and, in objects without a .comment (assembled from .S, i.e. hand-written):
 #   indirect, loop_insn   control flow the CFG cannot follow
 #   reloc_jump      a jump through a relocation (to a global symbol), which the CFG drops
@@ -20,21 +22,23 @@
 # Jumps carrying a relocation (to another section or symbol) and indirect jumps are exits;
 # a call is an ordinary instruction that clobbers the flags. Instructions this script does
 # not know are taken to read every flag (so they can only add flags_live findings).
+# Compiled code is checked per section: a cycle through a jump to another section (a cold
+# part) or through a switch's indirect jump goes unseen, which is the compiler pass's to
+# get right; the hand-written kernels have neither.
 #
-# --allow FILE: lines `MEMBER KIND` (comments with #) tolerate the findings of that kind in
-# that archive member or object, if it is compiled code (never in hand-written assembly);
-# they are reported, but do not fail. --so LIB: also check
-# that the shared library carries the software ticks note (ABI version 1).
-# Exits 1 if anything not allowed is found, 2 on usage or tool errors.
+# --so LIB: also check that the shared library carries the software ticks note (ABI
+# version 1) and the initializer that maps the countdown's page outside rr.
+# Exits 1 if anything is found, 2 on usage or tool errors.
 use strict;
 use warnings;
+no warnings 'portable';    # hex() of 64-bit addresses
 use File::Temp qw(tempdir);
 use POSIX ();
 use Getopt::Long;
 
-my ($allow_file, $so, $jobs) = (undef, undef, 1);
-GetOptions("allow=s" => \$allow_file, "so=s" => \$so, "jobs=i" => \$jobs) or exit 2;
-die "usage: $0 [--allow FILE] [--jobs N] [--so LIB] ARCHIVE|OBJECT...\n" unless @ARGV;
+my ($so, $jobs) = (undef, 1);
+GetOptions("so=s" => \$so, "jobs=i" => \$jobs) or exit 2;
+die "usage: $0 [--jobs N] [--so LIB] ARCHIVE|OBJECT...\n" unless @ARGV;
 my $OBJDUMP = $ENV{OBJDUMP} || "objdump";
 
 # ---------------------------------------------------------------- flags
@@ -123,7 +127,7 @@ sub read_object {
     my ($path) = @_;
     open(my $fh, "-|", $OBJDUMP, "-d", "-r", "-t", "-h", "--no-show-raw-insn", $path)
         or die "$OBJDUMP: $!\n";
-    my %o = (sections => {}, syms => [], has_comment => 0, has_note => 0, order => []);
+    my %o = (sections => {}, syms => [], has_comment => 0, has_note => 0, order => [], bad => {});
     my $mode = "";
     my $sec;
     while (my $ln = <$fh>) {
@@ -157,7 +161,9 @@ sub read_object {
             next if $ln =~ /^[0-9a-f]+ <.*>:$/;
             if ($ln =~ /^\s*([0-9a-f]+):\s+(\S.*)$/) {
                 my ($addr, $text) = (hex $1, $2);
-                next if $text =~ /^\(bad\)/;
+                # an instruction this objdump cannot decode (an old one, for AMX or AVX-512
+                # FP16): everything after it would be misread
+                if ($text =~ /\(bad\)/) { push @{$o{bad}{$sec}}, $addr; next; }
                 # GNU objdump -w puts the relocation on the instruction's line
                 my $rel;
                 $rel = $1 if $text =~ s/\s+[0-9a-f]+:\s+R_X86_64_\S+\s+(\S+)\s*$//;
@@ -213,6 +219,9 @@ sub analyze_section {
             $ticks++;
             $i += 5;
         } else {
+            # the countdown (absolute 0x70001800-0x70001807) touched outside a whole tick
+            push @{$P{bad_tick}}, sprintf("%x", $ins->[$i][0])
+                if $ins->[$i][2] =~ /(?:^|[,(\s])(?:0x)?700018[0-7](?:$|[,(\s])/;
             $i++;
         }
     }
@@ -365,6 +374,10 @@ sub check_object {
     for my $sec (@{$o->{order}}) {
         next if $sec =~ /^\.text\.__rr_softticks_init/;
         my $ins = $o->{sections}{$sec};
+        if ($o->{bad}{$sec}) {
+            push @res, { label => "$name:$sec", insns => 0, ticks => 0, unknown => {},
+                         problems => { undecodable => [map { sprintf "%x", $_ } @{$o->{bad}{$sec}}] } };
+        }
         next unless @$ins;
         $code += @$ins;
         my @ents = map { $_->[0] } grep {
@@ -420,18 +433,6 @@ sub extract_archive {
 }
 
 # ---------------------------------------------------------------- main
-my %allow;
-if (defined $allow_file) {
-    open(my $fh, "<", $allow_file) or die "$allow_file: $!\n";
-    while (<$fh>) {
-        s/#.*//;
-        my ($m, $k) = split;
-        next unless defined $k;
-        $allow{"$m $k"} = 1;
-    }
-    close $fh;
-}
-
 my $tmp = tempdir(CLEANUP => 1);
 my $seq = 0;
 my @objs;
@@ -480,7 +481,7 @@ my $failed_kid = 0;
 for (@kids) { waitpid($_, 0); $failed_kid = 1 if $?; }
 if ($failed_kid) { print STDERR "softticks check: a worker failed\n"; exit 2; }
 
-my (%nobj, $sections, $insns, $ticks, %unknown, @fail, @tolerated);
+my (%nobj, $sections, $insns, $ticks, %unknown, @fail);
 ($sections, $insns, $ticks) = (0, 0, 0);
 for my $j (0 .. $jobs - 1) {
     open(my $fh, "<", "$tmp/result.$j") or die;
@@ -492,9 +493,7 @@ for my $j (0 .. $jobs - 1) {
         elsif ($f[0] eq "U") { $unknown{$f[1]} += $f[2]; }
         elsif ($f[0] eq "P") {
             my (undef, $name, $asm, $label, $kind, $det) = @f;
-            my $line = sprintf("%s %s: %s", $label, $kind, $det);
-            if ($allow{"$name $kind"} && !$asm) { push @tolerated, $line; }
-            else { push @fail, $line; }
+            push @fail, sprintf("%s %s: %s", $label, $kind, $det);
         }
     }
     close $fh;
@@ -509,16 +508,18 @@ if (defined $so) {
     close $fh;
     $note_ok = $hex =~ /^0300000004000000010000007272000001000000/;
     push @fail, "$so: no software ticks note of ABI version 1" unless $note_ok;
+    # the initializer (hidden, so only in .symtab, which the library has until it is stripped)
+    my $init = 0;
+    open($fh, "-|", $OBJDUMP, "-t", $so) or die "$OBJDUMP: $!\n";
+    while (<$fh>) { $init = 1 if /\s__rr_softticks_init$/; }
+    close $fh;
+    push @fail, "$so: no software ticks initializer (__rr_softticks_init)" unless $init;
 }
 
 printf "softticks check: %d objects (%d assembled, %d compiled), %d sections, %d instructions, %d ticks\n",
     ($nobj{asm} // 0) + ($nobj{c} // 0), $nobj{asm} // 0, $nobj{c} // 0, $sections, $insns, $ticks;
 printf "unknown mnemonics (taken to read all flags): %s\n",
     join(" ", map { "$_($unknown{$_})" } sort keys %unknown) if %unknown;
-if (@tolerated) {
-    printf "%d tolerated findings (--allow):\n", scalar @tolerated;
-    print "  $_\n" for @tolerated;
-}
 if (@fail) {
     printf "%d findings:\n", scalar @fail;
     print "  $_\n" for @fail;
