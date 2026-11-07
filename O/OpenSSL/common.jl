@@ -85,6 +85,23 @@ if [[ "${bb_full_target}" == *rr_softticks* && ! ( ${target} == x86_64-* && -f c
         crypto/libcrypto-lib-ctype.o crypto/libcrypto-shlib-ctype.o
 fi
 make -j${nproc}
+if [[ "${bb_full_target}" == *rr_softticks* && ${target} == x86_64-* && -f crypto/perlasm/x86_64-softticks.pl ]]; then
+    # The bundled patch ticks the perlasm output only when the compiler that the build hands the
+    # perlasm scripts in $(CC) predefines __RR_SOFTTICKS__; with any other, the scripts' output
+    # is the plain assembly and the build still succeeds. So check that every one of them was
+    # ticked: a ticked file has ticks and the initializer (linux-x86_64 has 39 of them).
+    asm=($(grep -oE '^[^ ]*\.s:' Makefile | tr -d ':' | sort -u))
+    if [[ ${#asm[@]} -lt 39 ]]; then
+        echo "only ${#asm[@]} perlasm files in the Makefile" >&2
+        exit 1
+    fi
+    for s in "${asm[@]}"; do
+        if ! grep -q $'^\tdecq\t0x70001800$' "${s}" || ! grep -q '^__rr_softticks_init:' "${s}"; then
+            echo "${s}: no software ticks" >&2
+            exit 1
+        fi
+    done
+fi
 make install_sw
 
 # Manually delete static libraries, not possible to skip them:

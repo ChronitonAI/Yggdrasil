@@ -54,10 +54,10 @@ index 1e123ed..7bc9f56 100644
                   "       lea     1(%2),%2        \n"
 diff --git a/crypto/perlasm/x86_64-softticks.pl b/crypto/perlasm/x86_64-softticks.pl
 new file mode 100644
-index 0000000..cb6268e
+index 0000000..c58c496
 --- /dev/null
 +++ b/crypto/perlasm/x86_64-softticks.pl
-@@ -0,0 +1,685 @@
+@@ -0,0 +1,781 @@
 +#! /usr/bin/env perl
 +# Copyright 2026 The OpenSSL Project Authors. All Rights Reserved.
 +#
@@ -95,12 +95,18 @@ index 0000000..cb6268e
 +# $0x7f (OF alone). Anything else is an error.
 +#
 +# The liveness of the flags follows the code, in instructions and those that
-+# x86_64-xlate.pl and the scripts encode with .byte/.long (an instruction
-+# this does not know counts as reading every flag); a call's successor is
-+# the callee's entry. Errors: an indirect jump, a jump between sections, a
-+# flag read right after a call or a popf (pushf counts as reading none: the
-+# PadLock code inspects only bit 30 of what it pushes), an exported function
-+# that reads a flag at its entry.
++# x86_64-xlate.pl and the scripts encode with .byte/.long; a call's successor
++# is the callee's entry. A flag that an instruction leaves alone (bt and
++# ZF, cmpxchg8b/16b and all but ZF, a shift by a count that masks to 0)
++# counts as not written. pushf counts as reading every flag, except where
++# popf takes back what it pushed later in its block (the stack pointer
++# unchanged in between), and in the PadLock pattern: before a call of a
++# function that reads the pushed word only with "bt $30" (VIA's key-reload
++# flag, not an arithmetic flag) and leaves it alone otherwise. Errors: an
++# instruction this does not know (by name, or encoded in bytes that code
++# reaches), code that falls or jumps into data, an indirect jump, a jump
++# between sections, a flag read right after a call or a popf, an exported
++# function that reads a flag at its entry.
 +#
 +# Each object gets the initializer and the note (in their COMDAT group, as
 +# the compiler emits them), and an .init section calls the initializer first:
@@ -147,6 +153,17 @@ index 0000000..cb6268e
 +    return $r;
 +}
 +
++# The instructions that neither read nor write the arithmetic flags (those
++# of their families that do, such as ptest or kortest, come first below).
++my $neutral = qr/^(?:mov\w*|lea[wlq]?|xchg[bwlq]?|bswap[lq]?|not[bwlq]?|push[wq]?|pop[wq]?|
++		    c(?:bw|wde|dqe|wd|dq|qo|btw|wtl|ltq|wtd|ltd|qto)|(?:stos|lods)[bwlq]?|cld|std|
++		    nop[wlq]?|pause|int3|cpuid|rdtscp?|xgetbv|[lms]fence|prefetch\w*|clflush\w*|emms|
++		    mulx[lq]?|rorx[lq]?|sh[lr]x[lq]?|sarx[lq]?|pdep[lq]?|pext[lq]?|crc32[bwlq]?|
++		    aes\w+|sha1\w+|sha256\w+|sha512\w+|pclmul\w+|gf2p8\w+|v\w+|k\w+|p\w+|
++		    (?:add|sub|mul|div|min|max|sqrt|rsqrt|rcp|and|andn|or|xor|cmp|shuf|unpck[hl]|
++		       blendv?|round|dp|hadd|hsub|addsub)(?:p[sd]|s[sd])|cvt\w+|insertps|extractps|
++		    [ls]dmxcsr|fx(?:save|rstor)\w*|xsave\w*|xrstor\w*)$/x;
++
 +# Control: "n" (falls through), "ret", "stop", "jmp", "jcc", "call",
 +# "prefix" (a prefix only, of the next instruction), "endbr".
 +# Returns (control, flags read, flags written).
@@ -172,7 +189,7 @@ index 0000000..cb6268e
 +    return ("n", $O, $O)		if ($m =~ /^adox[lq]?$/);
 +    return ("n", $C, 0)			if ($m =~ /^(?:rcl|rcr)[bwlq]?$/);
 +    return ("n", $ALL & ~$O, 0)		if ($m eq "lahf");
-+    return ("n", 0, 0)			if ($m =~ /^pushf[wlq]?$/);	# see below
++    return ("n", $ALL, 0)		if ($m =~ /^pushf[wlq]?$/);	# but see softticks_insert
 +    return ("n", $C, $C)		if ($m eq "cmc");
 +    return ("n", 0, $C)			if ($m =~ /^(?:clc|stc)$/);
 +    return ("n", 0, $ALL & ~$O)		if ($m eq "sahf");
@@ -180,13 +197,21 @@ index 0000000..cb6268e
 +    return ("n", 0, $ALL & ~$C)		if ($m =~ /^(?:inc|dec)[bwlq]?$/);
 +    if ($m =~ /^(?:shl|shr|sal|sar|shld|shrd|rol|ror)[bwlq]?$/) {
 +	return ("n", 0, 0)		if ($o =~ /%cl\b/);	# the count may be 0
++	if ($o =~ /^\$(0x[0-9a-f]+|\d+)\s*,/i) {	# a count that masks to 0 writes none
++	    my $n = $1;
++	    $n = $n =~ /^0x/i ? hex($n) : $n + 0;
++	    return ("n", 0, 0)		if (($n & ($m =~ /q$/ || $o =~ /%r(?:[a-ds]i|[a-ds]x|[bs]p|\d+)\s*$/ ? 63 : 31)) == 0);
++	}
 +	return ("n", 0, $C|$O)		if ($m =~ /^ro/);
 +	return ("n", 0, $ALL);
 +    }
-+    return ("n", 0, $ALL)		if ($m =~ /^(?:add|sub|and|or|xor|cmp|test|neg|mul|imul|div|idiv|bt|bts|btr|btc|bsf|bsr|popcnt|lzcnt|tzcnt|andn|bextr|blsi|blsmsk|blsr|bzhi|xadd|cmpxchg|cmpxchg8b|cmpxchg16b|rdrand|rdseed)[bwlq]?$/);
++    return ("n", 0, $ALL & ~$Z)		if ($m =~ /^bt[src]?[wlq]?$/);	# ZF stays
++    return ("n", 0, $Z)			if ($m =~ /^cmpxchg(?:8|16)b$/);
++    return ("n", 0, $ALL)		if ($m =~ /^(?:add|sub|and|or|xor|cmp|test|neg|mul|imul|div|idiv|bsf|bsr|popcnt|lzcnt|tzcnt|andn|bextr|blsi|blsmsk|blsr|bzhi|xadd|cmpxchg|rdrand|rdseed)[bwlq]?$/);
 +    return ("n", 0, $ALL)		if ($m =~ /^(?:v?u?comis[sd]|v?ptest|vtestp[sd]|kortest[bwdq]|ktest[bwdq])$/);
 +    return ("n", 0, $ALL)		if ($m =~ /^(?:cmps|scas)[bwlq]?$/);	# without rep
-+    return ("n", 0, 0);			# moves, SIMD, mulx, shlx, rorx, lea, ...
++    return ("n", 0, 0)			if ($m =~ $neutral);
++    return ();				# not known
 +}
 +
 +my %legacy_prefix = map { $_ => 1 } (0x26, 0x2e, 0x36, 0x3e, 0x64, 0x65, 0x66, 0x67, 0xf0, 0xf2, 0xf3);
@@ -238,6 +263,8 @@ index 0000000..cb6268e
 +    return $ret->($mr->(), "n", 0, $ALL)	if ($op == 0x84 || $op == 0x85);	# test
 +    return $ret->($mr->(), "n", 0, 0)	if ($op >= 0x86 && $op <= 0x8b || $op == 0x8d);	# xchg, mov, lea
 +    return $ret->($i - $i0, "n", 0, 0)	if ($op >= 0x90 && $op <= 0x99);	# nop, xchg, cltq, cqto
++    return $ret->($i - $i0, "n", $ALL, 0)	if ($op == 0x9c);	# pushf
++    return $ret->($i - $i0, "n", 0, $ALL)	if ($op == 0x9d);	# popf
 +    return $ret->($i - $i0, "n", 0, $ALL & ~$O) if ($op == 0x9e);	# sahf
 +    return $ret->($i - $i0, "n", $ALL & ~$O, 0) if ($op == 0x9f);	# lahf
 +    if ($op >= 0xa4 && $op <= 0xaf) {	# string instructions
@@ -251,6 +278,8 @@ index 0000000..cb6268e
 +	my $l = $mr->($op <= 0xc1 ? 1 : 0);
 +	return $ret->($l, "n", $C, 0)	if ($r == 2 || $r == 3);	# rcl, rcr
 +	return $ret->($l, "n", 0, 0)	if ($op == 0xd2 || $op == 0xd3);	# by %cl
++	return $ret->($l, "n", 0, 0)	if ($op <= 0xc1 && defined($l) && $i0 + $l <= @$b &&
++					    ($b->[$i0 + $l - 1] & ($w && $op == 0xc1 ? 63 : 31)) == 0);	# by 0
 +	return $ret->($l, "n", 0, $r < 2 ? $C | $O : $ALL);
 +    }
 +    return $ret->($i - $i0, "ret", 0, 0)	if ($op == 0xc3);
@@ -303,12 +332,17 @@ index 0000000..cb6268e
 +    return $ret->($i - $i0 + 1, "n", 0, 0)	if ($o2 == 0x01 && $i < @$b && $b->[$i] == 0xd0);	# xgetbv
 +    return $ret->($i - $i0 + 1, "n", 0, 0)	if ($o2 == 0xa6 || $o2 == 0xa7);	# PadLock
 +    return $ret->($mr->(), "n", 0, $ALL)	if ($o2 == 0xc7 && ($r == 6 || $r == 7));	# rdrand, rdseed
++    return $ret->($mr->(), "n", 0, $Z)	if ($o2 == 0xc7 && $r == 1 && $i < @$b && $b->[$i] < 0xc0);	# cmpxchg8b/16b
 +    return $ret->($mr->(), "n", $ccn[$o2 & 15], 0) if ($o2 >= 0x40 && $o2 <= 0x4f || $o2 >= 0x90 && $o2 <= 0x9f);	# cmovcc, setcc
 +    return ()				if ($o2 >= 0x80 && $o2 <= 0x8f);	# jcc
-+    return $ret->($mr->(), "n", 0, $ALL)	if ($o2 == 0xa3 || $o2 == 0xab || $o2 == 0xb3 || $o2 == 0xbb ||
-+					    $o2 == 0xaf || $o2 == 0xb8 || $o2 == 0xbc || $o2 == 0xbd ||
-+					    $o2 == 0xb0 || $o2 == 0xb1 || $o2 == 0xc0 || $o2 == 0xc1);	# bt*, imul, popcnt, bsf, bsr, cmpxchg, xadd
-+    return $ret->($mr->(1), "n", 0, $ALL)	if ($o2 == 0xba || $o2 == 0xa4 || $o2 == 0xac);	# bt* imm, shld, shrd imm
++    return $ret->($mr->(), "n", 0, $ALL & ~$Z) if ($o2 == 0xa3 || $o2 == 0xab || $o2 == 0xb3 || $o2 == 0xbb);	# bt* (ZF stays)
++    return $ret->($mr->(1), "n", 0, $ALL & ~$Z) if ($o2 == 0xba && $r >= 4);	# bt* imm
++    return $ret->($mr->(), "n", 0, $ALL)	if ($o2 == 0xaf || $o2 == 0xb8 || $o2 == 0xbc || $o2 == 0xbd ||
++					    $o2 == 0xb0 || $o2 == 0xb1 || $o2 == 0xc0 || $o2 == 0xc1);	# imul, popcnt, bsf, bsr, cmpxchg, xadd
++    if ($o2 == 0xa4 || $o2 == 0xac) {	# shld, shrd imm
++	my $l = $mr->(1);
++	return $ret->($l, "n", 0, defined($l) && $i0 + $l <= @$b && ($b->[$i0 + $l - 1] & ($w ? 63 : 31)) == 0 ? 0 : $ALL);
++    }
 +    return $ret->($mr->(), "n", 0, 0)	if ($o2 == 0xa5 || $o2 == 0xad);	# shld, shrd by %cl
 +    return $ret->($i - $i0, "n", 0, 0)	if ($o2 >= 0xc8 && $o2 <= 0xcf);	# bswap
 +    return $ret->($mr->(), "n", 0, $ALL)	if ($o2 == 0x2e || $o2 == 0x2f);	# (u)comis
@@ -497,6 +531,7 @@ index 0000000..cb6268e
 +    my @stack;
 +    for my $li (0 .. $#lines) {
 +	my $s = $lines[$li];
++	next if ($s =~ /^\s*#/);
 +	$s =~ s/\s+#.*$// if ($s !~ /["']/);
 +	while ($s =~ s/^\s*($sym|\d+):(?!:)//) {
 +	    my $l = $1;
@@ -527,7 +562,7 @@ index 0000000..cb6268e
 +    my $code = sub { $_[0] =~ /^\.(?:text|init|fini)\b/ };
 +
 +    # Instructions: control, flags.
-+    my (@ctl, @rd, @wr, @tgt);
++    my (@ctl, @rd, @wr, @tgt, @bytes);
 +    my (%func, %glob);
 +    for my $i (0 .. $n - 1) {
 +	if ($kind[$i] eq "D") {
@@ -540,7 +575,7 @@ index 0000000..cb6268e
 +		next if (grep({ $_ < 0 || $_ >= 256 ** $sz } @v) || @v * $sz > 15);
 +		my @b = map { my $v = $_; map { ($v >> (8 * $_)) & 255 } 0 .. $sz - 1 } @v;
 +		my @f = bytes_flags(@b);
-+		if (@f) { $kind[$i] = "I"; ($ctl[$i], $rd[$i], $wr[$i]) = @f; }
++		if (@f) { $kind[$i] = "I"; ($ctl[$i], $rd[$i], $wr[$i]) = @f; $bytes[$i] = \@b; }
 +	    }
 +	    next;
 +	}
@@ -554,6 +589,10 @@ index 0000000..cb6268e
 +	}
 +	($mn[$i], $op[$i]) = ($m, $o);
 +	my @f = insn_flags($m, $o);
++	if (!@f) {
++	    $err->("unknown instruction: $m $o") if ($code->($sec[$i]));
++	    @f = ("n", $ALL, 0);
++	}
 +	@f[1, 2] = (0, 0) if ($rep && $m =~ /^(?:cmps|scas)/);
 +	($ctl[$i], $rd[$i], $wr[$i]) = @f;
 +	if ($f[0] =~ /^(?:jmp|jcc|call)$/) {
@@ -602,9 +641,70 @@ index 0000000..cb6268e
 +	elsif ($c eq "jcc") { push @s, $next->($i); push @s, $at[$def{$t}] if ($local); }
 +	elsif ($c eq "call" && $local) { push @s, $at[$def{$t}]; $wr[$i] = 0; }
 +	else { push @s, $next->($i); }
++	if (grep { $_ < 0 } @s) {
++	    # Only an .init or .fini fragment may fall off its end (into the
++	    # next object's); anything else falls or jumps into data.
++	    my $l = $order{$sec[$i]};
++	    my $rest = grep { $kind[$_] eq "I" || $kind[$_] eq "D" && $mn[$_] !~ $nocode } @$l[$pos[$i] + 1 .. $#$l];
++	    $err->("$mn[$i] $op[$i] goes into data (or bytes this does not know)")
++		if ($sec[$i] !~ /^\.(?:init|fini)\b/ || $rest || $next->($i) >= 0 || grep({ $_ < 0 } @s) > 1 ||
++		    $c eq "jmp" || $c eq "jcc" && $local && $at[$def{$t}] < 0);
++	}
 +	$succ[$i] = \@s;
 +	push @{$pred[$_]}, $i for (grep { $_ >= 0 } @s);
 +    }
++    # The instructions that start a block (a label precedes them).
++    my %blockstart;
++    for my $i (0 .. $n - 1) { $blockstart{$at[$i]} = 1 if ($kind[$i] eq "L" && $at[$i] >= 0); }
++
++    # pushf reads every flag, as it saves them on the stack. But where popf
++    # takes them back later in its block, with the stack pointer and the
++    # word (%rsp) left alone in between, they are as before the pushf (and
++    # nothing may read them after the popf: checked below), and so pushf
++    # reads none. Nor in the PadLock pattern, before a call of a function
++    # that reads the word only with "bt $30" (_padlock_verify_ctx: bit 30
++    # of the flags, VIA's key-reload flag, is not one that a tick writes);
++    # the caller pops it with popf (as above) or drops it.
++    my $stack = sub {	# does instruction j move %rsp or touch the word at (%rsp)?
++	my $j = shift;
++	if ($mn[$j] =~ /^(?:byte|value|word|long)$/) {	# by its opcode: push, pop, pushf, popf, leave, call, ret, group 5
++	    my ($b, $k) = ($bytes[$j], 0);
++	    $k++ while ($k < @$b && ($legacy_prefix{$b->[$k]} || $b->[$k] >= 0x40 && $b->[$k] <= 0x4f));
++	    my $o = $b->[$k] // -1;
++	    return $o >= 0x50 && $o <= 0x5f || $o == 0x8f || $o == 0x9c || $o == 0x9d || $o == 0xc9 ||
++		   $o == 0xc2 || $o == 0xc3 || $o == 0xe8 || $o == 0xff || $o < 0;
++	}
++	return $mn[$j] =~ /^(?:push|pop|call|ret|leave|enter)/ || $op[$j] =~ /(?:^|,)\s*0?\(%rsp\)|,\s*%[re]?sp\s*$/ ||
++	       $mn[$j] =~ /^xchg/ && $op[$j] =~ /%[re]?sp\b/;
++    };
++    my $bit30 = sub {	# does the function at instruction e read 8(%rsp) only with "bt $30"?
++	my $e = shift;
++	return 0 if ($e < 0 || $mn[$e] !~ /^movq?$/ || $op[$e] !~ /^8\(%rsp\),\s*%(r\w+)$/ || !exists($gpr_of{$1}));
++	my $r = $gpr_of{$1};
++	my $b = $next->($e);
++	return 0 if ($b < 0 || $mn[$b] !~ /^btq?$/ || $op[$b] !~ /^\$30,\s*%(\w+)$/ || ($gpr_of{$1} // "") ne $r);
++	my @jcc;	# its branches must stay before its ret
++	for (my $j = $next->($b); ; $j = $next->($j)) {
++	    return 0 if ($j < 0 || $op[$j] =~ /\(%rsp\)/);
++	    while ($op[$j] =~ /%(\w+)/g) { return 0 if (($gpr_of{$1} // "") eq $r); }
++	    if ($ctl[$j] eq "ret") {
++		return !grep { !defined($tgt[$_]) || !exists($def{$tgt[$_]}) || $at[$def{$tgt[$_]}] < 0 ||
++			       $sec[$at[$def{$tgt[$_]}]] ne $sec[$j] || $pos[$at[$def{$tgt[$_]}]] > $pos[$j] ||
++			       $pos[$at[$def{$tgt[$_]}]] < $pos[$e] } @jcc;
++	    }
++	    return 0 if ($ctl[$j] eq "call" || $ctl[$j] eq "jmp" || $ctl[$j] eq "stop");
++	    push @jcc, $j if ($ctl[$j] eq "jcc");
++	}
++    };
++    for my $i (@ins) {
++	next if ($mn[$i] !~ /^pushf[wlq]?$/);
++	for (my $j = $next->($i); $j >= 0 && !$blockstart{$j}; $j = $next->($j)) {
++	    if ($mn[$j] =~ /^popf[wlq]?$/) { $rd[$i] = 0; last; }
++	    if ($ctl[$j] eq "call" && defined($tgt[$j]) && exists($def{$tgt[$j]}) && $bit30->($at[$def{$tgt[$j]}])) { $rd[$i] = 0; last; }
++	    last if ($ctl[$j] ne "n" || $stack->($j));
++	}
++    }
++
 +    my @live;	# live in
 +    my @work = reverse @ins;
 +    my %inwork = map { $_ => 1 } @ins;
@@ -624,10 +724,6 @@ index 0000000..cb6268e
 +	my $nx = $next->($i);
 +	$err->("flags read after $mn[$i] $op[$i]") if ($nx >= 0 && $live[$nx]);
 +    }
-+
-+    # The instructions that start a block (a label precedes them).
-+    my %blockstart;
-+    for my $i (0 .. $n - 1) { $blockstart{$at[$i]} = 1 if ($kind[$i] eq "L" && $at[$i] >= 0); }
 +
 +    # The tick sites: function entries and the targets of backward jumps.
 +    my %site;	# label item -> why
