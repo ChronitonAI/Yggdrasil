@@ -12,6 +12,8 @@ sources = [
     ArchiveSource("https://github.com/tukaani-project/xz/releases/download/v$(version)/xz-$(version).tar.xz",
                   "4ce24038fd4221e0d13bc1a2de7a4db56e90b92b3bf75321f6c14be73f65de4b"),
     DirectorySource("./bundled"),
+    # rr_softticks (ygglet): the binary tick check, OpenBLAS's (run at the end of the script)
+    DirectorySource(joinpath(@__DIR__, "..", "..", "O", "OpenBLAS", "softticks"); target="softticks"),
 ]
 
 # Bash recipe for building across all platforms
@@ -52,6 +54,18 @@ else
         make -j${nproc}
         make install
     done
+fi
+
+# rr_softticks: the binary tick check of the code of both libraries (the static library's
+# objects, and the shared library's in the build tree): every cycle and every function entry
+# ticks, rc_direct()'s asm loop included, and no tick clobbers a live flag; and the shared
+# library's note and initializer. It fails the build if the patch above no longer ticks the
+# loop (a compiler that does not predefine __RR_SOFTTICKS__, a new version's asm) or a new
+# version adds asm with a loop. The asm is x86-64's, as is the check. (The shared library is
+# not checked as a whole: the C runtime's start files linked into it do not tick.)
+if [[ "${bb_full_target}" == *rr_softticks* && "${target}" == x86_64-* ]]; then
+    perl ${WORKSPACE}/srcdir/softticks/check.pl --jobs ${nproc} --so ${libdir}/liblzma.so \
+        ${prefix}/lib/liblzma.a src/liblzma/.libs/liblzma_la-*.o
 fi
 """
 
