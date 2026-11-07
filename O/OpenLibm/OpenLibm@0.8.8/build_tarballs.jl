@@ -7,11 +7,18 @@ version = v"0.8.8"
 sources = [
     GitSource("https://github.com/JuliaMath/openlibm.git",
               "5fe399749f9276eaa0b8403e507470da05cbbb3f"),
+    DirectorySource("./bundled"),
 ]
 
 script = raw"""
 # Enter the funzone
 cd ${WORKSPACE}/srcdir/openlibm*
+
+# rr software ticks for the x86-64 assembly (amd64/*.S): a tick at every ENTRY and once per
+# round of the fprem/fprem1 loops (after fstsw), which the compiler's ticks plugin cannot add
+# to assembly. Only where the compiler predefines __RR_SOFTTICKS__ (the plugin, on the
+# rr_softticks platforms); elsewhere the objects are byte-identical.
+atomic_patch -p1 ${WORKSPACE}/srcdir/patches/openlibm-rr-softticks.patch
 
 # Install into output
 flags=("prefix=${prefix}")

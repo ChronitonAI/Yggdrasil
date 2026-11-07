@@ -1,0 +1,156 @@
+diff --git a/amd64/bsd_asm.h b/amd64/bsd_asm.h
+index b9c815b..7dd3aa3 100644
+--- a/amd64/bsd_asm.h
++++ b/amd64/bsd_asm.h
+@@ -62,9 +62,42 @@
+ 
+ #define _START_ENTRY	.p2align 4,0x90
+ 
++/*
++ * rr software ticks: a program built with a software-ticks compiler pass
++ * counts its own progress instead of relying on the CPU's branch counter. The
++ * pass ticks compiled code at every function entry and loop header, so that
++ * no instruction runs twice in the same stack frame without a tick in
++ * between. The assembly here ticks the same way through OLM_SOFTTICK: at
++ * every ENTRY (ELF), and once in each of the only loops, the fprem/fprem1
++ * loops of the fmod, remainder and remquo families. The loops tick after
++ * their fstsw rather than at their head: there the tick overlaps fprem's
++ * latency (fmod(DBL_MAX, 0.7), 19 rounds: 1-3% slower than without
++ * ticks, where a tick at the head cost 9-13%). The compiler's plugin
++ * predefines __RR_SOFTTICKS__ (the ABI version), also for .S files; without
++ * it OLM_SOFTTICK is empty and the object code is unchanged.
++ *
++ * The sequence is ABI version 1's x86-64 tick (RR_SOFTTICKS_X64_TICK_ASM in
++ * rr's softticks.h), byte for byte. It clobbers the arithmetic flags only,
++ * which no site reads before writing them (in the loops the testw or btw
++ * after it writes them), and no register, stack (the functions' red-zone
++ * slots included) or x87 state (the loops test fprem's condition codes,
++ * which fstsw has copied to %ax). Its end label is 7731, not the ABI
++ * string's 1, which would capture the loops' `jne 1b`.
++ */
++#if defined(__RR_SOFTTICKS__)
++#if __RR_SOFTTICKS__ != 1
++#error "openlibm: unsupported software-ticks ABI version"
++#endif
++#define OLM_SOFTTICK	testb $0x80, 0x70001807; jnz 7731f; \
++			decq 0x70001800; jnz 7731f; int3; 7731:
++#else
++#define OLM_SOFTTICK
++#endif
++
+ #if defined(__ELF__)
+ #define _ENTRY(x)	.text; _START_ENTRY; \
+-			.globl CNAME(x); .type CNAME(x),@function; CNAME(x):
++			.globl CNAME(x); .type CNAME(x),@function; CNAME(x): \
++			OLM_SOFTTICK
+ #define	END(x)		.size x, . - x
+ 
+ #elif defined(_WIN32)
+diff --git a/amd64/e_fmod.S b/amd64/e_fmod.S
+index d2c8ecd..1482ab1 100644
+--- a/amd64/e_fmod.S
++++ b/amd64/e_fmod.S
+@@ -42,6 +42,7 @@ ENTRY(fmod)
+ 	fldl	-8(%rsp)
+ 1:	fprem
+ 	fstsw	%ax
++	OLM_SOFTTICK
+ 	testw	$0x400,%ax
+ 	jne	1b
+ 	fstpl	-8(%rsp)
+diff --git a/amd64/e_fmodf.S b/amd64/e_fmodf.S
+index b045e73..44e002c 100644
+--- a/amd64/e_fmodf.S
++++ b/amd64/e_fmodf.S
+@@ -12,6 +12,7 @@ ENTRY(fmodf)
+ 	flds	-4(%rsp)
+ 1:	fprem
+ 	fstsw	%ax
++	OLM_SOFTTICK
+ 	testw	$0x400,%ax
+ 	jne	1b
+ 	fstps	-4(%rsp)
+diff --git a/amd64/e_fmodl.S b/amd64/e_fmodl.S
+index cab539d..9914594 100644
+--- a/amd64/e_fmodl.S
++++ b/amd64/e_fmodl.S
+@@ -40,6 +40,7 @@ ENTRY(fmodl)
+ 	fldt	8(%rsp)
+ 1:	fprem
+ 	fstsw	%ax
++	OLM_SOFTTICK
+ 	testw	$0x400,%ax
+ 	jne	1b
+ 	fstp	%st(1)
+diff --git a/amd64/e_remainder.S b/amd64/e_remainder.S
+index a0b4900..4c48901 100644
+--- a/amd64/e_remainder.S
++++ b/amd64/e_remainder.S
+@@ -16,6 +16,7 @@ ENTRY(remainder)
+ 	fldl	-8(%rsp)
+ 1:	fprem1
+ 	fstsw	%ax
++	OLM_SOFTTICK
+ 	testw	$0x400,%ax
+ 	jne	1b
+ 	fstpl	-8(%rsp)
+diff --git a/amd64/e_remainderf.S b/amd64/e_remainderf.S
+index c63e97e..4ea4ed5 100644
+--- a/amd64/e_remainderf.S
++++ b/amd64/e_remainderf.S
+@@ -15,6 +15,7 @@ ENTRY(remainderf)
+ 	flds	-4(%rsp)
+ 1:	fprem1
+ 	fstsw	%ax
++	OLM_SOFTTICK
+ 	testw	$0x400,%ax
+ 	jne	1b
+ 	fstps	-4(%rsp)
+diff --git a/amd64/e_remainderl.S b/amd64/e_remainderl.S
+index 5f21b93..95e436f 100644
+--- a/amd64/e_remainderl.S
++++ b/amd64/e_remainderl.S
+@@ -18,6 +18,7 @@ ENTRY(remainderl)
+ #endif
+ 1:	fprem1
+ 	fstsw	%ax
++	OLM_SOFTTICK
+ 	testw	$0x400,%ax
+ 	jne	1b
+ 	fstp	%st(1)
+diff --git a/amd64/s_remquo.S b/amd64/s_remquo.S
+index 8ef8425..a677f86 100644
+--- a/amd64/s_remquo.S
++++ b/amd64/s_remquo.S
+@@ -38,6 +38,7 @@ ENTRY(remquo)
+ 	fldl	-8(%rsp)
+ 1:	fprem1
+ 	fstsw	%ax
++	OLM_SOFTTICK
+ 	btw	$10,%ax
+ 	jc	1b
+ 	fstp	%st(1)
+diff --git a/amd64/s_remquof.S b/amd64/s_remquof.S
+index 129a807..6222521 100644
+--- a/amd64/s_remquof.S
++++ b/amd64/s_remquof.S
+@@ -38,6 +38,7 @@ ENTRY(remquof)
+ 	flds	-4(%rsp)
+ 1:	fprem1
+ 	fstsw	%ax
++	OLM_SOFTTICK
+ 	btw	$10,%ax
+ 	jc	1b
+ 	fstp	%st(1)
+diff --git a/amd64/s_remquol.S b/amd64/s_remquol.S
+index 344e1fb..bd1515c 100644
+--- a/amd64/s_remquol.S
++++ b/amd64/s_remquol.S
+@@ -42,6 +42,7 @@ ENTRY(remquol)
+ #endif
+ 1:	fprem1
+ 	fstsw	%ax
++	OLM_SOFTTICK
+ 	btw	$10,%ax
+ 	jc	1b
+ 	fstp	%st(1)
