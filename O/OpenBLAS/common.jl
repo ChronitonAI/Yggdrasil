@@ -98,6 +98,8 @@ function openblas_sources(version::VersionNumber; kwargs...)
     return [
         openblas_version_sources[version]...,
         DirectorySource("./bundled"),
+        # The software ticks check (see `openblas_script`).
+        DirectorySource(joinpath(@__DIR__, "softticks"); target="softticks"),
     ]
 end
 
@@ -274,6 +276,18 @@ function openblas_script(;num_64bit_threads::Integer=32, openblas32::Bool=false,
 
     # Build the actual library
     make "${flags[@]}" shared
+
+    # rr_softticks (ygglet): the compiler's pass ticks the C code, 9x-rr-softticks-*.patch the
+    # hand-written x86-64 kernels; check the object code before installing it.
+    if [[ "${bb_full_target}" == *rr_softticks* ]]; then
+        if [[ "${target}" != x86_64-linux-* ]]; then
+            echo "OpenBLAS: only the x86-64 kernels have software ticks, not ${target}'s" >&2
+            exit 1
+        fi
+        perl ${WORKSPACE}/srcdir/softticks/check.pl --jobs ${nproc} \
+            --allow ${WORKSPACE}/srcdir/softticks/plugin-gap.txt \
+            --so ${LIBPREFIX}.so ${LIBPREFIX}.a
+    fi
 
     # Install the library
     make "${flags[@]}" "PREFIX=$prefix" install

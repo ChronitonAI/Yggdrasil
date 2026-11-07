@@ -1,0 +1,44 @@
+Software ticks (rr's ABI version 1) for the hand-written x86-64 kernels: the tick macros
+and a tick at the entry of every assembly function. A no-op unless the compiler predefines
+__RR_SOFTTICKS__. The loop-header ticks are in 91-rr-softticks-kernels.patch.
+
+--- a/common_x86_64.h
++++ b/common_x86_64.h
+@@ -39,6 +39,27 @@
+ #ifndef COMMON_X86
+ #define COMMON_X86
+ 
++/* rr software ticks (rr's include/rr/softticks.h). A compiler with a software-ticks pass
++   predefines __RR_SOFTTICKS__ (to the ABI version, also for .S files) and ticks the code it
++   compiles; the hand-written kernels tick themselves: at the entry of every assembly function
++   (PROLOGUE) and at every loop header (every label that a later jump targets) of the assembly
++   kernels and of the inline-asm microkernels, with RR_SOFTTICK in .S files and
++   RR_SOFTTICK_ASM in asm templates (put there by the recipe's generated kernel patch). The
++   sequence is the ABI's x86-64 tick, byte for byte; it clobbers the arithmetic flags only
++   (GCC and clang add "cc" to every x86 asm statement) and ends at the local label 7731
++   instead of the ABI's 1, which a loop's own `1b` would otherwise resolve to. Without
++   __RR_SOFTTICKS__ both macros are empty and the kernels assemble as before. */
++#if defined(__RR_SOFTTICKS__)
++#if __RR_SOFTTICKS__ != 1
++#error "OpenBLAS: these software ticks are rr's ABI version 1; __RR_SOFTTICKS__ asks for another"
++#endif
++#define RR_SOFTTICK testb $0x80, 0x70001807; jnz 7731f; decq 0x70001800; jnz 7731f; int3; 7731:
++#define RR_SOFTTICK_ASM "\n\ttestb $0x80, 0x70001807\n\tjnz 7731f\n\tdecq 0x70001800\n\tjnz 7731f\n\tint3\n7731:\n\t"
++#else
++#define RR_SOFTTICK
++#define RR_SOFTTICK_ASM ""
++#endif
++
+ #ifndef ASSEMBLER
+ 
+ #ifdef C_MSVC
+@@ -462,7 +483,8 @@
+ 	.globl REALNAME ;\
+        .type REALNAME, @function; \
+ REALNAME: \
+-	_CET_ENDBR
++	_CET_ENDBR ; \
++	RR_SOFTTICK
+ 
+ #ifdef PROFILE
+ #define PROFCODE call *mcount@GOTPCREL(%rip)

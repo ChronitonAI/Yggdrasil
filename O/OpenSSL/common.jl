@@ -2,6 +2,16 @@
 script = raw"""
 cd $WORKSPACE/srcdir/openssl-*/
 
+# A version's bundled patches. OpenSSL@3.5's add rr software ticks to the x86-64 assembly
+# (the perlasm translator and bn's inline asm), which only does something when the compiler
+# predefines __RR_SOFTTICKS__ (the softticks plugin on rr_softticks platforms); elsewhere the
+# libraries are byte-identical.
+if [[ -d ${WORKSPACE}/srcdir/patches ]]; then
+    for p in ${WORKSPACE}/srcdir/patches/*.patch; do
+        atomic_patch -p1 ${p}
+    done
+fi
+
 # This build system does not like llvm-ranlib
 if [[ ${target} == *darwin* ]]; then
     export RANLIB=/opt/${target}/bin/${target}-ranlib

@@ -7,6 +7,7 @@ version = v"3.5.9"
 sources = [
     ArchiveSource("https://github.com/openssl/openssl/releases/download/openssl-$version/openssl-$version.tar.gz",
                   "603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a"),
+    DirectorySource("./bundled"),
 ]
 
 include("../common.jl")
