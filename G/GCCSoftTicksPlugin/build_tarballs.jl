@@ -11,7 +11,7 @@ build_tarballs(;
     sources = [
         # tools/softticks: the plugin and the tracee ABI header (rr_softticks.h).
         GitSource("https://github.com/ChronitonAI/rift.git",
-                  "3facb88e7ebc2b5ba14be7496dcec93b692c2f58"),
+                  "62a65ffdc8be28ce166bcdd6dd51db7ec32702c6"),
     ],
     script = raw"""
     cd ${WORKSPACE}/srcdir/rift/tools/softticks
