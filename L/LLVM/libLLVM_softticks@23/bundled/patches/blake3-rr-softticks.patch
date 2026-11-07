@@ -1,0 +1,502 @@
+diff --git a/llvm/lib/Support/BLAKE3/blake3_avx2_x86-64_unix.S b/llvm/lib/Support/BLAKE3/blake3_avx2_x86-64_unix.S
+index e98893c7e..287165e4f 100644
+--- a/llvm/lib/Support/BLAKE3/blake3_avx2_x86-64_unix.S
++++ b/llvm/lib/Support/BLAKE3/blake3_avx2_x86-64_unix.S
+@@ -1,6 +1,7 @@
+ #if defined(__x86_64__)
+ 
+ #include "llvm_blake3_prefix.h"
++#include "llvm_blake3_softticks.h"
+ 
+ #if defined(__ELF__) && !(defined(__sun__) && defined(__svr4__))
+ .section .note.GNU-stack,"",%progbits
+@@ -36,6 +37,7 @@ HIDDEN blake3_hash_many_avx2
+ _blake3_hash_many_avx2:
+ blake3_hash_many_avx2:
+         _CET_ENDBR
++        BLAKE3_SOFTTICK
+         push    r15
+         push    r14
+         push    r13
+@@ -69,6 +71,7 @@ blake3_hash_many_avx2:
+         cmp     rsi, 8
+         jc      3f
+ 2:
++        BLAKE3_SOFTTICK
+         vpbroadcastd ymm0, dword ptr [rcx]
+         vpbroadcastd ymm1, dword ptr [rcx+0x4]
+         vpbroadcastd ymm2, dword ptr [rcx+0x8]
+@@ -91,6 +94,7 @@ blake3_hash_many_avx2:
+         xor     edx, edx
+ .p2align  5
+ 9:
++        BLAKE3_SOFTTICK
+         movzx   ebx, byte ptr [rbp+0x48]
+         or      ebx, eax
+         add     rdx, 64
+@@ -1355,6 +1359,7 @@ blake3_hash_many_avx2:
+         xor     edx, edx
+ .p2align  5
+ 2:
++        BLAKE3_SOFTTICK
+         mov     r14d, eax
+         or      eax, r12d
+         add     rdx, 64
+@@ -1402,6 +1407,7 @@ blake3_hash_many_avx2:
+         vmovdqa ymm10, ymm2
+         mov     al, 7
+ 9:
++        BLAKE3_SOFTTICK
+         vpaddd  ymm0, ymm0, ymm4
+         vpaddd  ymm8, ymm8, ymm12
+         vmovdqa ymmword ptr [rsp+0x40], ymm4
+@@ -1580,6 +1586,7 @@ blake3_hash_many_avx2:
+         xor     edx, edx
+ .p2align  5
+ 2:
++        BLAKE3_SOFTTICK
+         mov     r14d, eax
+         or      eax, r12d
+         add     rdx, 64
+@@ -1605,6 +1612,7 @@ blake3_hash_many_avx2:
+         vpshufd ymm7, ymm7, 0x93
+         mov     al, 7
+ 9:
++        BLAKE3_SOFTTICK
+         vpaddd  ymm0, ymm0, ymm4
+         vpaddd  ymm0, ymm0, ymm1
+         vpxor   ymm3, ymm3, ymm0
+@@ -1701,6 +1709,7 @@ blake3_hash_many_avx2:
+         xor     edx, edx
+ .p2align  5
+ 2:
++        BLAKE3_SOFTTICK
+         mov     r14d, eax
+         or      eax, r12d
+         add     rdx, 64
+@@ -1721,6 +1730,7 @@ blake3_hash_many_avx2:
+         vpshufd xmm7, xmm7, 0x93
+         mov     al, 7
+ 9:
++        BLAKE3_SOFTTICK
+         vpaddd  xmm0, xmm0, xmm4
+         vpaddd  xmm0, xmm0, xmm1
+         vpxor   xmm3, xmm3, xmm0
+diff --git a/llvm/lib/Support/BLAKE3/blake3_avx512_x86-64_unix.S b/llvm/lib/Support/BLAKE3/blake3_avx512_x86-64_unix.S
+index b4b14946d..7645535ca 100644
+--- a/llvm/lib/Support/BLAKE3/blake3_avx512_x86-64_unix.S
++++ b/llvm/lib/Support/BLAKE3/blake3_avx512_x86-64_unix.S
+@@ -1,6 +1,7 @@
+ #if defined(__x86_64__)
+ 
+ #include "llvm_blake3_prefix.h"
++#include "llvm_blake3_softticks.h"
+ 
+ #if defined(__ELF__) && !(defined(__sun__) && defined(__svr4__))
+ .section .note.GNU-stack,"",%progbits
+@@ -49,6 +50,7 @@ HIDDEN _blake3_xof_many_avx512
+ _blake3_hash_many_avx512:
+ blake3_hash_many_avx512:
+         _CET_ENDBR
++        BLAKE3_SOFTTICK
+         push    r15
+         push    r14
+         push    r13
+@@ -87,6 +89,7 @@ blake3_hash_many_avx512:
+         cmp     rsi, 16
+         jc      3f
+ 2:
++        BLAKE3_SOFTTICK
+         vpbroadcastd zmm0, dword ptr [rcx]
+         vpbroadcastd zmm1, dword ptr [rcx+0x1*0x4]
+         vpbroadcastd zmm2, dword ptr [rcx+0x2*0x4]
+@@ -101,6 +104,7 @@ blake3_hash_many_avx512:
+         xor     edx, edx
+ .p2align 5
+ 9:
++        BLAKE3_SOFTTICK
+         movzx   ebx, byte ptr [rbp+0x48]
+         or      ebx, eax
+         add     rdx, 64
+@@ -1138,6 +1142,7 @@ blake3_hash_many_avx512:
+         or      eax, ebx
+         xor     edx, edx
+ 2:
++        BLAKE3_SOFTTICK
+         movzx   ebx, byte ptr [rbp+0x48]
+         or      ebx, eax
+         add     rdx, 64
+@@ -2091,6 +2096,7 @@ blake3_hash_many_avx512:
+         xor     edx, edx
+ .p2align 5
+ 2:
++        BLAKE3_SOFTTICK
+         mov     r14d, eax
+         or      eax, r12d
+         add     rdx, 64
+@@ -2124,6 +2130,7 @@ blake3_hash_many_avx512:
+         vpshufd zmm7, zmm7, 0x93
+         mov     al, 7
+ 9:
++        BLAKE3_SOFTTICK
+         vpaddd  zmm0, zmm0, zmm4
+         vpaddd  zmm0, zmm0, zmm1
+         vpxord  zmm3, zmm3, zmm0
+@@ -2216,6 +2223,7 @@ blake3_hash_many_avx512:
+         xor     edx, edx
+ .p2align 5
+ 2:
++        BLAKE3_SOFTTICK
+         mov     r14d, eax
+         or      eax, r12d
+         add     rdx, 64
+@@ -2241,6 +2249,7 @@ blake3_hash_many_avx512:
+         vpshufd ymm7, ymm7, 0x93
+         mov     al, 7
+ 9:
++        BLAKE3_SOFTTICK
+         vpaddd  ymm0, ymm0, ymm4
+         vpaddd  ymm0, ymm0, ymm1
+         vpxord  ymm3, ymm3, ymm0
+@@ -2325,6 +2334,7 @@ blake3_hash_many_avx512:
+         xor     edx, edx
+ .p2align 5
+ 2:
++        BLAKE3_SOFTTICK
+         mov     r14d, eax
+         or      eax, r12d
+         add     rdx, 64
+@@ -2344,6 +2354,7 @@ blake3_hash_many_avx512:
+         vpshufd xmm7, xmm7, 0x93
+         mov     al, 7
+ 9:
++        BLAKE3_SOFTTICK
+         vpaddd  xmm0, xmm0, xmm4
+         vpaddd  xmm0, xmm0, xmm1
+         vpxord  xmm3, xmm3, xmm0
+@@ -2407,6 +2418,7 @@ blake3_hash_many_avx512:
+ _blake3_compress_in_place_avx512:
+ blake3_compress_in_place_avx512:
+         _CET_ENDBR
++        BLAKE3_SOFTTICK
+         vmovdqu xmm0, xmmword ptr [rdi]
+         vmovdqu xmm1, xmmword ptr [rdi+0x10]
+         movzx   eax, r8b
+@@ -2429,6 +2441,7 @@ blake3_compress_in_place_avx512:
+         vpshufd xmm7, xmm7, 0x93
+         mov     al, 7
+ 9:
++        BLAKE3_SOFTTICK
+         vpaddd  xmm0, xmm0, xmm4
+         vpaddd  xmm0, xmm0, xmm1
+         vpxord  xmm3, xmm3, xmm0
+@@ -2490,6 +2503,7 @@ blake3_compress_in_place_avx512:
+ _blake3_compress_xof_avx512:
+ blake3_compress_xof_avx512:
+         _CET_ENDBR
++        BLAKE3_SOFTTICK
+         vmovdqu xmm0, xmmword ptr [rdi]
+         vmovdqu xmm1, xmmword ptr [rdi+0x10]
+         movzx   eax, r8b
+@@ -2512,6 +2526,7 @@ blake3_compress_xof_avx512:
+         vpshufd xmm7, xmm7, 0x93
+         mov     al, 7
+ 9:
++        BLAKE3_SOFTTICK
+         vpaddd  xmm0, xmm0, xmm4
+         vpaddd  xmm0, xmm0, xmm1
+         vpxord  xmm3, xmm3, xmm0
+@@ -2577,6 +2592,7 @@ blake3_compress_xof_avx512:
+ blake3_xof_many_avx512:
+ _blake3_xof_many_avx512:
+         _CET_ENDBR
++        BLAKE3_SOFTTICK
+         mov    r10,QWORD PTR [rsp+0x8]
+         cmp    r10,0x1
+         ja     2f
+@@ -2602,6 +2618,7 @@ _blake3_xof_many_avx512:
+         vpshufd xmm7,xmm7,0x93
+         mov    al,0x7
+ 3:
++        BLAKE3_SOFTTICK
+         vpaddd xmm0,xmm0,xmm4
+         vpaddd xmm0,xmm0,xmm1
+         vpxord xmm3,xmm3,xmm0
+@@ -2679,6 +2696,7 @@ _blake3_xof_many_avx512:
+         cmp    r10,0x10
+         jb     2f
+ 3:
++        BLAKE3_SOFTTICK
+         vpbroadcastd zmm16,DWORD PTR [rsi]
+         vpbroadcastd zmm17,DWORD PTR [rsi+0x4]
+         vpbroadcastd zmm18,DWORD PTR [rsi+0x8]
+@@ -4549,6 +4567,7 @@ _blake3_xof_many_avx512:
+         vpshufd zmm7,zmm7,0x93
+         mov    al,0x7
+ 3:
++        BLAKE3_SOFTTICK
+         vpaddd zmm0,zmm0,zmm4
+         vpaddd zmm0,zmm0,zmm1
+         vpxord zmm3,zmm3,zmm0
+@@ -4655,6 +4674,7 @@ _blake3_xof_many_avx512:
+         vpshufd ymm7,ymm7,0x93
+         mov    al,0x7
+ 3:
++        BLAKE3_SOFTTICK
+         vpaddd ymm0,ymm0,ymm4
+         vpaddd ymm0,ymm0,ymm1
+         vpxord ymm3,ymm3,ymm0
+@@ -4748,6 +4768,7 @@ _blake3_xof_many_avx512:
+         vpshufd xmm7,xmm7,0x93
+         mov    al,0x7
+ 3:
++        BLAKE3_SOFTTICK
+         vpaddd xmm0,xmm0,xmm4
+         vpaddd xmm0,xmm0,xmm1
+         vpxord xmm3,xmm3,xmm0
+diff --git a/llvm/lib/Support/BLAKE3/blake3_sse2_x86-64_unix.S b/llvm/lib/Support/BLAKE3/blake3_sse2_x86-64_unix.S
+index d69a1706f..aab299299 100644
+--- a/llvm/lib/Support/BLAKE3/blake3_sse2_x86-64_unix.S
++++ b/llvm/lib/Support/BLAKE3/blake3_sse2_x86-64_unix.S
+@@ -1,6 +1,7 @@
+ #if defined(__x86_64__)
+ 
+ #include "llvm_blake3_prefix.h"
++#include "llvm_blake3_softticks.h"
+ 
+ #if defined(__ELF__) && !(defined(__sun__) && defined(__svr4__))
+ .section .note.GNU-stack,"",%progbits
+@@ -44,6 +45,7 @@ HIDDEN _blake3_compress_xof_sse2
+ _blake3_hash_many_sse2:
+ blake3_hash_many_sse2:
+         _CET_ENDBR
++        BLAKE3_SOFTTICK
+         push    r15
+         push    r14
+         push    r13
+@@ -81,6 +83,7 @@ blake3_hash_many_sse2:
+         cmp     rsi, 4
+         jc      3f
+ 2:
++        BLAKE3_SOFTTICK
+         movdqu  xmm3, xmmword ptr [rcx]
+         pshufd  xmm0, xmm3, 0x00
+         pshufd  xmm1, xmm3, 0x55
+@@ -99,6 +102,7 @@ blake3_hash_many_sse2:
+         or      eax, r13d
+         xor     edx, edx
+ 9:
++        BLAKE3_SOFTTICK
+         mov     r14d, eax
+         or      eax, r12d
+         add     rdx, 64
+@@ -1685,6 +1689,7 @@ blake3_hash_many_sse2:
+         or      eax, r13d
+         xor     edx, edx
+ 2:
++        BLAKE3_SOFTTICK
+         mov     r14d, eax
+         or      eax, r12d
+         add     rdx, 64
+@@ -1728,6 +1733,7 @@ blake3_hash_many_sse2:
+         punpcklqdq xmm11, xmmword ptr [rsp+0x20]
+         mov     al, 7
+ 9:
++        BLAKE3_SOFTTICK
+         paddd   xmm0, xmm4
+         paddd   xmm8, xmm12
+         movaps  xmmword ptr [rsp+0x20], xmm4
+@@ -1925,6 +1931,7 @@ blake3_hash_many_sse2:
+         or      eax, r13d
+         xor     edx, edx
+ 2:
++        BLAKE3_SOFTTICK
+         mov     r14d, eax
+         or      eax, r12d
+         add     rdx, 64
+@@ -1951,6 +1958,7 @@ blake3_hash_many_sse2:
+         pshufd  xmm7, xmm8, 0x93
+         mov     al, 7
+ 9:
++        BLAKE3_SOFTTICK
+         paddd   xmm0, xmm4
+         paddd   xmm0, xmm1
+         pxor    xmm3, xmm0
+@@ -2043,6 +2051,7 @@ blake3_hash_many_sse2:
+ blake3_compress_in_place_sse2:
+ _blake3_compress_in_place_sse2:
+         _CET_ENDBR
++        BLAKE3_SOFTTICK
+         movups  xmm0, xmmword ptr [rdi]
+         movups  xmm1, xmmword ptr [rdi+0x10]
+         movaps  xmm2, xmmword ptr [BLAKE3_IV+rip]
+@@ -2066,6 +2075,7 @@ _blake3_compress_in_place_sse2:
+         pshufd  xmm7, xmm8, 0x93
+         mov     al, 7
+ 9:
++        BLAKE3_SOFTTICK
+         paddd   xmm0, xmm4
+         paddd   xmm0, xmm1
+         pxor    xmm3, xmm0
+@@ -2155,6 +2165,7 @@ _blake3_compress_in_place_sse2:
+ blake3_compress_xof_sse2:
+ _blake3_compress_xof_sse2:
+         _CET_ENDBR
++        BLAKE3_SOFTTICK
+         movups  xmm0, xmmword ptr [rdi]
+         movups  xmm1, xmmword ptr [rdi+0x10]
+         movaps  xmm2, xmmword ptr [BLAKE3_IV+rip]
+@@ -2180,6 +2191,7 @@ _blake3_compress_xof_sse2:
+         pshufd  xmm7, xmm8, 0x93
+         mov     al, 7
+ 9:
++        BLAKE3_SOFTTICK
+         paddd   xmm0, xmm4
+         paddd   xmm0, xmm1
+         pxor    xmm3, xmm0
+diff --git a/llvm/lib/Support/BLAKE3/blake3_sse41_x86-64_unix.S b/llvm/lib/Support/BLAKE3/blake3_sse41_x86-64_unix.S
+index c5b103af6..485a18f3e 100644
+--- a/llvm/lib/Support/BLAKE3/blake3_sse41_x86-64_unix.S
++++ b/llvm/lib/Support/BLAKE3/blake3_sse41_x86-64_unix.S
+@@ -1,6 +1,7 @@
+ #if defined(__x86_64__)
+ 
+ #include "llvm_blake3_prefix.h"
++#include "llvm_blake3_softticks.h"
+ 
+ #if defined(__ELF__) && !(defined(__sun__) && defined(__svr4__))
+ .section .note.GNU-stack,"",%progbits
+@@ -44,6 +45,7 @@ HIDDEN _blake3_compress_xof_sse41
+ _blake3_hash_many_sse41:
+ blake3_hash_many_sse41:
+         _CET_ENDBR
++        BLAKE3_SOFTTICK
+         push    r15
+         push    r14
+         push    r13
+@@ -81,6 +83,7 @@ blake3_hash_many_sse41:
+         cmp     rsi, 4
+         jc      3f
+ 2:
++        BLAKE3_SOFTTICK
+         movdqu  xmm3, xmmword ptr [rcx]
+         pshufd  xmm0, xmm3, 0x00
+         pshufd  xmm1, xmm3, 0x55
+@@ -99,6 +102,7 @@ blake3_hash_many_sse41:
+         or      eax, r13d
+         xor     edx, edx
+ 9:
++        BLAKE3_SOFTTICK
+         mov     r14d, eax
+         or      eax, r12d
+         add     rdx, 64
+@@ -1489,6 +1493,7 @@ blake3_hash_many_sse41:
+         or      eax, r13d
+         xor     edx, edx
+ 2:
++        BLAKE3_SOFTTICK
+         mov     r14d, eax
+         or      eax, r12d
+         add     rdx, 64
+@@ -1528,6 +1533,7 @@ blake3_hash_many_sse41:
+         pinsrd  xmm11, eax, 3
+         mov     al, 7
+ 9:
++        BLAKE3_SOFTTICK
+         paddd   xmm0, xmm4
+         paddd   xmm8, xmm12
+         movaps  xmmword ptr [rsp+0x20], xmm4
+@@ -1704,6 +1710,7 @@ blake3_hash_many_sse41:
+         or      eax, r13d
+         xor     edx, edx
+ 2:
++        BLAKE3_SOFTTICK
+         mov     r14d, eax
+         or      eax, r12d
+         add     rdx, 64
+@@ -1727,6 +1734,7 @@ blake3_hash_many_sse41:
+         pshufd  xmm7, xmm8, 0x93
+         mov     al, 7
+ 9:
++        BLAKE3_SOFTTICK
+         paddd   xmm0, xmm4
+         paddd   xmm0, xmm1
+         pxor    xmm3, xmm0
+@@ -1806,6 +1814,7 @@ blake3_hash_many_sse41:
+ blake3_compress_in_place_sse41:
+ _blake3_compress_in_place_sse41:
+         _CET_ENDBR
++        BLAKE3_SOFTTICK
+         movups  xmm0, xmmword ptr [rdi]
+         movups  xmm1, xmmword ptr [rdi+0x10]
+         movaps  xmm2, xmmword ptr [BLAKE3_IV+rip]
+@@ -1831,6 +1840,7 @@ _blake3_compress_in_place_sse41:
+         movaps  xmm15, xmmword ptr [ROT16+rip]
+         mov     al, 7
+ 9:
++        BLAKE3_SOFTTICK
+         paddd   xmm0, xmm4
+         paddd   xmm0, xmm1
+         pxor    xmm3, xmm0
+@@ -1907,6 +1917,7 @@ _blake3_compress_in_place_sse41:
+ blake3_compress_xof_sse41:
+ _blake3_compress_xof_sse41:
+         _CET_ENDBR
++        BLAKE3_SOFTTICK
+         movups  xmm0, xmmword ptr [rdi]
+         movups  xmm1, xmmword ptr [rdi+0x10]
+         movaps  xmm2, xmmword ptr [BLAKE3_IV+rip]
+@@ -1934,6 +1945,7 @@ _blake3_compress_xof_sse41:
+         movaps  xmm15, xmmword ptr [ROT16+rip]
+         mov     al, 7
+ 9:
++        BLAKE3_SOFTTICK
+         paddd   xmm0, xmm4
+         paddd   xmm0, xmm1
+         pxor    xmm3, xmm0
+diff --git a/llvm/lib/Support/BLAKE3/llvm_blake3_softticks.h b/llvm/lib/Support/BLAKE3/llvm_blake3_softticks.h
+new file mode 100644
+index 000000000..00f847e91
+--- /dev/null
++++ b/llvm/lib/Support/BLAKE3/llvm_blake3_softticks.h
+@@ -0,0 +1,40 @@
++#ifndef LLVM_BLAKE3_SOFTTICKS_H
++#define LLVM_BLAKE3_SOFTTICKS_H
++
++/* rr software ticks for the x86-64 assembly (the *_x86-64_unix.S files). A program built
++   with a software-ticks compiler pass counts its own progress instead of relying on the
++   CPU's branch counter: the pass ticks compiled code at every function entry and loop
++   header, so that no instruction runs twice in the same stack frame without a tick in
++   between. The assembly ticks the same way through BLAKE3_SOFTTICK: at every function
++   entry (after _CET_ENDBR) and at the head of every loop (each label that a backward
++   branch targets and that a cycle passes through; the functions' shared epilogues, which
++   tail paths reach by backward jumps, are in no cycle and do not tick). The compiler's
++   plugin predefines __RR_SOFTTICKS__ (the ABI version), also for .S files; without it
++   BLAKE3_SOFTTICK is empty and the object code is unchanged.
++
++   The sequence is ABI version 1's x86-64 tick (RR_SOFTTICKS_X64_TICK_ASM in rr's
++   softticks.h), byte for byte: while the countdown is armed (its top bit clear) it
++   decrements it, trapping at 0. It clobbers the flags only, which no site reads before
++   writing them. The files are in Intel syntax, so it switches to AT&T syntax for the
++   sequence and back. Its end label is 7731, not the ABI string's 1, which would capture a
++   loop's `jcc 1b`; the files define no label 7731.
++
++   The Windows variants (*_windows_gnu.S, *_windows_msvc.asm) are not ticked: rr runs on
++   Linux only. */
++#if defined(__RR_SOFTTICKS__)
++#if __RR_SOFTTICKS__ != 1
++#error "BLAKE3: unsupported software-ticks ABI version"
++#endif
++#define BLAKE3_SOFTTICK                                                        \
++  .att_syntax prefix;                                                          \
++  testb $0x80, 0x70001807;                                                     \
++  jnz 7731f;                                                                   \
++  decq 0x70001800;                                                             \
++  jnz 7731f;                                                                   \
++  int3;                                                                        \
++  7731: .intel_syntax noprefix
++#else
++#define BLAKE3_SOFTTICK
++#endif
++
++#endif /* LLVM_BLAKE3_SOFTTICKS_H */

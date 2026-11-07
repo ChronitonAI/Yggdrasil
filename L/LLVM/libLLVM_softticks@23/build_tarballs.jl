@@ -13,7 +13,10 @@
 # patches, plus the bundled patches of LLVM_full@23) and the same LLVM configuration as
 # ../common.jl's buildscript, but only the projects Julia needs (llvm, lld): no clang,
 # compiler-rt or MLIR, which v1's two-stage LLVM_full + extraction recipes build and which
-# take well over the time one build may have. Assembly is kept (BLAKE3's .S files).
+# take well over the time one build may have. Assembly is kept (BLAKE3's .S files), and
+# ticked by hand (bundled/patches/blake3-rr-softticks.patch: a tick at every function entry
+# and loop head of the x86-64 kernels, only where the compiler predefines __RR_SOFTTICKS__;
+# without it the objects are byte-identical).
 using BinaryBuilder2
 using BinaryBuilder2: get_default_target_spec
 
@@ -31,6 +34,14 @@ for f in ${WORKSPACE}/srcdir/patches/*.patch; do
 done
 (cd compiler-rt && for f in ${WORKSPACE}/srcdir/crt_patches/*.patch; do atomic_patch -p1 ${f}; done)
 (cd libcxx && for f in ${WORKSPACE}/srcdir/libcxx_patches/*.patch; do atomic_patch -p1 ${f}; done)
+
+# This recipe's own patches (./bundled/patches): rr software ticks for BLAKE3's x86-64
+# assembly (llvm/lib/Support/BLAKE3/*_x86-64_unix.S), which the compiler's ticks plugin
+# cannot instrument. They only change the code where the plugin predefines
+# __RR_SOFTTICKS__ (every compile on the rr_softticks platforms, .S files included).
+for f in ${WORKSPACE}/srcdir/softticks/patches/*.patch; do
+    atomic_patch -p1 ${f}
+done
 
 # LLVM's CMake needs Python 3 (the host's Python_jll).
 export PATH="${host_bindir}:${PATH}"
@@ -164,6 +175,7 @@ build_tarballs(;
         GitSource("https://github.com/intel/ittapi.git",
                   "c2a515bd34f37ba83c61474a04cd2bba57fde67e"),
         DirectorySource(joinpath(@__DIR__, "..", "LLVM_full@23", "bundled")),
+        DirectorySource(joinpath(@__DIR__, "bundled"); target="softticks"),
     ],
     script,
     platforms = [Platform("x86_64", "linux"; rr_softticks="1")],
