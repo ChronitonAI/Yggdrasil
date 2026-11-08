@@ -4,7 +4,7 @@ name = "Zstd"
 version = v"1.5.7"
 
 sources = [
-    ArchiveSource("https://github.com/facebook/zstd/releases/download/v$(version)/zstd-$(version).tar.gz",
+    ArchiveSource("https://github.com/meta/zstd/releases/download/v$(version)/zstd-$(version).tar.gz",
                   "eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3"),
     DirectorySource("bundled"),
 ]

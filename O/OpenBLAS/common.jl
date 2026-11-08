@@ -281,6 +281,10 @@ function openblas_script(;num_64bit_threads::Integer=32, openblas32::Bool=false,
 
     # Build the actual library
     make "${flags[@]}" shared
+    # A parallel `make shared` can run two `ar`s on the same archive (seen with LAPACKE's, which
+    # then fails with "Bus error" or leaves a damaged archive); a serial pass redoes whatever that
+    # left incomplete and is a no-op otherwise.
+    make "${flags[@]}" -j1 shared
 
     # rr_softticks (ygglet): the compiler's pass ticks the C and Fortran code, 9x-rr-softticks-*.patch
     # the hand-written x86-64 kernels; check what the build cannot see by itself.
