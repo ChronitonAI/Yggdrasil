@@ -1,0 +1,6880 @@
+{
+ "problems": [],
+ "ticks": {
+  "mpn/x86_64/aorrlsh1_n.asm:131:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9"
+   ],
+   "header": "addl %eax, %eax",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "rsblsh1_n.asm",
+    "x86_64_addlsh1_n.asm"
+   ]
+  },
+  "mpn/x86_64/aorrlshC_n.asm:133:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r13",
+    "r14",
+    "r15",
+    "r8",
+    "r9"
+   ],
+   "header": "movq 0x10(%rdx,%rcx,8), %r10",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_addlsh1_n.asm",
+    "core2_addlsh2_n.asm",
+    "rsblsh2_n.asm",
+    "silvermont_addlsh1_n.asm",
+    "silvermont_addlsh2_n.asm",
+    "x86_64_addlsh2_n.asm"
+   ]
+  },
+  "mpn/x86_64/aorrlsh_n.asm:117:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r8",
+    "r9"
+   ],
+   "header": "movq (%rdx), %r8",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "addlsh_n.asm",
+    "rsblsh_n.asm"
+   ]
+  },
+  "mpn/x86_64/aorrlsh_n.asm:95:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r13",
+    "r14",
+    "r8",
+    "r9"
+   ],
+   "header": "movq (%rdx), %r8",
+   "labels": [
+    ".L012"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "addlsh_n.asm",
+    "rsblsh_n.asm"
+   ]
+  },
+  "mpn/x86_64/aors_err1_n.asm:180:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r15"
+   ],
+   "header": "shrb %al",
+   "labels": [
+    ".Lloop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "add_err1_n.asm",
+    "sub_err1_n.asm"
+   ]
+  },
+  "mpn/x86_64/aors_err2_n.asm:124:before": {
+   "dead": [
+    "r14",
+    "rbx"
+   ],
+   "header": "movq (%rsi,%r10,8), %rbx",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "add_err2_n.asm",
+    "sub_err2_n.asm"
+   ]
+  },
+  "mpn/x86_64/aors_err3_n.asm:113:before": {
+   "dead": [
+    "rbx"
+   ],
+   "header": "shrq %rax",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "add_err3_n.asm",
+    "sub_err3_n.asm"
+   ]
+  },
+  "mpn/x86_64/aors_n.asm:147:before": {
+   "dead": [
+    "r8"
+   ],
+   "header": "adcq (%rdx), %r8",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r8"
+   ],
+   "round": 1,
+   "units": [
+    "x86_64_add_n.asm",
+    "x86_64_sub_n.asm"
+   ]
+  },
+  "mpn/x86_64/aorsmul_1.asm:152:split": {
+   "dead": [],
+   "header": "addq %r10, (%rdi,%r11,8)",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "x86_64_addmul_1.asm",
+    "x86_64_submul_1.asm"
+   ]
+  },
+  "mpn/x86_64/atom/addmul_2.asm:127:split": {
+   "dead": [
+    "rbp",
+    "rdx"
+   ],
+   "header": "mulq %r9",
+   "labels": [
+    ".Llo1",
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_addmul_2.asm"
+   ]
+  },
+  "mpn/x86_64/atom/aorrlsh1_n.asm:173:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r8",
+    "r9",
+    "rbx"
+   ],
+   "header": "addl %eax, %eax",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_addlsh1_n.asm",
+    "bd1_addlsh1_n.asm",
+    "zen_addlsh1_n.asm"
+   ]
+  },
+  "mpn/x86_64/atom/aorrlsh2_n.asm:142:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "rbp"
+   ],
+   "header": "leaq (%r8,%r9,4), %rbp",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_addlsh2_n.asm"
+   ]
+  },
+  "mpn/x86_64/atom/aors_n.asm:103:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "rax"
+   ],
+   "header": "adcq (%rdx), %r9",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r10"
+   ],
+   "round": 1,
+   "units": [
+    "atom_add_n.asm",
+    "atom_sub_n.asm"
+   ]
+  },
+  "mpn/x86_64/atom/aorsmul_1.asm:149:split": {
+   "dead": [
+    "rdx"
+   ],
+   "header": "mulq %rcx",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_addmul_1.asm",
+    "atom_submul_1.asm"
+   ]
+  },
+  "mpn/x86_64/atom/lshift.asm:97:split": {
+   "dead": [
+    "r8"
+   ],
+   "header": "shlq %cl, %r10",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_lshift.asm"
+   ]
+  },
+  "mpn/x86_64/atom/lshiftc.asm:97:split": {
+   "dead": [
+    "r8"
+   ],
+   "header": "shlq %cl, %r10",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_lshiftc.asm"
+   ]
+  },
+  "mpn/x86_64/atom/mul_1.asm:105:split": {
+   "dead": [
+    "r10",
+    "rdx"
+   ],
+   "header": "mulq %rcx",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_mul_1.asm"
+   ]
+  },
+  "mpn/x86_64/atom/redc_1.asm:114:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "leaq 0x1(%rcx), %r14",
+   "labels": [
+    ".Lotp1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "atom_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/atom/redc_1.asm:142:split": {
+   "dead": [
+    "rdx"
+   ],
+   "header": "mulq %r13",
+   "labels": [
+    ".Ltp1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/atom/redc_1.asm:192:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "leaq 0x3(%rcx), %r14",
+   "labels": [
+    ".Lotp3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "atom_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/atom/redc_1.asm:221:split": {
+   "dead": [
+    "rdx"
+   ],
+   "header": "mulq %r13",
+   "labels": [
+    ".Ltp3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/atom/redc_1.asm:301:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "leaq 0x4(%rcx), %r14",
+   "labels": [
+    ".Lotp0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "atom_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/atom/redc_1.asm:330:split": {
+   "dead": [
+    "rdx"
+   ],
+   "header": "mulq %r13",
+   "labels": [
+    ".Ltp0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/atom/redc_1.asm:380:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "leaq 0x2(%rcx), %r14",
+   "labels": [
+    ".Lotp2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "atom_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/atom/redc_1.asm:409:split": {
+   "dead": [
+    "rdx"
+   ],
+   "header": "mulq %r13",
+   "labels": [
+    ".Ltp2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/atom/redc_1.asm:502:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq -0x18(%r12), %rax",
+   "labels": [
+    ".Ln3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/atom/redc_1.asm:545:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "movq -0x20(%r12), %rax",
+   "labels": [
+    ".Ln4"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/atom/rshift.asm:95:split": {
+   "dead": [
+    "r8"
+   ],
+   "header": "shrq %cl, %r10",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_rshift.asm"
+   ]
+  },
+  "mpn/x86_64/atom/sublsh1_n.asm:171:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r15",
+    "r8",
+    "r9",
+    "rbx"
+   ],
+   "header": "movq (%rdx), %r8",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_sublsh1_n.asm",
+    "bd1_sublsh1_n.asm",
+    "zen_sublsh1_n.asm"
+   ]
+  },
+  "mpn/x86_64/bd1/addmul_2.asm:150:split": {
+   "dead": [
+    "r8",
+    "rdx"
+   ],
+   "header": "mulq %rbx",
+   "labels": [
+    ".Ltop",
+    ".Llo2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bd1_addmul_2.asm",
+    "p4_addmul_2.asm"
+   ]
+  },
+  "mpn/x86_64/bd1/aorsmul_1.asm:150:split": {
+   "dead": [
+    "rdx"
+   ],
+   "header": "mulq %rcx",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bd1_addmul_1.asm",
+    "bd1_submul_1.asm",
+    "goldmont_addmul_1.asm",
+    "goldmont_submul_1.asm",
+    "p4_addmul_1.asm",
+    "p4_submul_1.asm"
+   ]
+  },
+  "mpn/x86_64/bd1/mul_1.asm:154:split": {
+   "dead": [
+    "r10",
+    "r9",
+    "rdx"
+   ],
+   "header": "mulq %rcx",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bd1_mul_1.asm",
+    "p4_mul_1.asm",
+    "silvermont_mul_1.asm"
+   ]
+  },
+  "mpn/x86_64/bd1/mul_basecase.asm:142:split": {
+   "dead": [
+    "r10"
+   ],
+   "header": "movq %rdx, %r10",
+   "labels": [
+    ".Lm1tp"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bd1_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bd1/mul_basecase.asm:218:split": {
+   "dead": [
+    "r11",
+    "rdx"
+   ],
+   "header": "addq %rax, %r12",
+   "labels": [
+    ".Lm2tp"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bd1_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bd1/mul_basecase.asm:270:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r15",
+    "r8",
+    "r9",
+    "rax",
+    "rbp",
+    "rdx"
+   ],
+   "header": "movq (%rcx), %r9",
+   "labels": [
+    ".Louter"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "bd1_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bd1/mul_basecase.asm:322:split": {
+   "dead": [
+    "r10",
+    "rdx"
+   ],
+   "header": "mulq %r9",
+   "labels": [
+    ".Llo2",
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bd1_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bd2/gcd_11.asm:81:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rax",
+    "rcx"
+   ],
+   "header": "tzcntq %rdx, %rcx",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt2_gcd_11.asm",
+    "zen_gcd_11.asm"
+   ]
+  },
+  "mpn/x86_64/bdiv_dbm1c.asm:80:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "rax",
+    "rdx"
+   ],
+   "header": "movq (%rsi,%r9,8), %rax",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "x86_64_bdiv_dbm1c.asm"
+   ]
+  },
+  "mpn/x86_64/bdiv_q_1.asm:138:split": {
+   "dead": [
+    "r9",
+    "rcx",
+    "rdx"
+   ],
+   "header": "mulq %r11",
+   "labels": [
+    ".Lntop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bdiv_q_1.asm"
+   ]
+  },
+  "mpn/x86_64/bdiv_q_1.asm:163:split": {
+   "dead": [
+    "rdx"
+   ],
+   "header": "mulq %r11",
+   "labels": [
+    ".Lutop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bdiv_q_1.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/aors_n.asm:128:split": {
+   "dead": [
+    "r10",
+    "r11"
+   ],
+   "header": "movq 0x8(%rsi,%rax,8), %r10",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r10"
+   ],
+   "round": 1,
+   "units": [
+    "bt1_add_n.asm",
+    "bt1_sub_n.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/aorsmul_1.asm:144:split": {
+   "dead": [
+    "r8",
+    "r9",
+    "rax",
+    "rdx"
+   ],
+   "header": "movq -0x10(%rsi,%rbx,8), %rax",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt1_addmul_1.asm",
+    "bt1_submul_1.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/copyd.asm:65:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movq 0x18(%rsi,%rdx,8), %r8",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt1_copyd.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/copyi.asm:68:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movq (%rsi,%rdx,8), %r8",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt1_copyi.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/gcd_11.asm:106:split": {
+   "dead": [
+    "r11",
+    "r8",
+    "r9",
+    "rax",
+    "rdx"
+   ],
+   "header": "shrq %cl, %rdi",
+   "labels": [
+    ".Lshr"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt1_gcd_11.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/mul_1.asm:134:split": {
+   "dead": [
+    "r8",
+    "r9",
+    "rax",
+    "rdx"
+   ],
+   "header": "movq -0x10(%rsi,%rbx,8), %rax",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt1_mul_1.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/mul_basecase.asm:161:split": {
+   "dead": [
+    "rax",
+    "rdx"
+   ],
+   "header": "movq %r10, -0x10(%rdi,%rbp,8)",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt1_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/mul_basecase.asm:210:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r9",
+    "rbp"
+   ],
+   "header": "decq %r8",
+   "labels": [
+    ".Lto3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "bt1_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/mul_basecase.asm:223:split": {
+   "dead": [
+    "rax",
+    "rdx"
+   ],
+   "header": "addq %r10, -0x10(%rdi,%rbp,8)",
+   "labels": [
+    ".Lta3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt1_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/mul_basecase.asm:290:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r9",
+    "rbp"
+   ],
+   "header": "decq %r8",
+   "labels": [
+    ".Lto2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "bt1_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/mul_basecase.asm:303:split": {
+   "dead": [
+    "rax",
+    "rdx"
+   ],
+   "header": "addq %r10, -0x10(%rdi,%rbp,8)",
+   "labels": [
+    ".Lta2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt1_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/mul_basecase.asm:362:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r9",
+    "rbp"
+   ],
+   "header": "decq %r8",
+   "labels": [
+    ".Lto1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "bt1_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/mul_basecase.asm:375:split": {
+   "dead": [
+    "rax",
+    "rdx"
+   ],
+   "header": "addq %r10, -0x10(%rdi,%rbp,8)",
+   "labels": [
+    ".Lta1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt1_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/mul_basecase.asm:427:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r9",
+    "rbp"
+   ],
+   "header": "decq %r8",
+   "labels": [
+    ".Lto0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "bt1_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/mul_basecase.asm:440:split": {
+   "dead": [
+    "rax",
+    "rdx"
+   ],
+   "header": "addq %r10, -0x10(%rdi,%rbp,8)",
+   "labels": [
+    ".Lta0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt1_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/redc_1.asm:113:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "leaq 0x1(%rcx), %r14",
+   "labels": [
+    ".Lotp1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "bt1_redc_1.asm",
+    "p4_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/redc_1.asm:137:split": {
+   "dead": [
+    "rax",
+    "rdx"
+   ],
+   "header": "addq %rbp, -0x10(%rsi,%r14,8)",
+   "labels": [
+    ".Ltp1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt1_redc_1.asm",
+    "p4_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/redc_1.asm:183:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "leaq 0x3(%rcx), %r14",
+   "labels": [
+    ".Lotp3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "bt1_redc_1.asm",
+    "p4_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/redc_1.asm:207:split": {
+   "dead": [
+    "rax",
+    "rdx"
+   ],
+   "header": "addq %rbp, -0x10(%rsi,%r14,8)",
+   "labels": [
+    ".Ltp3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt1_redc_1.asm",
+    "p4_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/redc_1.asm:281:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "leaq (%rcx), %r14",
+   "labels": [
+    ".Lb0",
+    ".Lotp0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "bt1_redc_1.asm",
+    "p4_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/redc_1.asm:305:split": {
+   "dead": [
+    "rax",
+    "rdx"
+   ],
+   "header": "addq %rbp, -0x10(%rsi,%r14,8)",
+   "labels": [
+    ".Ltp0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt1_redc_1.asm",
+    "p4_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/redc_1.asm:351:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "leaq 0x2(%rcx), %r14",
+   "labels": [
+    ".Lotp2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "bt1_redc_1.asm",
+    "p4_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/redc_1.asm:375:split": {
+   "dead": [
+    "rax",
+    "rdx"
+   ],
+   "header": "addq %rbp, -0x10(%rsi,%r14,8)",
+   "labels": [
+    ".Ltp2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt1_redc_1.asm",
+    "p4_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/redc_1.asm:464:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq -0x18(%r12), %rax",
+   "labels": [
+    ".Ln3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt1_redc_1.asm",
+    "p4_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/sqr_basecase.asm:192:split": {
+   "dead": [
+    "rax",
+    "rdx"
+   ],
+   "header": "movq %r8, -0x10(%rdi,%rbp,8)",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt1_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/sqr_basecase.asm:300:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rax",
+    "rbp",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq %rbx, %rbp",
+   "labels": [
+    ".Louter"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 5,
+   "units": [
+    "bt1_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/sqr_basecase.asm:310:split": {
+   "dead": [
+    "rax",
+    "rdx"
+   ],
+   "header": "addq %r8, -0x10(%rdi,%rbp,8)",
+   "labels": [
+    ".Lta3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt1_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/sqr_basecase.asm:362:split": {
+   "dead": [
+    "rax",
+    "rdx"
+   ],
+   "header": "addq %r8, -0x10(%rdi,%rbp,8)",
+   "labels": [
+    ".Lta2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "bt1_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/sqr_basecase.asm:411:split": {
+   "dead": [
+    "rax",
+    "rdx"
+   ],
+   "header": "addq %r8, -0x10(%rdi,%rbp,8)",
+   "labels": [
+    ".Lta1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 3,
+   "units": [
+    "bt1_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/sqr_basecase.asm:460:split": {
+   "dead": [
+    "rax",
+    "rdx"
+   ],
+   "header": "addq %r8, -0x10(%rdi,%rbp,8)",
+   "labels": [
+    ".Lta0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 4,
+   "units": [
+    "bt1_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/bt1/sqr_basecase.asm:539:split": {
+   "dead": [
+    "r11",
+    "rcx"
+   ],
+   "header": "addq %rbx, %r8",
+   "labels": [
+    ".Ltsd"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt1_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/cnd_aors_n.asm:150:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r9",
+    "rbp",
+    "rbx"
+   ],
+   "header": "movq (%rcx,%r8,8), %r12",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "x86_64_cnd_add_n.asm",
+    "x86_64_cnd_sub_n.asm"
+   ]
+  },
+  "mpn/x86_64/com.asm:79:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movq (%rsi,%rdx,8), %r8",
+   "labels": [
+    ".Loop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "x86_64_com.asm"
+   ]
+  },
+  "mpn/x86_64/copyd.asm:67:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rax",
+    "rcx"
+   ],
+   "header": "movq (%rsi), %rax",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "x86_64_copyd.asm"
+   ]
+  },
+  "mpn/x86_64/copyi.asm:66:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rax",
+    "rcx"
+   ],
+   "header": "movq (%rsi), %rax",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "x86_64_copyi.asm"
+   ]
+  },
+  "mpn/x86_64/core2/aors_n.asm:126:before": {
+   "dead": [
+    "r8",
+    "r9",
+    "rax"
+   ],
+   "header": "jrcxz 0x50 <.Lrrln143>",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r8"
+   ],
+   "round": 1,
+   "units": [
+    "core2_add_n.asm",
+    "core2_sub_n.asm"
+   ]
+  },
+  "mpn/x86_64/core2/aorsmul_1.asm:148:split": {
+   "dead": [
+    "rdx"
+   ],
+   "header": "mulq %rcx",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_addmul_1.asm",
+    "core2_submul_1.asm",
+    "silvermont_addmul_1.asm",
+    "silvermont_submul_1.asm"
+   ]
+  },
+  "mpn/x86_64/core2/divrem_1.asm:183:split": {
+   "dead": [
+    "r13",
+    "rbp",
+    "rdx"
+   ],
+   "header": "decq %rbx",
+   "labels": [
+    ".Luok"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_divrem_1.asm"
+   ]
+  },
+  "mpn/x86_64/core2/divrem_1.asm:220:split": {
+   "dead": [
+    "r10",
+    "r13",
+    "rbx",
+    "rdx",
+    "rsi"
+   ],
+   "header": "mulq %r9",
+   "labels": [
+    ".Lftop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_divrem_1.asm"
+   ]
+  },
+  "mpn/x86_64/core2/gcd_11.asm:81:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rax",
+    "rdx"
+   ],
+   "header": "cmovbq %rdx, %rdi",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bd1_gcd_11.asm",
+    "core2_gcd_11.asm",
+    "coreisbr_gcd_11.asm",
+    "k10_gcd_11.asm",
+    "nano_gcd_11.asm"
+   ]
+  },
+  "mpn/x86_64/core2/lshift.asm:120:split": {
+   "dead": [
+    "r10"
+   ],
+   "header": "shldq %cl, %r8, %r11",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_lshift.asm"
+   ]
+  },
+  "mpn/x86_64/core2/lshiftc.asm:127:split": {
+   "dead": [
+    "r10"
+   ],
+   "header": "shldq %cl, %r8, %r11",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_lshiftc.asm"
+   ]
+  },
+  "mpn/x86_64/core2/mul_basecase.asm:205:before": {
+   "dead": [
+    "r11",
+    "r12",
+    "rdx"
+   ],
+   "header": "mulq %r10",
+   "labels": [
+    ".Lm1top"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_mul_basecase.asm",
+    "p4_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/mul_basecase.asm:287:before": {
+   "dead": [
+    "rbp",
+    "rdx"
+   ],
+   "header": "mulq %r10",
+   "labels": [
+    ".Lm2top0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_mul_basecase.asm",
+    "p4_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/mul_basecase.asm:354:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r15",
+    "r8",
+    "rax",
+    "rbp",
+    "rbx",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq (%r14), %r10",
+   "labels": [
+    ".Lolo0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "core2_mul_basecase.asm",
+    "p4_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/mul_basecase.asm:373:before": {
+   "dead": [
+    "r12",
+    "rdx"
+   ],
+   "header": "mulq %r11",
+   "labels": [
+    ".Lam2top0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_mul_basecase.asm",
+    "p4_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/mul_basecase.asm:460:before": {
+   "dead": [
+    "rbp",
+    "rdx"
+   ],
+   "header": "mulq %r10",
+   "labels": [
+    ".Lm2top1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_mul_basecase.asm",
+    "p4_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/mul_basecase.asm:527:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r15",
+    "r8",
+    "rax",
+    "rbp",
+    "rbx",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq (%r14), %r10",
+   "labels": [
+    ".Lolo1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "core2_mul_basecase.asm",
+    "p4_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/mul_basecase.asm:546:before": {
+   "dead": [
+    "r12",
+    "rdx"
+   ],
+   "header": "mulq %r11",
+   "labels": [
+    ".Lam2top1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_mul_basecase.asm",
+    "p4_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/mul_basecase.asm:633:before": {
+   "dead": [
+    "rbp",
+    "rdx"
+   ],
+   "header": "mulq %r10",
+   "labels": [
+    ".Lm2top2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_mul_basecase.asm",
+    "p4_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/mul_basecase.asm:700:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r15",
+    "r8",
+    "rax",
+    "rbp",
+    "rbx",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq (%r14), %r10",
+   "labels": [
+    ".Lolo2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "core2_mul_basecase.asm",
+    "p4_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/mul_basecase.asm:719:before": {
+   "dead": [
+    "r12",
+    "rdx"
+   ],
+   "header": "mulq %r11",
+   "labels": [
+    ".Lam2top2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_mul_basecase.asm",
+    "p4_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/mul_basecase.asm:806:before": {
+   "dead": [
+    "rbp",
+    "rdx"
+   ],
+   "header": "mulq %r10",
+   "labels": [
+    ".Lm2top3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_mul_basecase.asm",
+    "p4_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/mul_basecase.asm:873:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r15",
+    "r8",
+    "rax",
+    "rbp",
+    "rbx",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq (%r14), %r10",
+   "labels": [
+    ".Lolo3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "core2_mul_basecase.asm",
+    "p4_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/mul_basecase.asm:892:before": {
+   "dead": [
+    "r12",
+    "rdx"
+   ],
+   "header": "mulq %r11",
+   "labels": [
+    ".Lam2top3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_mul_basecase.asm",
+    "p4_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/mullo_basecase.asm:156:split": {
+   "dead": [
+    "rbp",
+    "rdx"
+   ],
+   "header": "mulq %r10",
+   "labels": [
+    ".Lm2tp"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_mullo_basecase.asm",
+    "p4_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/mullo_basecase.asm:217:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r15",
+    "rax",
+    "rbp",
+    "rbx",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq (%r8), %r10",
+   "labels": [
+    ".Louter"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "core2_mullo_basecase.asm",
+    "p4_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/mullo_basecase.asm:265:split": {
+   "dead": [
+    "r12",
+    "rdx"
+   ],
+   "header": "mulq %r11",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_mullo_basecase.asm",
+    "p4_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/redc_1.asm:115:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdi",
+    "rdx"
+   ],
+   "header": "leaq 0x3(%rcx), %r14",
+   "labels": [
+    ".Lotp1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/core2/redc_1.asm:148:split": {
+   "dead": [
+    "rdx"
+   ],
+   "header": "mulq %r13",
+   "labels": [
+    ".Ltp1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "core2_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/core2/redc_1.asm:197:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdi",
+    "rdx"
+   ],
+   "header": "leaq 0x4(%rcx), %r14",
+   "labels": [
+    ".Lotp0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "core2_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/core2/redc_1.asm:229:split": {
+   "dead": [
+    "rdx"
+   ],
+   "header": "mulq %r13",
+   "labels": [
+    ".Ltp0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/core2/redc_1.asm:345:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq -0x18(%r12), %rax",
+   "labels": [
+    ".Ln3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/core2/redc_1.asm:389:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "movq -0x20(%r12), %rax",
+   "labels": [
+    ".Ln4"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/core2/rshift.asm:118:split": {
+   "dead": [
+    "r10"
+   ],
+   "header": "shrdq %cl, %r8, %r11",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_rshift.asm"
+   ]
+  },
+  "mpn/x86_64/core2/sqr_basecase.asm:199:before": {
+   "dead": [
+    "r12",
+    "r14",
+    "rbp",
+    "rdx"
+   ],
+   "header": "mulq %r10",
+   "labels": [
+    ".Lm2top1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_sqr_basecase.asm",
+    "p4_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/sqr_basecase.asm:264:before": {
+   "dead": [
+    "r12",
+    "r14",
+    "rbp",
+    "rdx"
+   ],
+   "header": "mulq %r10",
+   "labels": [
+    ".Lm2top3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_sqr_basecase.asm",
+    "p4_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/sqr_basecase.asm:329:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq -0x8(%rsi,%r8,8), %r10",
+   "labels": [
+    ".Lam2o1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 3,
+   "units": [
+    "core2_sqr_basecase.asm",
+    "p4_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/sqr_basecase.asm:344:before": {
+   "dead": [
+    "r9",
+    "rdx"
+   ],
+   "header": "mulq %r11",
+   "labels": [
+    ".Lam2top1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_sqr_basecase.asm",
+    "p4_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/sqr_basecase.asm:434:before": {
+   "dead": [
+    "r9",
+    "rdx"
+   ],
+   "header": "mulq %r11",
+   "labels": [
+    ".Lam2top3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "core2_sqr_basecase.asm",
+    "p4_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/sqr_basecase.asm:523:split": {
+   "dead": [
+    "r12",
+    "r14",
+    "rbp",
+    "rdx"
+   ],
+   "header": "mulq %r10",
+   "labels": [
+    ".Lm2e2",
+    ".Lm2top2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_sqr_basecase.asm",
+    "p4_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/sqr_basecase.asm:588:before": {
+   "dead": [
+    "r12",
+    "r14",
+    "rbp",
+    "rdx"
+   ],
+   "header": "mulq %r10",
+   "labels": [
+    ".Lm2top0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_sqr_basecase.asm",
+    "p4_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/sqr_basecase.asm:653:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq -0x8(%rsi,%r8,8), %r10",
+   "labels": [
+    ".Lam2o2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 3,
+   "units": [
+    "core2_sqr_basecase.asm",
+    "p4_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/sqr_basecase.asm:668:before": {
+   "dead": [
+    "r9",
+    "rdx"
+   ],
+   "header": "mulq %r11",
+   "labels": [
+    ".Lam2top2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_sqr_basecase.asm",
+    "p4_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/sqr_basecase.asm:757:before": {
+   "dead": [
+    "r9",
+    "rdx"
+   ],
+   "header": "mulq %r11",
+   "labels": [
+    ".Lam2top0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "core2_sqr_basecase.asm",
+    "p4_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/sqr_basecase.asm:872:split": {
+   "dead": [
+    "r12",
+    "r13",
+    "r14",
+    "rbp",
+    "rcx",
+    "rdx"
+   ],
+   "header": "mulq %rax",
+   "labels": [
+    ".Ldtop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_sqr_basecase.asm",
+    "p4_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/core2/sublshC_n.asm:118:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8",
+    "r9",
+    "rbx"
+   ],
+   "header": "movq -0x18(%rdx,%rcx,8), %r8",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "core2_sublsh1_n.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/addmul_1.asm:171:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8"
+   ],
+   "header": "adoxq -0x8(%rdi), %r10",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [
+    "C",
+    "O"
+   ],
+   "mode": "co",
+   "regs": [
+    "r11",
+    "r8"
+   ],
+   "round": 1,
+   "units": [
+    "coreibwl_addmul_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mul_1.asm:160:split": {
+   "dead": [
+    "r11"
+   ],
+   "header": "movq %r10, -0x8(%rdi)",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r11"
+   ],
+   "round": 1,
+   "units": [
+    "coreibwl_mul_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mul_basecase.asm:160:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r9"
+   ],
+   "header": "mulxq (%rsi), %r10, %r11",
+   "labels": [
+    ".Lmf0"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r12"
+   ],
+   "round": 1,
+   "units": [
+    "coreibwl_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mul_basecase.asm:165:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r9"
+   ],
+   "header": "mulxq (%rsi), %r12, %r9",
+   "labels": [
+    ".Lmf3"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r12"
+   ],
+   "round": 2,
+   "units": [
+    "coreibwl_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mul_basecase.asm:171:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r9"
+   ],
+   "header": "mulxq (%rsi), %r10, %r11",
+   "labels": [
+    ".Lmf4"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r10"
+   ],
+   "round": 3,
+   "units": [
+    "coreibwl_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mul_basecase.asm:177:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r9"
+   ],
+   "header": "mulxq (%rsi), %r12, %r9",
+   "labels": [
+    ".Lmf5"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r12"
+   ],
+   "round": 4,
+   "units": [
+    "coreibwl_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mul_basecase.asm:183:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r9"
+   ],
+   "header": "mulxq (%rsi), %r10, %r11",
+   "labels": [
+    ".Lmf6"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r10"
+   ],
+   "round": 5,
+   "units": [
+    "coreibwl_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mul_basecase.asm:189:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r9"
+   ],
+   "header": "mulxq (%rsi), %r12, %r9",
+   "labels": [
+    ".Lmf7"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r12"
+   ],
+   "round": 6,
+   "units": [
+    "coreibwl_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mul_basecase.asm:195:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r9"
+   ],
+   "header": "mulxq (%rsi), %r12, %r9",
+   "labels": [
+    ".Lmf1"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r10"
+   ],
+   "round": 7,
+   "units": [
+    "coreibwl_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mul_basecase.asm:198:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r9"
+   ],
+   "header": "mulxq (%rsi), %r10, %r11",
+   "labels": [
+    ".Lmf2"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r10"
+   ],
+   "round": 8,
+   "units": [
+    "coreibwl_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mul_basecase.asm:206:before": {
+   "dead": [
+    "r10"
+   ],
+   "header": "movq %r10, -0x8(%rdi)",
+   "labels": [
+    ".Lm1top"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r10"
+   ],
+   "round": 9,
+   "units": [
+    "coreibwl_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mul_basecase.asm:291:before": {
+   "dead": [
+    "r10",
+    "r11"
+   ],
+   "header": "adoxq (%rdi), %r12",
+   "labels": [
+    ".Lam1end"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r10"
+   ],
+   "round": 9,
+   "units": [
+    "coreibwl_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mul_basecase.asm:315:split": {
+   "dead": [
+    "r10",
+    "r11"
+   ],
+   "header": "adoxq -0x8(%rdi), %r10",
+   "labels": [
+    ".Lam1top"
+   ],
+   "live": [
+    "C",
+    "O"
+   ],
+   "mode": "co",
+   "regs": [
+    "r11",
+    "r10"
+   ],
+   "round": 10,
+   "units": [
+    "coreibwl_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mullo_basecase.asm:137:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8",
+    "r9",
+    "rax",
+    "rbx"
+   ],
+   "header": "mulxq (%rsi), %r10, %r8",
+   "labels": [
+    ".Lmf0"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r12"
+   ],
+   "round": 1,
+   "units": [
+    "coreibwl_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mullo_basecase.asm:143:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8",
+    "r9",
+    "rax",
+    "rbx"
+   ],
+   "header": "mulxq (%rsi), %r9, %rax",
+   "labels": [
+    ".Lmf3"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r12"
+   ],
+   "round": 2,
+   "units": [
+    "coreibwl_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mullo_basecase.asm:160:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8",
+    "r9",
+    "rax",
+    "rbx"
+   ],
+   "header": "mulxq (%rsi), %r10, %r8",
+   "labels": [
+    ".Lmf4"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r10"
+   ],
+   "round": 3,
+   "units": [
+    "coreibwl_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mullo_basecase.asm:167:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8",
+    "r9",
+    "rax",
+    "rbx"
+   ],
+   "header": "mulxq (%rsi), %r9, %rax",
+   "labels": [
+    ".Lmf5"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r12"
+   ],
+   "round": 4,
+   "units": [
+    "coreibwl_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mullo_basecase.asm:174:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8",
+    "r9",
+    "rax",
+    "rbx"
+   ],
+   "header": "mulxq (%rsi), %r10, %r8",
+   "labels": [
+    ".Lmf6"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r10"
+   ],
+   "round": 5,
+   "units": [
+    "coreibwl_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mullo_basecase.asm:181:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8",
+    "r9",
+    "rax",
+    "rbx"
+   ],
+   "header": "mulxq (%rsi), %r9, %rax",
+   "labels": [
+    ".Lmf7"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r12"
+   ],
+   "round": 6,
+   "units": [
+    "coreibwl_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mullo_basecase.asm:187:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8",
+    "r9",
+    "rax",
+    "rbx"
+   ],
+   "header": "mulxq (%rsi), %r9, %rax",
+   "labels": [
+    ".Lmf1"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r10"
+   ],
+   "round": 7,
+   "units": [
+    "coreibwl_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mullo_basecase.asm:191:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8",
+    "r9",
+    "rax",
+    "rbx"
+   ],
+   "header": "mulxq (%rsi), %r10, %r8",
+   "labels": [
+    ".Lmf2"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r10"
+   ],
+   "round": 11,
+   "units": [
+    "coreibwl_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mullo_basecase.asm:199:split": {
+   "dead": [
+    "r12"
+   ],
+   "header": "movq %r10, -0x8(%rdi)",
+   "labels": [
+    ".Lmtop"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r12"
+   ],
+   "round": 12,
+   "units": [
+    "coreibwl_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mullo_basecase.asm:238:split": {
+   "dead": [
+    "r10",
+    "r8",
+    "r9",
+    "rax",
+    "rbx"
+   ],
+   "header": "mulxq (%rsi), %r10, %r8",
+   "labels": [
+    ".Lf0"
+   ],
+   "live": [
+    "C",
+    "O"
+   ],
+   "mode": "co",
+   "regs": [
+    "r10",
+    "r8"
+   ],
+   "round": 8,
+   "units": [
+    "coreibwl_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mullo_basecase.asm:244:split": {
+   "dead": [
+    "r10",
+    "r8",
+    "r9",
+    "rax",
+    "rbx"
+   ],
+   "header": "mulxq (%rsi), %r9, %rax",
+   "labels": [
+    ".Lf1"
+   ],
+   "live": [
+    "C",
+    "O"
+   ],
+   "mode": "co",
+   "regs": [
+    "r9",
+    "rax"
+   ],
+   "round": 9,
+   "units": [
+    "coreibwl_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mullo_basecase.asm:253:before": {
+   "dead": [
+    "r10",
+    "r8",
+    "r9"
+   ],
+   "header": "adoxq (%rdi), %r9",
+   "labels": [
+    ".Lend"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 10,
+   "units": [
+    "coreibwl_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/mullo_basecase.asm:283:split": {
+   "dead": [
+    "r10",
+    "r8"
+   ],
+   "header": "adoxq -0x8(%rdi), %r10",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [
+    "C",
+    "O"
+   ],
+   "mode": "co",
+   "regs": [
+    "r8",
+    "r10"
+   ],
+   "round": 11,
+   "units": [
+    "coreibwl_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/sqr_basecase.asm:184:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9"
+   ],
+   "header": "mulxq %rdx, %r8, %r9",
+   "labels": [
+    ".Lmf0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreibwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/sqr_basecase.asm:191:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9"
+   ],
+   "header": "mulxq %rdx, %r10, %r11",
+   "labels": [
+    ".Lmf3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "coreibwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/sqr_basecase.asm:200:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9"
+   ],
+   "header": "mulxq %rdx, %r8, %r9",
+   "labels": [
+    ".Lmf4"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 3,
+   "units": [
+    "coreibwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/sqr_basecase.asm:209:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9"
+   ],
+   "header": "mulxq %rdx, %r10, %r11",
+   "labels": [
+    ".Lmf5"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 4,
+   "units": [
+    "coreibwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/sqr_basecase.asm:218:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9"
+   ],
+   "header": "mulxq %rdx, %r8, %r9",
+   "labels": [
+    ".Lmf6"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 5,
+   "units": [
+    "coreibwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/sqr_basecase.asm:227:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9"
+   ],
+   "header": "mulxq %rdx, %r10, %r11",
+   "labels": [
+    ".Lmf7"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 6,
+   "units": [
+    "coreibwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/sqr_basecase.asm:236:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9"
+   ],
+   "header": "mulxq %rdx, %r10, %r11",
+   "labels": [
+    ".Lmf1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 7,
+   "units": [
+    "coreibwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/sqr_basecase.asm:245:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9"
+   ],
+   "header": "mulxq %rdx, %r8, %r9",
+   "labels": [
+    ".Lmf2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 8,
+   "units": [
+    "coreibwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/sqr_basecase.asm:257:before": {
+   "dead": [
+    "r10"
+   ],
+   "header": "movq %r10, -0x8(%rdi)",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r10"
+   ],
+   "round": 9,
+   "units": [
+    "coreibwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/sqr_basecase.asm:305:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "rcx",
+    "rdx"
+   ],
+   "header": "adoxq (%rdi), %r8",
+   "labels": [
+    ".Led0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreibwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/sqr_basecase.asm:323:before": {
+   "dead": [
+    "r10",
+    "r11"
+   ],
+   "header": "adoxq -0x8(%rdi), %r10",
+   "labels": [
+    ".Ltp0"
+   ],
+   "live": [
+    "C",
+    "O"
+   ],
+   "mode": "co",
+   "regs": [
+    "r11",
+    "r10"
+   ],
+   "round": 2,
+   "units": [
+    "coreibwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/sqr_basecase.asm:382:split": {
+   "dead": [
+    "r10",
+    "r11"
+   ],
+   "header": "adoxq -0x8(%rdi), %r10",
+   "labels": [
+    ".Ltp1"
+   ],
+   "live": [
+    "C",
+    "O"
+   ],
+   "mode": "co",
+   "regs": [
+    "r11",
+    "r10"
+   ],
+   "round": 2,
+   "units": [
+    "coreibwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/sqr_basecase.asm:445:before": {
+   "dead": [
+    "r10",
+    "r11"
+   ],
+   "header": "adoxq -0x8(%rdi), %r10",
+   "labels": [
+    ".Ltp2"
+   ],
+   "live": [
+    "C",
+    "O"
+   ],
+   "mode": "co",
+   "regs": [
+    "r11",
+    "r10"
+   ],
+   "round": 2,
+   "units": [
+    "coreibwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/sqr_basecase.asm:503:before": {
+   "dead": [
+    "r10",
+    "r11"
+   ],
+   "header": "adoxq -0x8(%rdi), %r10",
+   "labels": [
+    ".Ltp3"
+   ],
+   "live": [
+    "C",
+    "O"
+   ],
+   "mode": "co",
+   "regs": [
+    "r11",
+    "r10"
+   ],
+   "round": 2,
+   "units": [
+    "coreibwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/sqr_basecase.asm:560:before": {
+   "dead": [
+    "r10",
+    "r11"
+   ],
+   "header": "adoxq -0x8(%rdi), %r10",
+   "labels": [
+    ".Ltp4"
+   ],
+   "live": [
+    "C",
+    "O"
+   ],
+   "mode": "co",
+   "regs": [
+    "r11",
+    "r10"
+   ],
+   "round": 2,
+   "units": [
+    "coreibwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/sqr_basecase.asm:617:before": {
+   "dead": [
+    "r10",
+    "r11"
+   ],
+   "header": "adoxq -0x8(%rdi), %r10",
+   "labels": [
+    ".Ltp5"
+   ],
+   "live": [
+    "C",
+    "O"
+   ],
+   "mode": "co",
+   "regs": [
+    "r11",
+    "r10"
+   ],
+   "round": 2,
+   "units": [
+    "coreibwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/sqr_basecase.asm:674:before": {
+   "dead": [
+    "r10",
+    "r11"
+   ],
+   "header": "adoxq -0x8(%rdi), %r10",
+   "labels": [
+    ".Ltp6"
+   ],
+   "live": [
+    "C",
+    "O"
+   ],
+   "mode": "co",
+   "regs": [
+    "r11",
+    "r10"
+   ],
+   "round": 2,
+   "units": [
+    "coreibwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreibwl/sqr_basecase.asm:732:before": {
+   "dead": [
+    "r10",
+    "r11"
+   ],
+   "header": "adoxq -0x8(%rdi), %r10",
+   "labels": [
+    ".Ltp7"
+   ],
+   "live": [
+    "C",
+    "O"
+   ],
+   "mode": "co",
+   "regs": [
+    "r11",
+    "r10"
+   ],
+   "round": 2,
+   "units": [
+    "coreibwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/addmul_2.asm:163:split": {
+   "dead": [
+    "r10",
+    "rax"
+   ],
+   "header": "mulxq %r8, %rax, %r10",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreihwl_addmul_2.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/aors_n.asm:163:split": {
+   "dead": [
+    "r8",
+    "rax"
+   ],
+   "header": "movq %r9, 0x28(%rdi)",
+   "labels": [
+    ".Ltop",
+    ".Le3"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r8"
+   ],
+   "round": 1,
+   "units": [
+    "bd1_add_n.asm",
+    "bd1_sub_n.asm",
+    "coreihwl_add_n.asm",
+    "coreihwl_sub_n.asm",
+    "goldmont_add_n.asm",
+    "goldmont_sub_n.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/aorsmul_1.asm:167:before": {
+   "dead": [
+    "r10",
+    "r12",
+    "rcx"
+   ],
+   "header": "adcq %rax, %r9",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreihwl_addmul_1.asm",
+    "coreihwl_submul_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/mul_1.asm:128:before": {
+   "dead": [
+    "r9"
+   ],
+   "header": "leaq 0x20(%rdi), %rdi",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r9"
+   ],
+   "round": 1,
+   "units": [
+    "coreihwl_mul_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/mul_basecase.asm:151:split": {
+   "dead": [
+    "r10"
+   ],
+   "header": "leaq 0x20(%rdi), %rdi",
+   "labels": [
+    ".Lm1tp"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r10"
+   ],
+   "round": 1,
+   "units": [
+    "coreihwl_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/mul_basecase.asm:226:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "rax"
+   ],
+   "header": "mulxq %r14, %rax, %r10",
+   "labels": [
+    ".Lm2tp"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreihwl_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/mul_basecase.asm:297:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r15",
+    "r8",
+    "r9",
+    "rax",
+    "rbp",
+    "rdx"
+   ],
+   "header": "movq (%rcx), %r9",
+   "labels": [
+    ".Louter"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "coreihwl_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/mul_basecase.asm:353:split": {
+   "dead": [
+    "r13",
+    "rax"
+   ],
+   "header": "mulxq %r9, %rax, %r13",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreihwl_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/mullo_basecase.asm:137:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "rax"
+   ],
+   "header": "mulxq %rbx, %rax, %r10",
+   "labels": [
+    ".Lm2tp"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreihwl_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/mullo_basecase.asm:200:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r15",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "movq (%r8), %r9",
+   "labels": [
+    ".Louter"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "coreihwl_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/mullo_basecase.asm:258:split": {
+   "dead": [
+    "r13",
+    "rax"
+   ],
+   "header": "mulxq %r9, %rax, %r13",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreihwl_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/redc_1.asm:150:before": {
+   "dead": [
+    "r10",
+    "r12",
+    "rbp"
+   ],
+   "header": "adcq %rax, %r9",
+   "labels": [
+    ".Ltp2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreihwl_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/redc_1.asm:205:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r8",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx"
+   ],
+   "header": "leaq 0x1(%rcx), %r14",
+   "labels": [
+    ".Lo1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "coreihwl_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/redc_1.asm:230:before": {
+   "dead": [
+    "r10",
+    "r12",
+    "rbp"
+   ],
+   "header": "adcq %rax, %r9",
+   "labels": [
+    ".Ltp1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreihwl_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/redc_1.asm:270:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx"
+   ],
+   "header": "mulxq (%rdi), %rbx, %rax",
+   "labels": [
+    ".Ln3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreihwl_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/redc_1.asm:316:before": {
+   "dead": [
+    "r10",
+    "r12",
+    "rbp"
+   ],
+   "header": "adcq %rax, %r9",
+   "labels": [
+    ".Ltp3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreihwl_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/redc_1.asm:353:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r8",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx"
+   ],
+   "header": "movq %rcx, %r14",
+   "labels": [
+    ".Lo0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "coreihwl_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/redc_1.asm:376:before": {
+   "dead": [
+    "r10",
+    "r12",
+    "rbp"
+   ],
+   "header": "adcq %rax, %r9",
+   "labels": [
+    ".Ltp0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreihwl_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/sqr_basecase.asm:229:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r13",
+    "r14",
+    "rax"
+   ],
+   "header": "mulxq %r9, %rax, %r10",
+   "labels": [
+    ".Lmtop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreihwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/sqr_basecase.asm:287:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r13",
+    "r14",
+    "r8",
+    "r9",
+    "rbp",
+    "rbx",
+    "rcx",
+    "rdx"
+   ],
+   "header": "leaq (%rsi,%r12,8), %rsi",
+   "labels": [
+    ".Ldo_addmul_2",
+    ".Louter"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "coreihwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/sqr_basecase.asm:350:split": {
+   "dead": [
+    "rax",
+    "rbp"
+   ],
+   "header": "mulxq %r8, %rax, %rbp",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreihwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreihwl/sqr_basecase.asm:486:before": {
+   "dead": [
+    "r11",
+    "r13",
+    "r14",
+    "rax",
+    "rbp",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq 0x20(%rdi), %r8",
+   "labels": [
+    ".Ldtop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreihwl_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreinhm/aorsmul_1.asm:139:split": {
+   "dead": [
+    "r10",
+    "r9",
+    "rdx"
+   ],
+   "header": "mulq %rcx",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreinhm_addmul_1.asm",
+    "coreinhm_submul_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreinhm/redc_1.asm:112:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "leaq 0x3(%rcx), %r14",
+   "labels": [
+    ".Lotp1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "coreinhm_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreinhm/redc_1.asm:139:split": {
+   "dead": [
+    "r10",
+    "r9",
+    "rdx"
+   ],
+   "header": "mulq %r13",
+   "labels": [
+    ".Ltp1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreinhm_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreinhm/redc_1.asm:194:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "leaq 0x5(%rcx), %r14",
+   "labels": [
+    ".Lotp3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreinhm_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreinhm/redc_1.asm:216:split": {
+   "dead": [
+    "r10",
+    "r9",
+    "rdx"
+   ],
+   "header": "mulq %r13",
+   "labels": [
+    ".Ltp3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "coreinhm_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreinhm/redc_1.asm:299:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "leaq 0x2(%rcx), %r14",
+   "labels": [
+    ".Lb0",
+    ".Lotp0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "coreinhm_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreinhm/redc_1.asm:326:split": {
+   "dead": [
+    "r10",
+    "r9",
+    "rdx"
+   ],
+   "header": "mulq %r13",
+   "labels": [
+    ".Ltp0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreinhm_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreinhm/redc_1.asm:381:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "leaq 0x4(%rcx), %r14",
+   "labels": [
+    ".Lotp2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "coreinhm_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreinhm/redc_1.asm:408:split": {
+   "dead": [
+    "r10",
+    "r9",
+    "rdx"
+   ],
+   "header": "mulq %r13",
+   "labels": [
+    ".Ltp2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreinhm_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreinhm/redc_1.asm:506:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq -0x18(%r12), %rax",
+   "labels": [
+    ".Ln3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreinhm_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/addmul_2.asm:140:split": {
+   "dead": [
+    "r8",
+    "rdx"
+   ],
+   "header": "mulq %rbp",
+   "labels": [
+    ".Llo1",
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_addmul_2.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/aorrlshC_n.asm:141:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9"
+   ],
+   "header": "movq (%rdx), %r8",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_addlsh1_n.asm",
+    "coreisbr_addlsh2_n.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/aors_n.asm:173:split": {
+   "dead": [
+    "r8",
+    "r9",
+    "rax"
+   ],
+   "header": "movq (%rsi), %r8",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r8"
+   ],
+   "round": 1,
+   "units": [
+    "coreisbr_add_n.asm",
+    "coreisbr_sub_n.asm",
+    "silvermont_add_n.asm",
+    "silvermont_sub_n.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/aorsmul_1.asm:145:split": {
+   "dead": [
+    "r10",
+    "rdx"
+   ],
+   "header": "mulq %rcx",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_addmul_1.asm",
+    "coreisbr_submul_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/cnd_add_n.asm:146:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r9",
+    "rdi"
+   ],
+   "header": "movq (%rcx), %rdi",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_cnd_add_n.asm",
+    "coreisbr_cnd_add_n.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/cnd_sub_n.asm:165:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r9",
+    "rbp",
+    "rdi"
+   ],
+   "header": "movq (%rcx), %rdi",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_cnd_sub_n.asm",
+    "coreisbr_cnd_sub_n.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/mul_1.asm:121:split": {
+   "dead": [
+    "r10",
+    "r8"
+   ],
+   "header": "movq %rdx, %r10",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_mul_1.asm",
+    "goldmont_mul_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/mul_basecase.asm:145:split": {
+   "dead": [
+    "r10"
+   ],
+   "header": "movq %rdx, %r10",
+   "labels": [
+    ".Lm1tp"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/mul_basecase.asm:212:split": {
+   "dead": [
+    "r13",
+    "rdx"
+   ],
+   "header": "mulq %r9",
+   "labels": [
+    ".Lm2tp"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/mul_basecase.asm:272:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r15",
+    "r8",
+    "r9",
+    "rax",
+    "rbp",
+    "rdx"
+   ],
+   "header": "movq (%rcx), %r9",
+   "labels": [
+    ".Louter"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "coreisbr_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/mul_basecase.asm:315:split": {
+   "dead": [
+    "r10",
+    "rdx"
+   ],
+   "header": "mulq %r8",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/mullo_basecase.asm:127:split": {
+   "dead": [
+    "r13",
+    "rdx"
+   ],
+   "header": "mulq %r9",
+   "labels": [
+    ".Lm2tp"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/mullo_basecase.asm:171:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r15",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "movq (%r8), %r9",
+   "labels": [
+    ".Louter"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "coreisbr_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/mullo_basecase.asm:215:split": {
+   "dead": [
+    "r10",
+    "rdx"
+   ],
+   "header": "mulq %rbx",
+   "labels": [
+    ".Llo2",
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/redc_1.asm:112:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "leaq 0x1(%rcx), %r14",
+   "labels": [
+    ".Lotp1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "coreisbr_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/redc_1.asm:135:split": {
+   "dead": [
+    "r10",
+    "rdx"
+   ],
+   "header": "mulq %r13",
+   "labels": [
+    ".Ltp1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/redc_1.asm:194:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "leaq 0x3(%rcx), %r14",
+   "labels": [
+    ".Lotp3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "coreisbr_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/redc_1.asm:218:split": {
+   "dead": [
+    "r10",
+    "rdx"
+   ],
+   "header": "mulq %r13",
+   "labels": [
+    ".Ltp3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/redc_1.asm:305:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "leaq (%rcx), %r14",
+   "labels": [
+    ".Lb0",
+    ".Lotp0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "coreisbr_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/redc_1.asm:329:split": {
+   "dead": [
+    "r10",
+    "rdx"
+   ],
+   "header": "mulq %r13",
+   "labels": [
+    ".Ltp0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/redc_1.asm:388:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "leaq 0x2(%rcx), %r14",
+   "labels": [
+    ".Lotp2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "coreisbr_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/redc_1.asm:412:split": {
+   "dead": [
+    "r10",
+    "rdx"
+   ],
+   "header": "mulq %r13",
+   "labels": [
+    ".Ltp2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/redc_1.asm:514:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "movq -0x20(%r12), %rax",
+   "labels": [
+    ".Ln3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/sqr_basecase.asm:224:split": {
+   "dead": [
+    "r13",
+    "r14",
+    "rbp",
+    "rdx"
+   ],
+   "header": "mulq %r8",
+   "labels": [
+    ".Lm2l0",
+    ".Lm2tp"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/sqr_basecase.asm:273:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r13",
+    "r14",
+    "r8",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rcx",
+    "rdx"
+   ],
+   "header": "leaq 0x10(%rdi), %rdi",
+   "labels": [
+    ".Ldo_addmul_2",
+    ".Louter"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "coreisbr_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/sqr_basecase.asm:320:split": {
+   "dead": [
+    "r10",
+    "rdx"
+   ],
+   "header": "mulq %r9",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/coreisbr/sqr_basecase.asm:455:split": {
+   "dead": [
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "rbp"
+   ],
+   "header": "addq %r8, %r10",
+   "labels": [
+    ".Ldtop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/div_qr_1n_pi1.asm:182:before": {
+   "dead": [
+    "r12",
+    "r15",
+    "rcx"
+   ],
+   "header": "addq %rax, %r11",
+   "labels": [
+    ".Lq_incr_done"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "div_qr_1n_pi1.asm"
+   ]
+  },
+  "mpn/x86_64/div_qr_1n_pi1.asm:225:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r15",
+    "r8",
+    "r9",
+    "rbp",
+    "rbx",
+    "rcx",
+    "rsi"
+   ],
+   "header": "addq $0x1, 0x10(%rdi)",
+   "labels": [
+    ".Lfinal_q_incr"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "div_qr_1n_pi1.asm"
+   ]
+  },
+  "mpn/x86_64/div_qr_1n_pi1.asm:243:before": {
+   "dead": [
+    "r12",
+    "r15"
+   ],
+   "header": "addq $0x1, (%rcx)",
+   "labels": [
+    ".Lq_incr_loop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "div_qr_1n_pi1.asm"
+   ]
+  },
+  "mpn/x86_64/div_qr_2n_pi1.asm:129:before": {
+   "dead": [
+    "r14",
+    "rax"
+   ],
+   "header": "movq %r13, (%rdi,%rcx,8)",
+   "labels": [
+    ".Lbck"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "div_qr_2n_pi1.asm"
+   ]
+  },
+  "mpn/x86_64/div_qr_2u_pi1.asm:157:before": {
+   "dead": [
+    "r14",
+    "rax",
+    "rsi"
+   ],
+   "header": "movq %r13, (%rdi,%rbp,8)",
+   "labels": [
+    ".Lbck"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "div_qr_2u_pi1.asm"
+   ]
+  },
+  "mpn/x86_64/dive_1.asm:126:before": {
+   "dead": [
+    "r9",
+    "rdx"
+   ],
+   "header": "mulq %r11",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "x86_64_dive_1.asm"
+   ]
+  },
+  "mpn/x86_64/divrem_1.asm:172:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "rbp",
+    "rcx"
+   ],
+   "header": "movq %r13, (%rdi)",
+   "labels": [
+    ".Lnok"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_divrem_1.asm",
+    "x86_64_divrem_1.asm"
+   ]
+  },
+  "mpn/x86_64/divrem_1.asm:253:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "rbp",
+    "rdx"
+   ],
+   "header": "movq %r13, (%rdi)",
+   "labels": [
+    ".Luok"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_divrem_1.asm",
+    "x86_64_divrem_1.asm"
+   ]
+  },
+  "mpn/x86_64/divrem_1.asm:291:split": {
+   "dead": [
+    "r10",
+    "r13",
+    "rbx",
+    "rdx",
+    "rsi"
+   ],
+   "header": "mulq %r9",
+   "labels": [
+    ".Lftop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_divrem_1.asm",
+    "x86_64_divrem_1.asm"
+   ]
+  },
+  "mpn/x86_64/divrem_2.asm:123:before": {
+   "dead": [
+    "rax",
+    "rdx",
+    "rsi"
+   ],
+   "header": "decq %rdi",
+   "labels": [],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "divrem_2.asm"
+   ]
+  },
+  "mpn/x86_64/divrem_2.asm:166:split": {
+   "dead": [
+    "rax",
+    "rcx"
+   ],
+   "header": "movq %r9, (%rbp)",
+   "labels": [
+    ".Lbck"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "divrem_2.asm"
+   ]
+  },
+  "mpn/x86_64/fastsse/com-palignr.asm:106:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movaps (%rsi), %xmm0",
+   "labels": [
+    ".Latop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_com.asm",
+    "bd1_com.asm",
+    "core2_com.asm"
+   ]
+  },
+  "mpn/x86_64/fastsse/com-palignr.asm:170:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movaps 0x78(%rsi), %xmm3",
+   "labels": [
+    ".Lutop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_com.asm",
+    "bd1_com.asm",
+    "core2_com.asm"
+   ]
+  },
+  "mpn/x86_64/fastsse/com-palignr.asm:275:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movq (%rsi), %r8",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_com.asm",
+    "bd1_com.asm",
+    "core2_com.asm"
+   ]
+  },
+  "mpn/x86_64/fastsse/com.asm:100:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movdqu (%rsi), %xmm0",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt2_com.asm",
+    "zen_com.asm"
+   ]
+  },
+  "mpn/x86_64/fastsse/copyd-palignr.asm:103:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movaps -0x8(%rsi), %xmm0",
+   "labels": [
+    ".Latop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_copyd.asm",
+    "bd1_copyd.asm",
+    "core2_copyd.asm",
+    "nano_copyd.asm"
+   ]
+  },
+  "mpn/x86_64/fastsse/copyd-palignr.asm:145:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "subq $0x10, %rdx",
+   "labels": [
+    ".Lutop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_copyd.asm",
+    "bd1_copyd.asm",
+    "core2_copyd.asm",
+    "nano_copyd.asm"
+   ]
+  },
+  "mpn/x86_64/fastsse/copyd.asm:105:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movdqu (%rsi), %xmm0",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt2_copyd.asm",
+    "zen_copyd.asm"
+   ]
+  },
+  "mpn/x86_64/fastsse/copyi-palignr.asm:101:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movdqa (%rsi), %xmm0",
+   "labels": [
+    ".Latop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_copyi.asm",
+    "bd1_copyi.asm",
+    "core2_copyi.asm",
+    "nano_copyi.asm"
+   ]
+  },
+  "mpn/x86_64/fastsse/copyi-palignr.asm:160:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movaps -0x68(%rsi), %xmm1",
+   "labels": [
+    ".Lutop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_copyi.asm",
+    "bd1_copyi.asm",
+    "core2_copyi.asm",
+    "nano_copyi.asm"
+   ]
+  },
+  "mpn/x86_64/fastsse/copyi.asm:99:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movdqu (%rsi), %xmm0",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "bt2_copyi.asm",
+    "zen_copyi.asm"
+   ]
+  },
+  "mpn/x86_64/fastsse/lshift-movdqu2.asm:114:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movdqu 0x28(%rsi,%rdx,8), %xmm1",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_lshift.asm",
+    "k10_lshift.asm",
+    "silvermont_lshift.asm",
+    "zen_lshift.asm"
+   ]
+  },
+  "mpn/x86_64/fastsse/lshift.asm:108:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movdqa -0x8(%rsi,%rdx,8), %xmm0",
+   "labels": [
+    ".Lutop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "p4_lshift.asm"
+   ]
+  },
+  "mpn/x86_64/fastsse/lshift.asm:135:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movdqa (%rsi,%rdx,8), %xmm0",
+   "labels": [
+    ".Latop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "p4_lshift.asm"
+   ]
+  },
+  "mpn/x86_64/fastsse/lshiftc-movdqu2.asm:117:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movdqu 0x28(%rsi,%rdx,8), %xmm1",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_lshiftc.asm",
+    "k10_lshiftc.asm",
+    "silvermont_lshiftc.asm",
+    "zen_lshiftc.asm"
+   ]
+  },
+  "mpn/x86_64/fastsse/lshiftc.asm:112:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movq (%rsi,%rdx,8), %xmm1",
+   "labels": [
+    ".Lutop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "p4_lshiftc.asm"
+   ]
+  },
+  "mpn/x86_64/fastsse/lshiftc.asm:141:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movdqa (%rsi,%rdx,8), %xmm0",
+   "labels": [
+    ".Latop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "p4_lshiftc.asm"
+   ]
+  },
+  "mpn/x86_64/fastsse/rshift-movdqu2.asm:118:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movdqu -0x40(%rsi,%rdx,8), %xmm1",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "coreisbr_rshift.asm",
+    "k10_rshift.asm",
+    "silvermont_rshift.asm",
+    "zen_rshift.asm"
+   ]
+  },
+  "mpn/x86_64/gcd_11.asm:95:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r9",
+    "rax",
+    "rcx"
+   ],
+   "header": "cmovbq %rdx, %rdi",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "x86_64_gcd_11.asm"
+   ]
+  },
+  "mpn/x86_64/gcd_22.asm:123:split": {
+   "dead": [
+    "r11"
+   ],
+   "header": "shrq %cl, %rsi",
+   "labels": [
+    ".Lshr"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "gcd_22.asm"
+   ]
+  },
+  "mpn/x86_64/k8/addmul_2.asm:131:split": {
+   "dead": [
+    "rbp",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movl $0x0, %ecx",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "k8_addmul_2.asm"
+   ]
+  },
+  "mpn/x86_64/k8/mul_basecase.asm:157:before": {
+   "dead": [
+    "r9"
+   ],
+   "header": "movq %rbx, -0x10(%rdi,%r11,8)",
+   "labels": [
+    ".Lmul_1_top"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "k8_mul_basecase.asm",
+    "silvermont_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/mul_basecase.asm:261:before": {
+   "dead": [
+    "r10",
+    "rax",
+    "rbp",
+    "rdx"
+   ],
+   "header": "movq -0x20(%rsi,%r11,8), %rax",
+   "labels": [
+    ".Lmul_2_top"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "k8_mul_basecase.asm",
+    "silvermont_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/mul_basecase.asm:338:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r15",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "addq $0x3, %r13",
+   "labels": [
+    ".Laddmul_outer_0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "k8_mul_basecase.asm",
+    "silvermont_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/mul_basecase.asm:341:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r15",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "movq %r13, %r11",
+   "labels": [],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 5,
+   "units": [
+    "k8_mul_basecase.asm",
+    "silvermont_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/mul_basecase.asm:351:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r15",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "movq %r13, %r11",
+   "labels": [
+    ".Laddmul_outer_1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "k8_mul_basecase.asm",
+    "silvermont_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/mul_basecase.asm:361:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r15",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "addq $0x1, %r13",
+   "labels": [
+    ".Laddmul_outer_2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 3,
+   "units": [
+    "k8_mul_basecase.asm",
+    "silvermont_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/mul_basecase.asm:364:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r15",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "movq %r13, %r11",
+   "labels": [],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 6,
+   "units": [
+    "k8_mul_basecase.asm",
+    "silvermont_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/mul_basecase.asm:375:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r15",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "addq $0x2, %r13",
+   "labels": [
+    ".Laddmul_outer_3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 4,
+   "units": [
+    "k8_mul_basecase.asm",
+    "silvermont_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/mul_basecase.asm:378:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r15",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "movq %r13, %r11",
+   "labels": [],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 8,
+   "units": [
+    "k8_mul_basecase.asm",
+    "silvermont_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/mul_basecase.asm:391:before": {
+   "dead": [
+    "rbp"
+   ],
+   "header": "addq %r10, -0x20(%rdi,%r11,8)",
+   "labels": [
+    ".Laddmul_top"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 7,
+   "units": [
+    "k8_mul_basecase.asm",
+    "silvermont_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/mullo_basecase.asm:192:before": {
+   "dead": [
+    "r14"
+   ],
+   "header": "movq %rbx, -0x10(%rdi,%r9,8)",
+   "labels": [
+    ".Lmul_1_top"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "k8_mullo_basecase.asm",
+    "silvermont_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/mullo_basecase.asm:270:before": {
+   "dead": [
+    "r10",
+    "rax",
+    "rbp",
+    "rdx"
+   ],
+   "header": "movq -0x20(%rsi,%r9,8), %rax",
+   "labels": [
+    ".Lmul_2_top"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "k8_mullo_basecase.asm",
+    "silvermont_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/mullo_basecase.asm:338:before": {
+   "dead": [
+    "r10",
+    "r15",
+    "r8",
+    "r9",
+    "rax",
+    "rbx",
+    "rdx"
+   ],
+   "header": "leaq -0x2(%rcx), %r9",
+   "labels": [
+    ".Laddmul_outer_1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "k8_mullo_basecase.asm",
+    "silvermont_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/mullo_basecase.asm:349:before": {
+   "dead": [
+    "r10",
+    "r15",
+    "r8",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rdx"
+   ],
+   "header": "leaq (%rcx), %r9",
+   "labels": [
+    ".Laddmul_outer_3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 3,
+   "units": [
+    "k8_mullo_basecase.asm",
+    "silvermont_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/mullo_basecase.asm:361:before": {
+   "dead": [
+    "rbp"
+   ],
+   "header": "addq %r10, -0x20(%rdi,%r9,8)",
+   "labels": [
+    ".Laddmul_top"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "k8_mullo_basecase.asm",
+    "silvermont_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/redc_1.asm:252:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r15",
+    "r9",
+    "rax",
+    "rbx",
+    "rdx"
+   ],
+   "header": "movq (%r13,%r12,8), %rax",
+   "labels": [
+    ".L2m4",
+    ".Llo2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "goldmont_redc_1.asm",
+    "k8_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/k8/redc_1.asm:273:split": {
+   "dead": [],
+   "header": "addq %r10, (%rsi,%r11,8)",
+   "labels": [
+    ".Lli2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "goldmont_redc_1.asm",
+    "k8_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/k8/redc_1.asm:328:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r15",
+    "r9",
+    "rax",
+    "rbx",
+    "rdx"
+   ],
+   "header": "movq (%r13,%r12,8), %rax",
+   "labels": [
+    ".L1m4",
+    ".Llo1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "goldmont_redc_1.asm",
+    "k8_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/k8/redc_1.asm:349:split": {
+   "dead": [],
+   "header": "addq %r10, (%rsi,%r11,8)",
+   "labels": [
+    ".Lli1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "goldmont_redc_1.asm",
+    "k8_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/k8/redc_1.asm:402:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r15",
+    "r9",
+    "rax",
+    "rbx",
+    "rdx"
+   ],
+   "header": "movq (%r13,%r12,8), %rax",
+   "labels": [
+    ".L0",
+    ".L0m4",
+    ".Llo0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "goldmont_redc_1.asm",
+    "k8_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/k8/redc_1.asm:419:split": {
+   "dead": [],
+   "header": "addq %r10, (%rsi,%r11,8)",
+   "labels": [
+    ".Lli0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "goldmont_redc_1.asm",
+    "k8_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/k8/redc_1.asm:467:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r15",
+    "r9",
+    "rax",
+    "rbx",
+    "rdx"
+   ],
+   "header": "movq (%r13,%r12,8), %rax",
+   "labels": [
+    ".L3m4",
+    ".Llo3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "goldmont_redc_1.asm",
+    "k8_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/k8/redc_1.asm:488:split": {
+   "dead": [],
+   "header": "addq %r10, (%rsi,%r11,8)",
+   "labels": [
+    ".Lli3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "goldmont_redc_1.asm",
+    "k8_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/k8/redc_1.asm:553:split": {
+   "dead": [
+    "r12",
+    "r13",
+    "r14",
+    "r15",
+    "rax",
+    "rbp",
+    "rbx"
+   ],
+   "header": "adcq (%rdx), %r8",
+   "labels": [
+    ".Lal3"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r12"
+   ],
+   "round": 1,
+   "units": [
+    "goldmont_redc_1.asm",
+    "k8_redc_1.asm"
+   ]
+  },
+  "mpn/x86_64/k8/sqr_basecase.asm:304:before": {
+   "dead": [
+    "r14",
+    "rbx"
+   ],
+   "header": "addq %rax, %rbp",
+   "labels": [
+    ".Lmul_1_m3_top"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "k8_sqr_basecase.asm",
+    "silvermont_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/sqr_basecase.asm:362:before": {
+   "dead": [
+    "r10",
+    "rbp",
+    "rdx"
+   ],
+   "header": "mulq %r14",
+   "labels": [
+    ".Lmul_2_m0_top"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "k8_sqr_basecase.asm",
+    "silvermont_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/sqr_basecase.asm:439:before": {
+   "dead": [
+    "r14",
+    "rbx"
+   ],
+   "header": "addq %rax, %rbp",
+   "labels": [
+    ".Lmul_1_m1_top"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "k8_sqr_basecase.asm",
+    "silvermont_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/sqr_basecase.asm:498:before": {
+   "dead": [
+    "r10",
+    "rbp",
+    "rdx"
+   ],
+   "header": "mulq %r14",
+   "labels": [
+    ".Lmul_2_m2_top"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "k8_sqr_basecase.asm",
+    "silvermont_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/sqr_basecase.asm:556:before": {
+   "dead": [
+    "r10",
+    "r13",
+    "r14",
+    "r9",
+    "rax",
+    "rbp",
+    "rbx",
+    "rcx",
+    "rdx"
+   ],
+   "header": "leaq 0x4(%r8), %r9",
+   "labels": [
+    ".Ldowhile"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 3,
+   "units": [
+    "k8_sqr_basecase.asm",
+    "silvermont_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/sqr_basecase.asm:572:before": {
+   "dead": [
+    "rbp"
+   ],
+   "header": "addq %r10, (%r12,%r9,8)",
+   "labels": [
+    ".Laddmul_2_m2_top"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "k8_sqr_basecase.asm",
+    "silvermont_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/sqr_basecase.asm:646:before": {
+   "dead": [
+    "rbp"
+   ],
+   "header": "addq %r10, (%r12,%r9,8)",
+   "labels": [
+    ".Laddmul_2_m0_top"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "k8_sqr_basecase.asm",
+    "silvermont_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/k8/sqr_basecase.asm:753:split": {
+   "dead": [
+    "r12",
+    "r13",
+    "r14",
+    "r8",
+    "rax",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq (%rsi,%r9,4), %rax",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "k8_sqr_basecase.asm",
+    "silvermont_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/logops_n.asm:132:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9"
+   ],
+   "header": "movq (%rdx,%rcx,8), %r8",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "and_n.asm",
+    "ior_n.asm",
+    "xor_n.asm"
+   ]
+  },
+  "mpn/x86_64/logops_n.asm:183:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9"
+   ],
+   "header": "movq (%rdx,%rcx,8), %r8",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "andn_n.asm",
+    "iorn_n.asm",
+    "xnor_n.asm"
+   ]
+  },
+  "mpn/x86_64/logops_n.asm:238:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9"
+   ],
+   "header": "movq (%rdx,%rcx,8), %r8",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "nand_n.asm",
+    "nior_n.asm"
+   ]
+  },
+  "mpn/x86_64/lshift.asm:122:before": {
+   "dead": [
+    "r8",
+    "r9"
+   ],
+   "header": "negl %ecx",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "x86_64_lshift.asm"
+   ]
+  },
+  "mpn/x86_64/lshiftc.asm:125:before": {
+   "dead": [
+    "r8",
+    "r9"
+   ],
+   "header": "negl %ecx",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "x86_64_lshiftc.asm"
+   ]
+  },
+  "mpn/x86_64/mod_1_1.asm:116:split": {
+   "dead": [
+    "r9",
+    "rdx"
+   ],
+   "header": "andq %r11, %rcx",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "x86_64_mod_1_1.asm"
+   ]
+  },
+  "mpn/x86_64/mod_1_2.asm:90:split": {
+   "dead": [
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movq -0x18(%rdi), %r9",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "x86_64_mod_1_2.asm"
+   ]
+  },
+  "mpn/x86_64/mod_1_4.asm:111:split": {
+   "dead": [
+    "r10",
+    "rax",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq -0x18(%rdi), %rax",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "x86_64_mod_1_4.asm"
+   ]
+  },
+  "mpn/x86_64/mod_34lsub1.asm:112:before": {
+   "dead": [
+    "r10",
+    "r8"
+   ],
+   "header": "addq (%rdi), %rax",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "x86_64_mod_34lsub1.asm"
+   ]
+  },
+  "mpn/x86_64/mode1o.asm:143:before": {
+   "dead": [
+    "r10",
+    "rdi"
+   ],
+   "header": "subq %rdx, %rax",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "x86_64_mode1o.asm"
+   ]
+  },
+  "mpn/x86_64/mul_1.asm:154:split": {
+   "dead": [],
+   "header": "movq %r10, (%rdi,%r11,8)",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "x86_64_mul_1.asm"
+   ]
+  },
+  "mpn/x86_64/mul_2.asm:141:before": {
+   "dead": [
+    "rbp"
+   ],
+   "header": "addq %rax, %r10",
+   "labels": [
+    ".Lm2top"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "mul_2.asm"
+   ]
+  },
+  "mpn/x86_64/nano/dive_1.asm:109:split": {
+   "dead": [
+    "r9",
+    "rcx",
+    "rdx"
+   ],
+   "header": "mulq %r11",
+   "labels": [
+    ".Lntop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_dive_1.asm",
+    "nano_dive_1.asm"
+   ]
+  },
+  "mpn/x86_64/nano/dive_1.asm:134:split": {
+   "dead": [
+    "rdx"
+   ],
+   "header": "mulq %r11",
+   "labels": [
+    ".Lutop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "atom_dive_1.asm",
+    "nano_dive_1.asm"
+   ]
+  },
+  "mpn/x86_64/pentium4/aors_n.asm:139:split": {
+   "dead": [
+    "r10",
+    "r12"
+   ],
+   "header": "movb $0x1, %bl",
+   "labels": [
+    ".Lc0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "p4_add_n.asm",
+    "p4_sub_n.asm"
+   ]
+  },
+  "mpn/x86_64/pentium4/aors_n.asm:141:split": {
+   "dead": [
+    "r11",
+    "r12"
+   ],
+   "header": "movb $0x1, %al",
+   "labels": [
+    ".Lc1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "p4_add_n.asm",
+    "p4_sub_n.asm"
+   ]
+  },
+  "mpn/x86_64/pentium4/aors_n.asm:143:split": {
+   "dead": [
+    "r11",
+    "r8"
+   ],
+   "header": "movb $0x1, %bl",
+   "labels": [
+    ".Lc2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 3,
+   "units": [
+    "p4_add_n.asm",
+    "p4_sub_n.asm"
+   ]
+  },
+  "mpn/x86_64/pentium4/aors_n.asm:145:split": {
+   "dead": [
+    "r10",
+    "r8"
+   ],
+   "header": "movb $0x1, %al",
+   "labels": [
+    ".Lc3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 4,
+   "units": [
+    "p4_add_n.asm",
+    "p4_sub_n.asm"
+   ]
+  },
+  "mpn/x86_64/pentium4/aors_n.asm:149:split": {
+   "dead": [
+    "r10",
+    "r8"
+   ],
+   "header": "movq (%rsi), %r8",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 5,
+   "units": [
+    "p4_add_n.asm",
+    "p4_sub_n.asm"
+   ]
+  },
+  "mpn/x86_64/pentium4/aorslshC_n.asm:128:split": {
+   "dead": [
+    "r10",
+    "r12"
+   ],
+   "header": "movb $0x1, %bl",
+   "labels": [
+    ".Lc0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "p4_addlsh1_n.asm",
+    "p4_addlsh2_n.asm",
+    "p4_sublsh1_n.asm"
+   ]
+  },
+  "mpn/x86_64/pentium4/aorslshC_n.asm:130:split": {
+   "dead": [
+    "r11",
+    "r12"
+   ],
+   "header": "movb $0x1, %al",
+   "labels": [
+    ".Lc1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "p4_addlsh1_n.asm",
+    "p4_addlsh2_n.asm",
+    "p4_sublsh1_n.asm"
+   ]
+  },
+  "mpn/x86_64/pentium4/aorslshC_n.asm:132:split": {
+   "dead": [
+    "r11",
+    "r8"
+   ],
+   "header": "movb $0x1, %bl",
+   "labels": [
+    ".Lc2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 3,
+   "units": [
+    "p4_addlsh1_n.asm",
+    "p4_addlsh2_n.asm",
+    "p4_sublsh1_n.asm"
+   ]
+  },
+  "mpn/x86_64/pentium4/aorslshC_n.asm:181:split": {
+   "dead": [
+    "r10",
+    "r8"
+   ],
+   "header": "leaq 0x20(%rdi), %rdi",
+   "labels": [
+    ".Lrc3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 4,
+   "units": [
+    "p4_addlsh1_n.asm",
+    "p4_addlsh2_n.asm",
+    "p4_sublsh1_n.asm"
+   ]
+  },
+  "mpn/x86_64/pentium4/mod_34lsub1.asm:101:split": {
+   "dead": [],
+   "header": "addq (%rdi), %rax",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "p4_mod_34lsub1.asm"
+   ]
+  },
+  "mpn/x86_64/pentium4/rshift.asm:122:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rcx"
+   ],
+   "header": "movq -0x10(%rsi,%rdx,8), %mm0",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "p4_rshift.asm"
+   ]
+  },
+  "mpn/x86_64/popham.asm:118:split": {
+   "dead": [
+    "r8",
+    "r9",
+    "rbp",
+    "rbx"
+   ],
+   "header": "movq (%rdi,%rdx,8), %r8",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "hamdist.asm",
+    "popcount.asm"
+   ]
+  },
+  "mpn/x86_64/rsh1aors_n.asm:155:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9"
+   ],
+   "header": "addq %rbx, %rbx",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "rsh1add_n.asm",
+    "rsh1sub_n.asm"
+   ]
+  },
+  "mpn/x86_64/rshift.asm:126:before": {
+   "dead": [
+    "r8",
+    "r9"
+   ],
+   "header": "negl %ecx",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "x86_64_rshift.asm"
+   ]
+  },
+  "mpn/x86_64/sec_tabselect.asm:135:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r14",
+    "r15",
+    "r9",
+    "rax"
+   ],
+   "header": "subq $0x1, %rbx",
+   "labels": [
+    ".Ltp2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "sec_tabselect.asm"
+   ]
+  },
+  "mpn/x86_64/sec_tabselect.asm:158:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r13",
+    "r14",
+    "r15",
+    "r8",
+    "r9",
+    "rax",
+    "rcx"
+   ],
+   "header": "subq $0x1, %rbx",
+   "labels": [
+    ".Ltp1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "sec_tabselect.asm"
+   ]
+  },
+  "mpn/x86_64/sec_tabselect.asm:89:before": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r15",
+    "rax",
+    "rbp",
+    "rbx"
+   ],
+   "header": "movq %rcx, %rbp",
+   "labels": [
+    ".Louter_top"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "sec_tabselect.asm"
+   ]
+  },
+  "mpn/x86_64/sec_tabselect.asm:98:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "rax"
+   ],
+   "header": "subq $0x1, %rbx",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "sec_tabselect.asm"
+   ]
+  },
+  "mpn/x86_64/sqr_diag_addlsh1.asm:91:split": {
+   "dead": [],
+   "header": "addq %r10, %r8",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "sqr_diag_addlsh1.asm"
+   ]
+  },
+  "mpn/x86_64/sublsh1_n.asm:122:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r8",
+    "r9",
+    "rbx"
+   ],
+   "header": "addl %eax, %eax",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "x86_64_sublsh1_n.asm"
+   ]
+  },
+  "mpn/x86_64/zen/aorsmul_1.asm:138:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8"
+   ],
+   "header": "addq %r9, (%rdi,%rcx,8)",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "zen_addmul_1.asm",
+    "zen_submul_1.asm"
+   ]
+  },
+  "mpn/x86_64/zen/mul_1.asm:132:before": {
+   "dead": [
+    "r8"
+   ],
+   "header": "jrcxz 0xfc <.Lrrln180>",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r8"
+   ],
+   "round": 1,
+   "units": [
+    "zen_mul_1.asm"
+   ]
+  },
+  "mpn/x86_64/zen/mul_basecase.asm:163:before": {
+   "dead": [
+    "r8"
+   ],
+   "header": "jrcxz 0x152 <.Lrrln206>",
+   "labels": [
+    ".Lmtop"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r8"
+   ],
+   "round": 1,
+   "units": [
+    "zen_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/zen/mul_basecase.asm:213:before": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq (%rbp), %rdx",
+   "labels": [
+    ".Loloop0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "zen_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/zen/mul_basecase.asm:231:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8"
+   ],
+   "header": "addq %r9, (%rdi,%rcx,8)",
+   "labels": [
+    ".Ltp0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "zen_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/zen/mul_basecase.asm:267:before": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq (%rbp), %rdx",
+   "labels": [
+    ".Loloop2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "zen_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/zen/mul_basecase.asm:287:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8"
+   ],
+   "header": "addq %r9, (%rdi,%rcx,8)",
+   "labels": [
+    ".Ltp2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "zen_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/zen/mul_basecase.asm:324:before": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq (%rbp), %rdx",
+   "labels": [
+    ".Loloop1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "zen_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/zen/mul_basecase.asm:342:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8"
+   ],
+   "header": "addq %r9, (%rdi,%rcx,8)",
+   "labels": [
+    ".Ltp1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "zen_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/zen/mul_basecase.asm:381:before": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq (%rbp), %rdx",
+   "labels": [
+    ".Loloop3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "zen_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/zen/mul_basecase.asm:402:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8"
+   ],
+   "header": "addq %r9, (%rdi,%rcx,8)",
+   "labels": [
+    ".Ltp3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "zen_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/zen/mul_basecase.asm:438:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r8",
+    "r9",
+    "rax",
+    "rbx",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq (%rbp), %rdx",
+   "labels": [
+    ".L3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "zen_mul_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/zen/mullo_basecase.asm:169:before": {
+   "dead": [
+    "r8"
+   ],
+   "header": "jrcxz 0x192 <.Lrrln211>",
+   "labels": [
+    ".Lmtop"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r8"
+   ],
+   "round": 1,
+   "units": [
+    "zen_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/zen/mullo_basecase.asm:194:before": {
+   "dead": [
+    "r11",
+    "r12",
+    "r13",
+    "r8",
+    "r9",
+    "rax",
+    "rbx",
+    "rcx",
+    "rdx"
+   ],
+   "header": "mulxq (%rsi), %r10, %r8",
+   "labels": [
+    ".Louter"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "zen_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/zen/mullo_basecase.asm:277:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8"
+   ],
+   "header": "addq %r9, (%rdi,%rcx,8)",
+   "labels": [
+    ".Ltop"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "zen_mullo_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/zen/sqr_basecase.asm:204:split": {
+   "dead": [
+    "r15"
+   ],
+   "header": "jrcxz 0x1f2 <.Lrrln249>",
+   "labels": [
+    ".Lmtop"
+   ],
+   "live": [
+    "C"
+   ],
+   "mode": "cf",
+   "regs": [
+    "r15"
+   ],
+   "round": 1,
+   "units": [
+    "zen_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/zen/sqr_basecase.asm:242:split": {
+   "dead": [
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r8",
+    "r9",
+    "rax",
+    "rbx",
+    "rcx",
+    "rdx"
+   ],
+   "header": "movq -0x8(%rsi,%rbp,8), %rdx",
+   "labels": [
+    ".Lf2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 1,
+   "units": [
+    "zen_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/zen/sqr_basecase.asm:260:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8"
+   ],
+   "header": "addq %r9, (%rdi,%rcx,8)",
+   "labels": [
+    ".Ltop2"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "zen_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/zen/sqr_basecase.asm:301:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8"
+   ],
+   "header": "addq %r9, (%rdi,%rcx,8)",
+   "labels": [
+    ".Ltop1"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "zen_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/zen/sqr_basecase.asm:341:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8"
+   ],
+   "header": "addq %r9, (%rdi,%rcx,8)",
+   "labels": [
+    ".Ltop0"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "zen_sqr_basecase.asm"
+   ]
+  },
+  "mpn/x86_64/zen/sqr_basecase.asm:387:split": {
+   "dead": [
+    "r10",
+    "r12",
+    "r8"
+   ],
+   "header": "addq %r9, (%rdi,%rcx,8)",
+   "labels": [
+    ".Ltop3"
+   ],
+   "live": [],
+   "mode": "plain",
+   "regs": [],
+   "round": 2,
+   "units": [
+    "zen_sqr_basecase.asm"
+   ]
+  }
+ }
+}

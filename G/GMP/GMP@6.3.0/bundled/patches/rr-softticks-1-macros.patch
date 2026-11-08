@@ -1,0 +1,276 @@
+rr software ticks (rr's tracee ABI version 1) for GMP's x86-64 assembly and inline asm.
+
+A compiler built for rr's software ticks predefines __RR_SOFTTICKS__ (the ABI version) and
+ticks the code it compiles, but not hand-written assembly or the loops inside inline asm.
+
+- configure.ac: with such a compiler, define RR_SOFTTICKS in config.m4 for x86-64 Linux
+  (ABI=64); refuse other assembly (it does not tick: configure with --disable-assembly).
+- mpn/x86_64/x86_64-defs.m4: the tick macros (RR_SOFTTICK, RR_SOFTTICK_CF, RR_SOFTTICK_CO,
+  and RR_SOFTTICK_JRCXZ/RR_SOFTTICK_FAR for a jrcxz that ticks put out of reach), and a
+  tick at every PROLOGUE.  rr-softticks-2-loops.patch puts the loop ticks in.
+- bt1/aors_n.asm, coreibwl/mullo_basecase.asm, coreibwl/sqr_basecase.asm,
+  zen/sqr_basecase.asm: the jrcxz instructions whose targets the ticks put out of reach.
+- gmp-impl.h: a tick in MPN_IORD_U's carry propagation loop (MPN_INCR_U, MPN_DECR_U).
+
+All of it expands to nothing without RR_SOFTTICKS / __RR_SOFTTICKS__: the object code is
+the same as without this patch.
+
+diff -ruN a/configure.ac b/configure.ac
+--- a/configure.ac
++++ b/configure.ac
+@@ -2667,6 +2667,33 @@
+ esac
+ 
+ 
++# rr software ticks.  A compiler built for rr's software ticks predefines
++# __RR_SOFTTICKS__ (the tracee ABI version) and ticks the code it compiles,
++# but not hand-written assembly.  The x86-64 assembly ticks by hand when
++# RR_SOFTTICKS is defined in config.m4 (see mpn/x86_64/x86_64-defs.m4);
++# other assembly does not tick, so it must not be used with such a compiler.
++AC_MSG_CHECKING([whether the compiler is built for rr software ticks])
++AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
++#ifndef __RR_SOFTTICKS__
++#error not built for rr software ticks
++#endif
++int gmp_rr_softticks;]])], [gmp_rr_softticks=yes], [gmp_rr_softticks=no])
++AC_MSG_RESULT($gmp_rr_softticks)
++if test $gmp_rr_softticks = yes && test "$enable_assembly" = "yes"; then
++  gmp_rr_softticks_asm=no
++  case $host in
++    X86_64_PATTERN)
++      case $ABI/$host in
++        64/*-*-linux*) gmp_rr_softticks_asm=yes ;;
++      esac ;;
++  esac
++  if test $gmp_rr_softticks_asm = yes; then
++    GMP_DEFINE_RAW(["define(<RR_SOFTTICKS>,1)"])
++  else
++    AC_MSG_ERROR([the assembly for $host (ABI=$ABI) has no rr software ticks, configure with --disable-assembly])
++  fi
++fi
++
+ if test "$enable_assembly" = "no"; then
+   path="generic"
+   AC_DEFINE([NO_ASM],1,[Define to 1 to disable the use of inline assembly])
+diff -ruN a/gmp-impl.h b/gmp-impl.h
+--- a/gmp-impl.h
++++ b/gmp-impl.h
+@@ -2781,6 +2781,34 @@
+ /* Better flags handling than the generic C gives on i386, saving a few
+    bytes of code and maybe a cycle or two.  */
+ 
++/* rr software ticks (rr's include/rr/softticks.h, tracee ABI version 1): a
++   compiler built for them predefines __RR_SOFTTICKS__ and ticks the code it
++   compiles, but not loops inside inline assembly.  MPN_IORD_U_TICK is the
++   ABI's tick sequence, exactly (rr recognizes its bytes); it clobbers the
++   flags only, and goes at the top of the carry propagation loop below, where
++   no flag is live (the add or sub there sets them all).  */
++#if defined (__RR_SOFTTICKS__) && defined (__x86_64__)
++#define MPN_IORD_U_TICK							\
++  "\ttestb\t$0x80, 0x70001807\n"					\
++  "\tjnz\t1f\n"								\
++  "\tdecq\t0x70001800\n"						\
++  "\tjnz\t1f\n"								\
++  "\tint3\n"								\
++  "1:\n"
++#elif defined (__RR_SOFTTICKS__) && defined (__i386__)
++#define MPN_IORD_U_TICK							\
++  "\ttestb\t$0x80, 0x70001807\n"					\
++  "\tjnz\t1f\n"								\
++  "\tsubl\t$1, 0x70001800\n"						\
++  "\tjnz\t1f\n"								\
++  "\tsubl\t$1, 0x70001804\n"						\
++  "\tjae\t1f\n"								\
++  "\tint3\n"								\
++  "1:\n"
++#else
++#define MPN_IORD_U_TICK ""
++#endif
++
+ #define MPN_IORD_U(ptr, incr, aors)					\
+   do {									\
+     mp_ptr  __ptr_dummy;						\
+@@ -2791,6 +2819,7 @@
+       {									\
+ 	__asm__ __volatile__						\
+ 	  ("\n" ASM_L(top) ":\n"					\
++	   MPN_IORD_U_TICK						\
+ 	   "\t" aors "\t$1, (%0)\n"					\
+ 	   "\tlea\t%c2(%0), %0\n"					\
+ 	   "\tjc\t" ASM_L(top)						\
+@@ -2804,6 +2833,7 @@
+ 	  (   aors  "\t%2, (%0)\n"					\
+ 	   "\tjnc\t" ASM_L(done) "\n"					\
+ 	   ASM_L(top) ":\n"						\
++	   MPN_IORD_U_TICK						\
+ 	   "\t" aors "\t$1, %c3(%0)\n"					\
+ 	   "\tlea\t%c3(%0), %0\n"					\
+ 	   "\tjc\t" ASM_L(top) "\n"					\
+diff -ruN a/mpn/x86_64/bt1/aors_n.asm b/mpn/x86_64/bt1/aors_n.asm
+--- a/mpn/x86_64/bt1/aors_n.asm
++++ b/mpn/x86_64/bt1/aors_n.asm
+@@ -100,8 +100,9 @@
+ 	mov	$1, R32(%rax)
+ 	mov	(up), %r8
+ 	mov	8(up), %r9
+-	jrcxz	L(cj2)
++	RR_SOFTTICK_JRCXZ(cj2)
+ 	jmp	L(top)
++RR_SOFTTICK_FAR(cj2)
+ 
+ L(bx1):	test	$2, R8(n)
+ 	jnz	L(b11)
+@@ -110,9 +111,10 @@
+ 	neg	%r8
+ 	mov	$0, R32(%rax)
+ 	mov	(up), %r9
+-	jrcxz	L(cj1)
++	RR_SOFTTICK_JRCXZ(cj1)
+ 	mov	8(up), %r10
+ 	jmp	L(lo1)
++RR_SOFTTICK_FAR(cj1)
+ 
+ 	ALIGN(8)
+ L(b11):	inc	n
+diff -ruN a/mpn/x86_64/coreibwl/mullo_basecase.asm b/mpn/x86_64/coreibwl/mullo_basecase.asm
+--- a/mpn/x86_64/coreibwl/mullo_basecase.asm
++++ b/mpn/x86_64/coreibwl/mullo_basecase.asm
+@@ -260,6 +260,7 @@
+ 	lea	8(vp), vp
+ 	or	R32(nn), R32(n)		C copy count, clear CF,OF (n = 0 prior)
+ 	jmp	*jmpreg
++RR_SOFTTICK_FAR(end)
+ 
+ L(f7):	mulx(	(up), %r9, %rax)
+ 	lea	-16(up), up
+@@ -278,7 +279,7 @@
+ L(top):	adox(	-8,(rp), %r10)
+ 	adcx(	%r8, %r9)
+ 	mov	%r10, -8(rp)
+-	jrcxz	L(end)
++	RR_SOFTTICK_JRCXZ(end)
+ L(b1):	mulx(	8,(up), %r10, %r8)
+ 	adox(	(rp), %r9)
+ 	lea	-1(n), R32(n)
+diff -ruN a/mpn/x86_64/coreibwl/sqr_basecase.asm b/mpn/x86_64/coreibwl/sqr_basecase.asm
+--- a/mpn/x86_64/coreibwl/sqr_basecase.asm
++++ b/mpn/x86_64/coreibwl/sqr_basecase.asm
+@@ -435,12 +435,13 @@
+ 	adcx(	w3, w0)
+ 	mov	w2, -8(rp)
+ 	jmp	L(b1)
++RR_SOFTTICK_FAR(ed2)
+ 
+ 	ALIGN(16)
+ L(tp2):	adox(	-8,(rp), w2)
+ 	adcx(	w3, w0)
+ 	mov	w2, -8(rp)
+-	jrcxz	L(ed2)
++	RR_SOFTTICK_JRCXZ(ed2)
+ 	mulx(	8,(up), w2, w3)
+ 	adox(	(rp), w0)
+ 	lea	8(n), R32(n)
+diff -ruN a/mpn/x86_64/x86_64-defs.m4 b/mpn/x86_64/x86_64-defs.m4
+--- a/mpn/x86_64/x86_64-defs.m4
++++ b/mpn/x86_64/x86_64-defs.m4
+@@ -95,6 +95,7 @@
+ 	TYPE($1,`function')
+ 	COFF_TYPE($1)
+ $1:
++RR_SOFTTICK
+ ')
+ 
+ 
+@@ -490,4 +491,78 @@
+ .byte	0xf3`'dnl
+ adx($@)')
+ 
++dnl  rr software ticks (rr's include/rr/softticks.h, tracee ABI version 1).
++dnl
++dnl  A compiler built for rr's software ticks predefines __RR_SOFTTICKS__ (the
++dnl  ABI version) and ticks the code it compiles: at every function entry and
++dnl  on every loop, so that no instruction runs twice in one stack frame (at
++dnl  the same pc and stack pointer) without a tick in between.  configure then
++dnl  defines RR_SOFTTICKS here, and the assembly ticks by hand: PROLOGUE at
++dnl  every entry point, and every loop on each iteration with one of the
++dnl  macros below (at the positions that softticks/gmpticks.py in the recipe
++dnl  chose: right after the loop's label where no flag is live, else the
++dnl  first place on the iteration's path where none is, else saving what is
++dnl  live in registers that are dead there).  Without RR_SOFTTICKS they all
++dnl  expand to nothing.
++dnl
++dnl  RR_SOFTTICK_SEQ is the ABI's x86-64 tick, exactly: rr recognizes a tick
++dnl  by its bytes.  It tests the top bit of the countdown at 0x70001800
++dnl  (disarmed while set, as it is outside rr), decrements the countdown and
++dnl  traps (int3) when that reaches 0.  It clobbers the arithmetic flags and
++dnl  nothing else; the numeric label 7731 is local to it.
++dnl
++dnl  RR_SOFTTICK            no arithmetic flag is live
++dnl  RR_SOFTTICK_CF(r)      only CF is live; r (a 64-bit register name) is
++dnl                         dead: its low byte keeps CF across the tick
++dnl  RR_SOFTTICK_CO(r1,r2)  only CF and OF are live (adcx/adox chains); r1
++dnl                         and r2 are dead and keep CF and OF
++
++define(`RR_SOFTTICK_SEQ',
++`	testb	$`'0x80, 0x70001807
++	jnz	7731f
++	decq	0x70001800
++	jnz	7731f
++	int3
++7731:')
++
++define(`RR_SOFTTICK',
++`ifdef(`RR_SOFTTICKS',`RR_SOFTTICK_SEQ')')
++
++dnl  CF in r's low byte: setc, and after the tick 0xff + (0 or 1) carries iff
++dnl  CF was set.
++
++define(`RR_SOFTTICK_CF',
++m4_assert_numargs(1)
++`ifdef(`RR_SOFTTICKS',
++`	setc	R8($1)
++RR_SOFTTICK_SEQ
++	addb	$-1, R8($1)')')
++
++dnl  CF in r1's low byte as above; OF in r2's low byte as 0x7e + OF, which inc
++dnl  overflows iff it is 0x7f.  inc keeps the CF that the add restored.
++
++define(`RR_SOFTTICK_CO',
++m4_assert_numargs(2)
++`ifdef(`RR_SOFTTICKS',
++`	setc	R8($1)
++	seto	R8($2)
++RR_SOFTTICK_SEQ
++	subb	$-126, R8($2)
++	addb	$-1, R8($1)
++	incb	R8($2)')')
++
++dnl  RR_SOFTTICK_JRCXZ(lbl) is `jrcxz L(lbl)', for a jrcxz whose 8-bit
++dnl  displacement the ticks between it and L(lbl) would overflow: with
++dnl  RR_SOFTTICKS it jumps to L(lbl_rr), a `jmp L(lbl)' that
++dnl  RR_SOFTTICK_FAR(lbl) places within reach, after an unconditional jump.
++
++define(`RR_SOFTTICK_JRCXZ',
++m4_assert_numargs(1)
++`ifdef(`RR_SOFTTICKS',`jrcxz	L($1_rr)',`jrcxz	L($1)')')
++
++define(`RR_SOFTTICK_FAR',
++m4_assert_numargs(1)
++`ifdef(`RR_SOFTTICKS',`L($1_rr):	jmp	L($1)')')
++
++
+ divert`'dnl
+diff -ruN a/mpn/x86_64/zen/sqr_basecase.asm b/mpn/x86_64/zen/sqr_basecase.asm
+--- a/mpn/x86_64/zen/sqr_basecase.asm
++++ b/mpn/x86_64/zen/sqr_basecase.asm
+@@ -379,8 +379,9 @@
+ 	adc	%r10, %r13
+ 	adc	%r12, %rbx
+ 	adc	$0, %rax
+-	jrcxz	L(xit3)
++	RR_SOFTTICK_JRCXZ(xit3)
+ 	jmp	L(top3)			C FIXME perhaps fall through
++RR_SOFTTICK_FAR(xit3)
+ 
+ 	ALIGN(16)
+ L(top3):add	%r9, (rp,n,8)
