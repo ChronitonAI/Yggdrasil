@@ -1,0 +1,45 @@
+Tick the x86-64 asm loop of rc_direct() for rr software ticks (https://github.com/rr-debugger/rr/pull/4104).
+
+--- a/src/liblzma/rangecoder/range_decoder.h
++++ b/src/liblzma/rangecoder/range_decoder.h
+@@ -933,7 +933,7 @@
+ 	uint32_t t1; \
+ 	\
+ 	__asm__( \
+-		"2:\n\t" \
++		"2:\n\t" rc_asm_tick \
+ 		"add	%[dest], %[dest]\n\t" \
+ 		"lea	1(%q[dest]), %[t1]\n\t" \
+ 		\
+@@ -964,4 +964,31 @@
+ 
+ #endif // x86_64
+ 
++// rr software ticks: on rr_softticks platforms the compiler's software ticks
++// pass predefines __RR_SOFTTICKS__ (the ABI version) and ticks the compiled
++// code, but it cannot see the loop inside rc_direct()'s asm
++// (LZMA_RANGE_DECODER_CONFIG & 0x100), so that asm ticks at its loop head "2:"
++// itself. No flag is live there: the loop's first instruction, ADD, writes
++// them all. The tick is exactly rr's x86-64 sequence of ABI version 1
++// (RR_SOFTTICKS_X64_TICK_ASM in rr's softticks.h; rr recognizes it by its
++// bytes), with its local label renamed to 7731 to keep it apart from the
++// loop's own numeric labels; another ABI version is an error. The other asm
++// above has no backward branches. This is defined here at the end so that no
++// line above moves: without __RR_SOFTTICKS__ the object code and its line
++// numbers are unchanged.
++#if defined(__RR_SOFTTICKS__) && defined(__x86_64__)
++#	if __RR_SOFTTICKS__ != 1
++#		error "rc_asm_tick is the tick of rr software ticks ABI version 1"
++#	endif
++#	define rc_asm_tick \
++		"testb	$0x80, 0x70001807\n\t" \
++		"jnz	7731f\n\t" \
++		"decq	0x70001800\n\t" \
++		"jnz	7731f\n\t" \
++		"int3\n" \
++		"7731:\n\t"
++#else
++#	define rc_asm_tick ""
++#endif
++
+ #endif
