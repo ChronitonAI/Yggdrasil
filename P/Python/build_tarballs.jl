@@ -119,9 +119,24 @@ install_license ${WORKSPACE}/srcdir/Python-*/LICENSE
 # test suite. Readline and Ncurses for the `readline` and `curses` modules.
 const ygglet = any(contains("rr_softticks"), ARGS)
 if ygglet
-    sources = sources[1:1]
+    sources = [
+        sources[1],
+        # the software tick of the perf trampoline (bundled/patches/rr-softticks-perf-trampoline.patch)
+        DirectorySource("./bundled"),
+        # the binary tick check, OpenBLAS's (run at the end of the script)
+        DirectorySource(joinpath(@__DIR__, "..", "..", "O", "OpenBLAS", "softticks"); target="softticks"),
+    ]
     script = raw"""
 cd ${WORKSPACE}/srcdir/Python-*/
+# rr software ticks: the compiler's pass ticks the C code; the one assembly function, the x86-64
+# perf trampoline (Python/asm_trampoline.S, which perf_trampoline.c copies into the executable
+# arenas of `-X perf`/PYTHONPERFSUPPORT, one copy per code object), gets a tick at its entry from
+# the patch. The copies tick too: the tick has no relocation and jumps only inside itself. The
+# rest has no loop the pass cannot see: libmpdec's x86-64 inline asm is straight-line (mulq,
+# divq, bsr, bsf), HACL* and BLAKE2 are C, the bundled expat is not used and ctypes uses the
+# system libffi. The patch only acts where the compiler predefines __RR_SOFTTICKS__; elsewhere
+# the objects are byte-identical.
+atomic_patch -p1 ${WORKSPACE}/srcdir/patches/rr-softticks-perf-trampoline.patch
 # The modules' import checks during the build load our dependencies' libraries.
 export LD_LIBRARY_PATH="${libdir}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 export CPPFLAGS="${CPPFLAGS} -I${includedir} -I${includedir}/ncursesw"
@@ -150,6 +165,54 @@ ${CC} -shared -fPIC -o ${libdir}/libpython3.so -Wl,-soname,libpython3.so note.c 
 # The modules rr's test harness (pexpect) and the rest of a development container need.
 LD_LIBRARY_PATH="${libdir}" ${bindir}/python3 -c "import _ssl, _ctypes, readline, _sqlite3, zlib, lzma, bz2, pty, termios, select, curses, _decimal, pyexpat"
 install_license ${WORKSPACE}/srcdir/Python-*/LICENSE
+
+# rr_softticks: fail the build if the trampoline's tick did not land, which nothing would notice
+# otherwise (the patch is a no-op without __RR_SOFTTICKS__, and a new version can change the
+# trampoline): in the object, in the static library and in libpython3.12.so.1.0,
+# [_Py_trampoline_func_start, _Py_trampoline_func_end), the bytes perf_trampoline.c copies,
+# must be rr's x86-64 tick (after the endbr64 with -fcf-protection) and then the trampoline. Then
+# the binary tick check over the two objects (no cycle without a tick, no flag live after a tick,
+# every tick whole; its entry check skips the trampoline, whose symbols have no type) and
+# libpython's note and initializer. (Not over the whole archive: that check does not know which
+# calls do not return, so a cycle through a call of Py_FatalError and the like is a finding.)
+if [[ "${target}" != x86_64-* ]]; then
+    echo "Python: only the x86-64 trampoline has a software tick, not ${target}'s" >&2
+    exit 1
+fi
+# trampoline_bytes FILE [-D]: the bytes of [_Py_trampoline_func_start, _Py_trampoline_func_end)
+# in FILE, in hex (-D: from the dynamic symbols, for the shared library)
+trampoline_bytes() {
+    local syms s e
+    syms=$(${NM:-nm} ${2:-} "$1") || return 1
+    s=$(awk '$3 == "_Py_trampoline_func_start" { print "0x" $1 }' <<< "${syms}")
+    e=$(awk '$3 == "_Py_trampoline_func_end" { print "0x" $1 }' <<< "${syms}")
+    [[ -n "${s}" && -n "${e}" ]] || return 1
+    ${OBJDUMP:-objdump} -d --start-address=${s} --stop-address=${e} "$1" |
+        awk -F'\t' '/^ *[0-9a-f]+:\t/ { gsub(/ /, "", $2); printf "%s", $2 } END { print "" }'
+}
+# rr's x86-64 tick: testb $0x80,0x70001807; jne 1f; decq 0x70001800; jne 1f; int3; 1:
+tick=f604250718007080750b48ff0c25001800707501cc
+# the trampoline: sub $8,%rsp; call *%rcx; add $8,%rsp; ret
+body=4883ec08ffd14883c408c3
+archive=(${prefix}/lib/python3.12/config-3.12-*/libpython3.12.a)
+if [[ ! -f "${archive[0]}" ]]; then
+    echo "Python: no static library ${archive[0]}" >&2
+    exit 1
+fi
+mkdir -p softticks-check
+(cd softticks-check && ${AR:-ar} x "${archive[0]}" asm_trampoline.o)
+for f in Python/asm_trampoline.o softticks-check/asm_trampoline.o "${libdir}/libpython3.12.so.1.0"; do
+    flags=""
+    [[ "${f}" == *.so* ]] && flags=-D
+    b=$(trampoline_bytes "${f}" ${flags}) || b=""
+    if [[ "${b}" != "${tick}${body}" && "${b}" != "f30f1efa${tick}${body}" ]]; then
+        echo "Python: the trampoline in ${f} does not tick at its entry: ${b:-no trampoline}" >&2
+        exit 1
+    fi
+done
+perl ${WORKSPACE}/srcdir/softticks/check.pl --selftest
+perl ${WORKSPACE}/srcdir/softticks/check.pl --so ${libdir}/libpython3.12.so.1.0 \
+    Python/asm_trampoline.o softticks-check/asm_trampoline.o
 """
 end
 
