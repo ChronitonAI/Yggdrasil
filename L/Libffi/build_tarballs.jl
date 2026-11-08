@@ -16,6 +16,7 @@ sources = [
 # Bash recipe for building across all platforms
 script = raw"""
 cd $WORKSPACE/srcdir/libffi-*/
+install_license LICENSE
 # rr software ticks (rr_softticks platforms): the compiler pass ticks the C code; the patch
 # ticks the x86-64 assembly at its entry points. It only acts where the compiler predefines
 # __RR_SOFTTICKS__; elsewhere the objects are byte-identical.
