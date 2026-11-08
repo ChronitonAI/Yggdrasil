@@ -5,7 +5,7 @@
 # The pass takes care of compiled C and Fortran; this checks the object code, so that it
 # covers the hand-written kernels (the ticks of 90/91-rr-softticks-*.patch) and whatever else.
 #
-#   check.pl [--jobs N] [--so LIB] ARCHIVE|OBJECT...
+#   check.pl [--jobs N] [--so LIB] [--longjmp NAME]... [--asm-only] ARCHIVE|OBJECT...
 #   check.pl --selftest
 #
 # Per object and executable section, from `objdump -d -r -t -h` (GNU or LLVM; $OBJDUMP):
@@ -29,6 +29,12 @@
 #
 # --so LIB: also check that the shared library carries the software ticks note (ABI
 # version 1) and the initializer that maps the countdown's page outside rr.
+# --longjmp NAME: NAME is a longjmp written in assembly (libitm's GTM_longjmp): a call to it
+# does not return, and its indirect jump, to the address the jump buffer holds, leaves the
+# function (it is an exit, and no indirect finding).
+# --asm-only: check only the objects assembled from assembly source (no .comment), the
+# hand-written code; skip the compiled ones (whose ticks are the compiler pass's: this
+# script does not know their noreturn functions, and would see cycles through them).
 # --selftest: assembles (with $CC, else cc) an object with one fault of each kind the
 # hand-written kernels could have (an unticked loop, an entry path without a tick, a flag
 # live after a tick, a stray countdown access) and one without, and checks that exactly
@@ -41,9 +47,12 @@ use File::Temp qw(tempdir);
 use POSIX ();
 use Getopt::Long;
 
-my ($so, $jobs, $selftest) = (undef, 1, 0);
-GetOptions("so=s" => \$so, "jobs=i" => \$jobs, "selftest" => \$selftest) or exit 2;
-die "usage: $0 [--jobs N] [--so LIB] ARCHIVE|OBJECT... | --selftest\n" unless @ARGV || $selftest;
+my ($so, $jobs, $selftest, @longjmp, $asm_only) = (undef, 1, 0);
+GetOptions("so=s" => \$so, "jobs=i" => \$jobs, "selftest" => \$selftest,
+           "longjmp=s" => \@longjmp, "asm-only" => \$asm_only) or exit 2;
+die "usage: $0 [--jobs N] [--so LIB] [--longjmp NAME]... [--asm-only] ARCHIVE|OBJECT... | --selftest\n"
+    unless @ARGV || $selftest;
+my %LONGJMP = map { $_ => 1 } @longjmp;
 my $OBJDUMP = $ENV{OBJDUMP} || "objdump";
 
 # ---------------------------------------------------------------- flags
@@ -61,14 +70,15 @@ my %W_ALL = map { $_ => 1 } qw(add sub and or xor cmp test neg imul mul div idiv
     comisd comiss ucomisd ucomiss vcomisd vcomiss vucomisd vucomiss ptest vptest vtestps
     vtestpd kortestw kortestb kortestd kortestq ktestw ktestb ktestd ktestq fcomi fcomip
     fucomi fucomip popf popfq sahf aaa aas daa das vcomish vucomish pcmpestri pcmpestrm
-    pcmpistri pcmpistrm vpcmpestri vpcmpestrm vpcmpistri vpcmpistrm rdrand rdseed);
+    pcmpistri pcmpistrm vpcmpestri vpcmpestrm vpcmpistri vpcmpistrm rdrand rdseed xtest);
 my %NEUTRAL = map { $_ => 1 } qw(mov movabs movs movz movsx movzx movsxd movslq movsbl
     movsbq movswl movswq movzbl movzbq movzwl movzwq movsbw movzbw lea push pop nop xchg cltq
     cqto cqo cdq cltd cwtl cwtd cbtw cdqe bswap not prefetcht0 prefetcht1 prefetcht2
     prefetchnta prefetchw prefetch endbr64 endbr32 vzeroupper vzeroall emms femms leave
     ret jmp call ud2 int3 hlt pause lfence sfence mfence sarx shlx shrx rorx mulx pdep pext
     cpuid rdtsc rdtscp xgetbv syscall cld std ldtilecfg sttilecfg tilerelease tilezero
-    tileloadd tileloaddt1 tilestored stos lods xlat wait fwait loop jrcxz jecxz);
+    tileloadd tileloaddt1 tilestored stos lods xlat wait fwait loop jrcxz jecxz
+    xbegin xabort xend rdssp incssp);
 
 # Returns (reads, writes) as strings of flag letters; undef if unknown.
 sub flag_effect {
@@ -152,9 +162,9 @@ sub read_object {
         } elsif ($mode eq "t") {
             # GNU: ADDR FLAGS SECTION\tSIZE [.hidden] NAME; LLVM: ADDR FLAGS SECTION SIZE NAME
             if ($ln =~ /^([0-9a-f]{8,16}) (.{7}) (\S+)\s+([0-9a-f]+)\s+(.*)$/) {
-                my ($addr, $fl, $s, $n) = (hex $1, $2, $3, $5);
+                my ($addr, $fl, $s, $size, $n) = (hex $1, $2, $3, hex $4, $5);
                 my @nt = split ' ', $n;
-                push @{$o{syms}}, [$addr, $fl, $s, $nt[-1] // ""];
+                push @{$o{syms}}, [$addr, $fl, $s, $nt[-1] // "", $size];
             }
         } elsif ($mode eq "d") {
             next unless defined $sec;
@@ -199,7 +209,7 @@ sub is_tick_at {
 }
 
 sub analyze_section {
-    my ($ins, $entries, $asm, $label) = @_;
+    my ($ins, $entries, $asm, $label, $ljranges) = @_;
     my $n = @$ins;
     my %idx;
     $idx{$ins->[$_][0]} = $_ for 0 .. $n - 1;
@@ -245,7 +255,8 @@ sub analyze_section {
         }
         if ($mn eq "jmp") {
             if ($ops =~ /^\*/) {
-                push @{$P{indirect}}, sprintf("%x", $addr) if $asm;
+                push @{$P{indirect}}, sprintf("%x", $addr)
+                    if $asm && !grep { $_->[0] <= $addr && $addr < $_->[1] } @{$ljranges // []};
                 $exit[$i] = 1;
             } elsif (defined $tgt && exists $idx{$tgt}) {
                 push @{$succ[$i]}, $idx{$tgt};
@@ -265,7 +276,7 @@ sub analyze_section {
             my $s = $rel;
             $s =~ s/[-+].*$//;
             $s =~ s/\@.*$//;
-            if ($NORETURN{$s}) { $exit[$i] = 1; next; }
+            if ($NORETURN{$s} || $LONGJMP{$s}) { $exit[$i] = 1; next; }
         }
         if ($i + 1 < $n) { push @{$succ[$i]}, $i + 1; } else { $exit[$i] = 1; }
     }
@@ -374,6 +385,7 @@ sub check_object {
     my ($path, $name) = @_;
     my $o = read_object($path);
     my $asm = !$o->{has_comment};
+    return { name => $name, asm => $asm, results => [], skipped => 1 } if $asm_only && !$asm;
     my @res;
     my $code = 0;
     for my $sec (@{$o->{order}}) {
@@ -390,7 +402,9 @@ sub check_object {
             $_->[3] !~ /^__rr_softticks_init/ } @{$o->{syms}};
         my %u;
         my @e = grep { !$u{$_}++ } @ents;
-        push @res, analyze_section($ins, \@e, $asm, "$name:$sec");
+        my @lj = map { [$_->[0], $_->[0] + $_->[4]] }
+            grep { $_->[2] eq $sec && $LONGJMP{$_->[3]} } @{$o->{syms}};
+        push @res, analyze_section($ins, \@e, $asm, "$name:$sec", \@lj);
     }
     if ($code && !$asm && !$o->{has_note}) {
         push @res, { label => "$name", insns => 0, ticks => 0,
@@ -455,8 +469,32 @@ good1:	TICK
 	addl $1, %eax
 2:	ret
 	.size good1, .-good1
+	.globl good2
+	.type good2, @function
+good2:	TICK
+	xbegin 4f
+	xend
+4:	rdsspq %rax
+	incsspq %rax
+	xtest
+	jz 5f
+	addl $1, %eax
+5:	ret
+	.size good2, .-good2
+	.globl jb_longjmp
+	.type jb_longjmp, @function
+jb_longjmp:	TICK
+	movq (%rsi), %rsp
+	jmp *8(%rsi)
+	.size jb_longjmp, .-jb_longjmp
+	.globl good3
+	.type good3, @function
+good3:	TICK
+6:	call jb_longjmp
+	jmp 6b
+	.size good3, .-good3
 EOS
-    bad => [<<'EOS', {unticked_scc => 1, entry_unticked => 1, flags_live => 1, bad_tick => 1}],
+    bad => [<<'EOS', {unticked_scc => 2, entry_unticked => 1, flags_live => 1, bad_tick => 1, indirect => 1}],
 	.text
 	.globl loop
 	.type loop, @function
@@ -485,11 +523,23 @@ flags:	TICK
 stray:	TICK
 	movq 0x70001800, %rax
 	ret
+	.globl jb_other
+	.type jb_other, @function
+jb_other:	TICK
+	jmp *8(%rsi)
+	.size jb_other, .-jb_other
+	.globl calls
+	.type calls, @function
+calls:	TICK
+6:	call jb_other
+	jmp 6b
 EOS
 );
 
 sub selftest {
     my $dir = tempdir(CLEANUP => 1);
+    # as with --longjmp jb_longjmp (and not jb_other)
+    %LONGJMP = (jb_longjmp => 1);
     my $cc = $ENV{CC} || "cc";
     my $ok = 1;
     for my $name (sort keys %SELFTEST) {
@@ -556,7 +606,7 @@ for my $j (0 .. $jobs - 1) {
                     printf $out "U\t%s\t%s\n", $mn, $s->{unknown}{$mn};
                 }
             }
-            printf $out "O\t%s\t%d\n", $name, $r->{asm};
+            printf $out "O\t%s\t%d\t%d\n", $name, $r->{asm}, $r->{skipped} ? 1 : 0;
         }
         close $out;
         POSIX::_exit(0);
@@ -574,7 +624,7 @@ for my $j (0 .. $jobs - 1) {
     while (<$fh>) {
         chomp;
         my @f = split /\t/;
-        if ($f[0] eq "O") { $nobj{$f[2] ? "asm" : "c"}++; }
+        if ($f[0] eq "O") { $nobj{$f[2] ? "asm" : "c"}++; $nobj{skipped}++ if $f[3]; }
         elsif ($f[0] eq "S") { $sections++; $insns += $f[3]; $ticks += $f[4]; }
         elsif ($f[0] eq "U") { $unknown{$f[1]} += $f[2]; }
         elsif ($f[0] eq "P") {
@@ -602,8 +652,9 @@ if (defined $so) {
     push @fail, "$so: no software ticks initializer (__rr_softticks_init)" unless $init;
 }
 
-printf "softticks check: %d objects (%d assembled, %d compiled), %d sections, %d instructions, %d ticks\n",
-    ($nobj{asm} // 0) + ($nobj{c} // 0), $nobj{asm} // 0, $nobj{c} // 0, $sections, $insns, $ticks;
+printf "softticks check: %d objects (%d assembled, %d compiled%s), %d sections, %d instructions, %d ticks\n",
+    ($nobj{asm} // 0) + ($nobj{c} // 0), $nobj{asm} // 0, $nobj{c} // 0,
+    $asm_only ? sprintf(", %d of them skipped", $nobj{skipped} // 0) : "", $sections, $insns, $ticks;
 printf "unknown mnemonics (taken to read all flags): %s\n",
     join(" ", map { "$_($unknown{$_})" } sort keys %unknown) if %unknown;
 if (@fail) {
