@@ -1,0 +1,166 @@
+Tick libffi's x86-64 assembly (unix64.S, win64.S) at its entry points for rr software ticks (https://github.com/rr-debugger/rr/pull/4104).
+
+Without __RR_SOFTTICKS__ (the software-ticks compiler pass predefines it, also for .S
+files) nothing changes: RR_SOFTTICK is empty and the objects are byte-identical.
+
+--- a/src/x86/asmnames.h
++++ b/src/x86/asmnames.h
+@@ -27,4 +27,31 @@
+ # define ENDF(X)
+ #endif
+ 
++/* rr software ticks (rr's include/rr/softticks.h, ABI version 1).  Code
++   built for rr's software-ticks mode counts its own progress: no instruction
++   may run twice in the same stack frame (at the same pc and stack pointer)
++   without a tick in between.  The compiler's software-ticks pass ticks the C
++   code and predefines __RR_SOFTTICKS__ (the ABI version), for .S files too;
++   unix64.S and win64.S tick by hand, right after the _CET_ENDBR of each of
++   their entry points.  That is all they need: neither has a loop (rep movsb
++   is one instruction), and their jump tables lead only forward, to a ret or
++   to abort.  The tick clobbers the arithmetic flags, and none is live at an
++   entry point: calls reach them, and jumps from the trampolines and the _alt
++   entry points, after instructions that only write the flags.  The tables'
++   slots and the trampolines (trampoline_code_table, and the ones ffi64.c and
++   ffiw64.c write) do not tick: they run straight through to a ret, or to a
++   jump to an entry point, which ticks.  RR_SOFTTICK is the byte-exact x86-64
++   tick (RR_SOFTTICKS_X64_TICK_ASM), with its local label renamed to 7731,
++   which nothing else here uses; another ABI version is an error.  Without
++   __RR_SOFTTICKS__ it is empty and the objects are unchanged: the ticks go
++   on the lines of the _CET_ENDBRs, so that no line of the .S files moves.  */
++#if defined(__RR_SOFTTICKS__) && defined(__x86_64__)
++# if __RR_SOFTTICKS__ != 1
++#  error "RR_SOFTTICK is the tick of rr software ticks ABI version 1"
++# endif
++# define RR_SOFTTICK testb $0x80, 0x70001807; jnz 7731f; decq 0x70001800; jnz 7731f; int3; 7731:
++#else
++# define RR_SOFTTICK
++#endif
++
+ #endif /* ASMNAMES_H */
+--- a/src/x86/unix64.S
++++ b/src/x86/unix64.S
+@@ -61,7 +61,7 @@
+ 
+ C(ffi_call_unix64):
+ L(UW0):
+-	_CET_ENDBR
++	_CET_ENDBR; RR_SOFTTICK
+ 	movq	(%rsp), %r10		/* Load return address.  */
+ 	leaq	(%rdi, %rsi), %rax	/* Find local stack base.  */
+ 	movq	%rdx, (%rax)		/* Save flags.  */
+@@ -251,7 +251,7 @@
+ 
+ C(ffi_closure_unix64_sse):
+ L(UW5):
+-	_CET_ENDBR
++	_CET_ENDBR; RR_SOFTTICK
+ 	subq	$ffi_closure_FS, %rsp
+ L(UW6):
+ 	/* cfi_adjust_cfa_offset(ffi_closure_FS) */
+@@ -275,7 +275,7 @@
+ 
+ C(ffi_closure_unix64):
+ L(UW8):
+-	_CET_ENDBR
++	_CET_ENDBR; RR_SOFTTICK
+ 	subq	$ffi_closure_FS, %rsp
+ L(UW9):
+ 	/* cfi_adjust_cfa_offset(ffi_closure_FS) */
+@@ -405,7 +405,7 @@
+ 
+ C(ffi_go_closure_unix64_sse):
+ L(UW12):
+-	_CET_ENDBR
++	_CET_ENDBR; RR_SOFTTICK
+ 	subq	$ffi_closure_FS, %rsp
+ L(UW13):
+ 	/* cfi_adjust_cfa_offset(ffi_closure_FS) */
+@@ -429,7 +429,7 @@
+ 
+ C(ffi_go_closure_unix64):
+ L(UW15):
+-	_CET_ENDBR
++	_CET_ENDBR; RR_SOFTTICK
+ 	subq	$ffi_closure_FS, %rsp
+ L(UW16):
+ 	/* cfi_adjust_cfa_offset(ffi_closure_FS) */
+@@ -462,7 +462,7 @@
+ 
+ C(ffi_closure_unix64_sse_alt):
+ 	/* See the comments above trampoline_code_table. */
+-	_CET_ENDBR
++	_CET_ENDBR; RR_SOFTTICK
+ 	movq	8(%rsp), %r10			/* Load closure in r10 */
+ 	addq	$16, %rsp			/* Restore the stack */
+ 	jmp	C(ffi_closure_unix64_sse)
+@@ -474,7 +474,7 @@
+ 
+ C(ffi_closure_unix64_alt):
+ 	/* See the comments above trampoline_code_table. */
+-	_CET_ENDBR
++	_CET_ENDBR; RR_SOFTTICK
+ 	movq	8(%rsp), %r10			/* Load closure in r10 */
+ 	addq	$16, %rsp			/* Restore the stack */
+ 	jmp	C(ffi_closure_unix64)
+--- a/src/x86/win64.S
++++ b/src/x86/win64.S
+@@ -48,7 +48,7 @@
+ 	SEH(.seh_proc ffi_call_win64)
+ C(ffi_call_win64):
+ 	cfi_startproc
+-	_CET_ENDBR
++	_CET_ENDBR; RR_SOFTTICK
+ 	/* Set up the local stack frame and install it in rbp/rsp.  */
+ 	movq	(%rsp), %rax
+ 	movq	%rbp, (arg1)
+@@ -177,7 +177,7 @@
+ 	SEH(.seh_proc ffi_go_closure_win64)
+ C(ffi_go_closure_win64):
+ 	cfi_startproc
+-	_CET_ENDBR
++	_CET_ENDBR; RR_SOFTTICK
+ 	/* Save all integer arguments into the incoming reg stack space.  */
+ 	movq	%rcx, 8(%rsp)
+ 	movq	%rdx, 16(%rsp)
+@@ -198,7 +198,7 @@
+ 	SEH(.seh_proc ffi_closure_win64)
+ C(ffi_closure_win64):
+ 	cfi_startproc
+-	_CET_ENDBR
++	_CET_ENDBR; RR_SOFTTICK
+ 	/* Save all integer arguments into the incoming reg stack space.  */
+ 	movq	%rcx, 8(%rsp)
+ 	movq	%rdx, 16(%rsp)
+@@ -241,12 +241,31 @@
+ 
+ 	SEH(.seh_proc ffi_closure_win64_alt)
+ C(ffi_closure_win64_alt):
+-	_CET_ENDBR
++	_CET_ENDBR; RR_SOFTTICK
+ 	movq	8(%rsp), %r10
+ 	addq	$16, %rsp
+ 	jmp	C(ffi_closure_win64)
+ 	SEH(.seh_endproc)
+ #endif
++
++#if defined(__RR_SOFTTICKS__) && defined(__ELF__)
++/* rr software ticks (asmnames.h): the entry points above are plain labels,
++   which tools that check the ticks of a binary do not take for functions.
++   Typed and sized as functions (each up to the next, with the alignment
++   padding), their entry ticks are checked, as unix64.S's are.  */
++	.type	C(ffi_call_win64), @function
++	.size	C(ffi_call_win64), C(ffi_go_closure_win64) - C(ffi_call_win64)
++	.type	C(ffi_go_closure_win64), @function
++	.size	C(ffi_go_closure_win64), C(ffi_closure_win64) - C(ffi_go_closure_win64)
++	.type	C(ffi_closure_win64), @function
++# if defined(FFI_EXEC_STATIC_TRAMP)
++	.size	C(ffi_closure_win64), C(ffi_closure_win64_alt) - C(ffi_closure_win64)
++	.type	C(ffi_closure_win64_alt), @function
++	.size	C(ffi_closure_win64_alt), . - C(ffi_closure_win64_alt)
++# else
++	.size	C(ffi_closure_win64), . - C(ffi_closure_win64)
++# endif
++#endif
+ #endif /* __x86_64__ */
+ 
+ #if defined __ELF__ && defined __linux__

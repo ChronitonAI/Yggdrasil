@@ -1,0 +1,20 @@
+# The exceptions of the software ticks check (O/OpenBLAS/softticks/check.pl --allow) for
+# libffi's x86-64 assembly, ticked by patches/rr-softticks-x86-64.patch.
+#
+# trampoline_code_table (unix64.S): the static trampolines, 4096 / UNIX64_TRAMP_SIZE copies of
+# one straight-line sequence (subq, the saves of %r10 and of the closure's data, a load of the
+# target, jmp *%r10). tramp.c maps the page again for every table of closures and runs each
+# copy once per call of its closure; the jump goes to ffi_closure_unix64_alt,
+# ffi_closure_unix64_sse_alt or ffi_closure_win64_alt, which tick at entry, so no (pc, sp) of
+# a trampoline repeats without a tick in between. The table stays unticked: its layout is
+# shared with tramp.c and ffi64.c (UNIX64_TRAMP_SIZE, X86_CODE_OFFSET, X86_DATA_OFFSET). The
+# dynamic trampolines that ffi64.c and ffiw64.c write into closures (endbr64, lea, jmp
+# through a pointer to ffi_closure_unix64, ffi_closure_unix64_sse or ffi_closure_win64) are
+# data in the objects and the same kind of code at run time.
+entry_unticked,indirect src/x86/.libs/unix64.o trampoline_code_table # straight-line copies that jump to ticking entries
+# The jump tables: ffi_call_unix64 and ffi_closure_unix64 (also reached from the go closures)
+# jump into L(store_table) and L(load_table), ffi_call_win64 into the table after it, at the
+# slot of the return type. Every slot ends in ret, in a call to abort, or in a forward jump to
+# code that ends in ret, so no cycle goes through them.
+indirect src/x86/.libs/unix64.o ffi_call_unix64,ffi_closure_unix64 # dispatch to the slots of a forward-only table
+indirect src/x86/.libs/win64.o ffi_call_win64 # dispatch to the slots of a forward-only table
