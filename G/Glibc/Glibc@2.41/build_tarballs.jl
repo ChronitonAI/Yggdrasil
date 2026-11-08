@@ -2,8 +2,10 @@
 # rr software ticks platform (`x86_64-linux-gnu-rr_softticks+1`), so that BinaryBuilder2's
 # toolchain compiles all of it with the software ticks plugin. Its dynamic loader and static
 # `_start` map the ticks countdown page first thing (patches/glibc-100-*), so instrumented code
-# runs outside rr too. Installed with the JLL prefix as its root's /usr: /usr/lib holds the
-# loader and libraries, and the image links /lib64 and /lib to it.
+# runs outside rr too. The plugin ticks the C; the x86-64 assembly ticks by hand
+# (patches/glibc-101-* and glibc-102-*, softticks/ticks-2.41.json lists every loop's tick).
+# Installed with the JLL prefix as its root's /usr: /usr/lib holds the loader and libraries,
+# and the image links /lib64 and /lib to it.
 using BinaryBuilder2
 
 version = v"2.41"
@@ -36,6 +38,21 @@ ${WORKSPACE}/srcdir/glibc-*/configure \
     CFLAGS="-O2 -g"
 
 make -j${nproc}
+
+# rr software ticks: fail the build if the ticks of the assembly did not land, which nothing
+# else would notice (glibc-101 and glibc-102 expand to nothing without __RR_SOFTTICKS__, and a
+# hunk can apply in the wrong place): every object assembled from assembly source has exactly
+# the ticks that softticks/softticks-asm.txt lists (from a build whose libraries passed the
+# binary tick check), and _start's start.o has none.  Only x86-64's assembly ticks.
+if [[ "${bb_full_target}" == *rr_softticks* ]]; then
+    if [[ "${target}" != x86_64-* ]]; then
+        echo "Glibc: only the x86-64 assembly has rr software ticks, not ${target}'s" >&2
+        exit 1
+    fi
+    python3 ${WORKSPACE}/srcdir/softticks/check-asm-ticks.py ${WORKSPACE}/srcdir/glibc_build \
+        ${WORKSPACE}/srcdir/softticks/softticks-asm.txt
+fi
+
 make install install_root=${WORKSPACE}/srcdir/glibc_root
 # The C.UTF-8 locale (/usr/lib/locale/C.utf8), which programs that ask for a UTF-8 locale
 # (LANG=C.UTF-8) need; built by this glibc's own localedef.
@@ -44,9 +61,11 @@ make localedata/install-locale-files SUPPORTED-LOCALES="C.UTF-8/UTF-8" install_r
 test -d ${WORKSPACE}/srcdir/glibc_root/usr/lib/locale/C.utf8
 [[ $(ls ${WORKSPACE}/srcdir/glibc_root/usr/lib/locale | wc -l) == 1 ]]
 
-# Shared objects without compiled C (gconv tables, libmvec's assembly, the libnss_files and
-# libnss_dns compatibility stubs) have no software ticks note, since the plugin emits it
-# with the code it instruments. They hold no loops of instrumented code; mark them as
+# Shared objects without compiled C that the plugin instruments have no software ticks note,
+# since the plugin emits it with the code it instruments: the gconv tables and the
+# libnss_files and libnss_dns compatibility stubs (no code but the start files'), and libmvec
+# (its C is IFUNC resolvers, which the plugin leaves alone; its assembly ticks by hand, every
+# loop and every function's entry). None of them has a loop without a tick; mark them as
 # conforming, so the image audit can require the note of every shared object.
 note=${WORKSPACE}/srcdir/rr-note
 # namesz=3, descsz=4, type=1, "rr\0" padded to 4, desc = ABI version 1

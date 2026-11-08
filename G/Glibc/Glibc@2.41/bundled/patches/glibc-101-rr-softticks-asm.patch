@@ -1,0 +1,421 @@
+rr software ticks (rr's tracee ABI version 1) for glibc's x86-64 assembly: the tick macros,
+the entry ticks, and the loops that take more than a line of their own.
+
+A compiler built for rr's software ticks predefines __RR_SOFTTICKS__ (the ABI version) and
+ticks the code it compiles, at every function's entry and on every loop, so that no
+instruction runs twice at the same pc and stack pointer without a tick in between; but not
+hand-written assembly.  (Nor loops inside inline asm, which glibc's x86-64 C does not have.)
+
+- sysdeps/x86_64/sysdep.h: RR_SOFTTICK, the ABI's x86-64 tick sequence exactly (rr
+  recognizes ticks by their bytes; it clobbers the arithmetic flags only); RR_SOFTTICK_CF
+  (r8), a tick that keeps CF in a dead 8-bit register; RR_SOFTTICK_ENTRY in ENTRY_P2ALIGN,
+  after the endbr64: every function that ENTRY defines ticks first thing.
+- sysdeps/x86_64/start.S: _start does not tick: in a static program it runs before anything
+  has mapped the countdown's page (it maps it, glibc-100), and it runs once.
+- The functions defined without ENTRY tick where they start: _dl_tlsdesc_return,
+  _dl_tlsdesc_undefweak and _dl_tlsdesc_dynamic_* (the TLS descriptor convention lets them
+  clobber the flags), _dl_runtime_resolve_* and _dl_runtime_profile_*, _dl_start_user
+  (RTLD_START; its string is defined at the end of dl-machine.h, so that the asserts above it
+  keep their line numbers), and the strcmp, strncmp, wcscmp, wcsncmp, strcasecmp_l and
+  strncasecmp_l entries of strcmp-avx2.S, strcmp-evex.S and strcmp-sse4_2.S.
+- add_n.S (__mpn_add_n, __mpn_sub_n): the carry is live round the loop:
+  RR_SOFTTICK_CF (%al) before the jump back.  (The other mpn loops tick where no flag is
+  live, glibc-102.)
+- memmove-ssse3.S: the computed jumps into its 48 copy loops assume 64 (and 96) bytes per
+  loop; with ticks every loop is 128 bytes long, and ticks at its top.
+- __longjmp.S, setcontext.S and swapcontext.S: the shadow-stack loops, assembled with CET
+  only, tick at their tops.
+
+glibc-102-rr-softticks-loops.patch ticks all the other loops.  Without __RR_SOFTTICKS__ all
+of this expands to nothing: the object code is the same as without the patches.
+
+diff --git a/sysdeps/unix/sysv/linux/x86_64/setcontext.S b/sysdeps/unix/sysv/linux/x86_64/setcontext.S
+--- a/sysdeps/unix/sysv/linux/x86_64/setcontext.S
++++ b/sysdeps/unix/sysv/linux/x86_64/setcontext.S
+@@ -97,6 +97,7 @@ ENTRY(__setcontext)
+ 	je	L(unwind_shadow_stack)
+ 
+ L(find_restore_token_loop):
++	RR_SOFTTICK
+ 	/* Look for a restore token.  */
+ 	movq	-8(%rsi), %rax
+ 	andq	$-8, %rax
+@@ -133,6 +134,7 @@ L(unwind_shadow_stack):
+ 	shrq	$3, %rcx
+ 	movl	$255, %esi
+ L(loop):
++	RR_SOFTTICK
+ 	cmpq	%rsi, %rcx
+ 	cmovb	%rcx, %rsi
+ 	incsspq	%rsi
+diff --git a/sysdeps/unix/sysv/linux/x86_64/swapcontext.S b/sysdeps/unix/sysv/linux/x86_64/swapcontext.S
+--- a/sysdeps/unix/sysv/linux/x86_64/swapcontext.S
++++ b/sysdeps/unix/sysv/linux/x86_64/swapcontext.S
+@@ -139,6 +139,7 @@ L(shadow_stack_bound_recorded):
+ 	je	L(unwind_shadow_stack)
+ 
+ L(find_restore_token_loop):
++	RR_SOFTTICK
+ 	/* Look for a restore token.  */
+ 	movq	-8(%rsi), %rax
+ 	andq	$-8, %rax
+@@ -175,6 +176,7 @@ L(unwind_shadow_stack):
+ 	shrq	$3, %rcx
+ 	movl	$255, %esi
+ L(loop):
++	RR_SOFTTICK
+ 	cmpq	%rsi, %rcx
+ 	cmovb	%rcx, %rsi
+ 	incsspq	%rsi
+diff --git a/sysdeps/x86_64/__longjmp.S b/sysdeps/x86_64/__longjmp.S
+--- a/sysdeps/x86_64/__longjmp.S
++++ b/sysdeps/x86_64/__longjmp.S
+@@ -78,6 +78,7 @@ ENTRY(__longjmp)
+ 	movq %rcx, %r11
+ 
+ L(find_restore_token_loop):
++	RR_SOFTTICK
+ 	/* Look for a restore token.  */
+ 	movq -8(%rcx), %rbx
+ 	andq $-8, %rbx
+@@ -114,6 +115,7 @@ L(no_shadow_stack_token):
+ 
+ 	movl $255, %ebx
+ L(loop):
++	RR_SOFTTICK
+ 	cmpq %rbx, %rax
+ 	cmovb %rax, %rbx
+ 	incsspq %rbx
+diff --git a/sysdeps/x86_64/add_n.S b/sysdeps/x86_64/add_n.S
+--- a/sysdeps/x86_64/add_n.S
++++ b/sysdeps/x86_64/add_n.S
+@@ -96,5 +96,11 @@ L(e10):
+ L(e01):
+ 	jrcxz	L(end)
+ 	lea	4(n), n
++	/* rr software ticks: CF (the carry) is live round the loop and
++	   %rax is dead in it.  Every iteration takes the jmp back (the loop
++	   is entered at L(e00), L(e11), L(e10) or L(e01) and left by the
++	   jrcxz), and a tick here does not lengthen the jrcxz's reach back
++	   to L(end).  */
++	RR_SOFTTICK_CF (%al)
+ 	jmp	L(top)
+ END (func)
+diff --git a/sysdeps/x86_64/dl-tlsdesc-dynamic.h b/sysdeps/x86_64/dl-tlsdesc-dynamic.h
+--- a/sysdeps/x86_64/dl-tlsdesc-dynamic.h
++++ b/sysdeps/x86_64/dl-tlsdesc-dynamic.h
+@@ -60,6 +60,7 @@ _dl_tlsdesc_dynamic (register struct tlsdesc *tdp asm ("%rax"))
+ 	.align 16
+ _dl_tlsdesc_dynamic:
+ 	_CET_ENDBR
++	RR_SOFTTICK
+ 	/* Preserve call-clobbered registers that we modify.
+ 	   We need two scratch regs anyway.  */
+ 	movq	%rsi, -16(%rsp)
+diff --git a/sysdeps/x86_64/dl-tlsdesc.S b/sysdeps/x86_64/dl-tlsdesc.S
+--- a/sysdeps/x86_64/dl-tlsdesc.S
++++ b/sysdeps/x86_64/dl-tlsdesc.S
+@@ -51,6 +51,7 @@
+ 	.align 16
+ _dl_tlsdesc_return:
+ 	_CET_ENDBR
++	RR_SOFTTICK
+ 	movq	8(%rax), %rax
+ 	ret
+ 	cfi_endproc
+@@ -73,6 +74,7 @@ _dl_tlsdesc_return:
+ 	.align 16
+ _dl_tlsdesc_undefweak:
+ 	_CET_ENDBR
++	RR_SOFTTICK
+ 	movq	8(%rax), %rax
+ 	sub	%fs:0, %RAX_LP
+ 	ret
+diff --git a/sysdeps/x86_64/dl-trampoline.h b/sysdeps/x86_64/dl-trampoline.h
+--- a/sysdeps/x86_64/dl-trampoline.h
++++ b/sysdeps/x86_64/dl-trampoline.h
+@@ -37,6 +37,7 @@
+ _dl_runtime_resolve:
+ 	cfi_adjust_cfa_offset(16) # Incorporate PLT
+ 	_CET_ENDBR
++	RR_SOFTTICK
+ # if DL_RUNTIME_RESOLVE_REALIGN_STACK
+ #  if LOCAL_STORAGE_AREA != 8
+ #   error LOCAL_STORAGE_AREA must be 8
+@@ -140,6 +141,7 @@ _dl_runtime_profile:
+ 	cfi_startproc
+ 	cfi_adjust_cfa_offset(16) # Incorporate PLT
+ 	_CET_ENDBR
++	RR_SOFTTICK
+ 	/* The La_x86_64_regs data structure pointed to by the
+ 	   fourth parameter must be VEC_SIZE-byte aligned.  This must
+ 	   be explicitly enforced.  We have the set up a dynamically
+diff --git a/sysdeps/x86_64/multiarch/memmove-ssse3.S b/sysdeps/x86_64/multiarch/memmove-ssse3.S
+--- a/sysdeps/x86_64/multiarch/memmove-ssse3.S
++++ b/sysdeps/x86_64/multiarch/memmove-ssse3.S
+@@ -23,6 +23,21 @@
+ #if ISA_SHOULD_BUILD (2)
+ 
+ # include <sysdep.h>
++
++/* rr software ticks (see RR_SOFTTICK in sysdep.h): every copy loop below
++   ticks at its top, once per iteration.  The computed jumps into the loops
++   assume that they are 64 bytes apart (96 for the large ones), which the 21
++   bytes of a tick do not leave room for: with ticks, every loop is 128 bytes
++   long instead.  */
++# ifdef __RR_SOFTTICKS__
++#  define LOOP_P2ALIGN	7
++#  define LOOP_SHIFT	7
++#  define LARGE_LOOP_P2ALIGN	7
++# else
++#  define LOOP_P2ALIGN	6
++#  define LOOP_SHIFT	6
++#  define LARGE_LOOP_P2ALIGN	5
++# endif
+ # ifndef MEMMOVE
+ #  define MEMMOVE	__memmove_ssse3
+ #  define MEMMOVE_CHK	__memmove_chk_ssse3
+@@ -160,7 +175,7 @@ L(loop_fwd):
+ 	movl	$48, %edx
+ 
+ 	leaq	L(loop_fwd_start)(%rip), %r9
+-	sall	$6, %ecx
++	sall	$LOOP_SHIFT, %ecx
+ 	addq	%r9, %rcx
+ 	jmp	* %rcx
+ 
+@@ -187,7 +202,7 @@ L(copy_backward):
+ 
+ 	leaq	L(loop_bkwd_start)(%rip), %r9
+ 	andl	$0xf, %ecx
+-	sall	$6, %ecx
++	sall	$LOOP_SHIFT, %ecx
+ 	addq	%r9, %rcx
+ 	jmp	* %rcx
+ 
+@@ -203,8 +218,14 @@ L(large_memcpy):
+ 	cmpq	%rdx, %r9
+ 	jb	L(loop_fwd)
+ 
++# ifdef __RR_SOFTTICKS__
++	/* 128 bytes per loop.  */
++	sall	$7, %ecx
++	movl	%ecx, %r8d
++# else
+ 	sall	$5, %ecx
+ 	leal	(%rcx, %rcx, 2), %r8d
++# endif
+ 	leaq	-96(%rdi, %rdx), %rcx
+ 	andq	$-16, %rdi
+ 	leaq	L(large_loop_fwd_start)(%rip), %rdx
+@@ -216,9 +237,10 @@ L(large_memcpy):
+ 	   64-bytes in size. So, we can just jump to first loop + r8 *
+ 	   64. Before modifying any loop ensure all their sizes match!
+ 	 */
+-	.p2align 6
++	.p2align LOOP_P2ALIGN
+ L(loop_fwd_start):
+ L(loop_fwd_0x0):
++	RR_SOFTTICK
+ 	movaps	16(%rsi), %xmm1
+ 	movaps	32(%rsi), %xmm2
+ 	movaps	48(%rsi), %xmm3
+@@ -238,8 +260,9 @@ L(end_loop_fwd):
+ 	/* Exactly 64 bytes if `jmp L(end_loop_fwd)` is long encoding.
+ 	   60 bytes otherwise.  */
+ # define ALIGNED_LOOP_FWD(align_by);	\
+-	.p2align 6;	\
++	.p2align LOOP_P2ALIGN;	\
+ L(loop_fwd_ ## align_by):	\
++	RR_SOFTTICK;	\
+ 	movaps	16(%rsi), %xmm0;	\
+ 	movaps	32(%rsi), %xmm2;	\
+ 	movaps	48(%rsi), %xmm3;	\
+@@ -274,9 +297,10 @@ L(loop_fwd_ ## align_by):	\
+ 	ALIGNED_LOOP_FWD (0x2)
+ 	ALIGNED_LOOP_FWD (0x1)
+ 
+-	.p2align 6
++	.p2align LOOP_P2ALIGN
+ L(large_loop_fwd_start):
+ L(large_loop_fwd_0x0):
++	RR_SOFTTICK
+ 	movaps	16(%rsi), %xmm1
+ 	movaps	32(%rsi), %xmm2
+ 	movaps	48(%rsi), %xmm3
+@@ -307,8 +331,9 @@ L(end_large_loop_fwd):
+ 	/* Size > 64 bytes and <= 96 bytes. 32-byte align between ensure
+ 	   96-byte spacing between each.  */
+ # define ALIGNED_LARGE_LOOP_FWD(align_by);	\
+-	.p2align 5;	\
++	.p2align LARGE_LOOP_P2ALIGN;	\
+ L(large_loop_fwd_ ## align_by):	\
++	RR_SOFTTICK;	\
+ 	movaps	16(%rsi), %xmm0;	\
+ 	movaps	32(%rsi), %xmm2;	\
+ 	movaps	48(%rsi), %xmm3;	\
+@@ -350,9 +375,10 @@ L(large_loop_fwd_ ## align_by):	\
+ 	ALIGNED_LARGE_LOOP_FWD (0x1)
+ 
+ 
+-	.p2align 6
++	.p2align LOOP_P2ALIGN
+ L(loop_bkwd_start):
+ L(loop_bkwd_0x0):
++	RR_SOFTTICK
+ 	movaps	32(%rsi), %xmm1
+ 	movaps	16(%rsi), %xmm2
+ 	movaps	0(%rsi), %xmm3
+@@ -375,8 +401,9 @@ L(end_loop_bkwd):
+ 	/* Exactly 64 bytes if `jmp L(end_loop_bkwd)` is long encoding.
+ 	   60 bytes otherwise.  */
+ # define ALIGNED_LOOP_BKWD(align_by);	\
+-	.p2align 6;	\
++	.p2align LOOP_P2ALIGN;	\
+ L(loop_bkwd_ ## align_by):	\
++	RR_SOFTTICK;	\
+ 	movaps	32(%rsi), %xmm1;	\
+ 	movaps	16(%rsi), %xmm2;	\
+ 	movaps	0(%rsi), %xmm3;	\
+diff --git a/sysdeps/x86_64/multiarch/strcmp-avx2.S b/sysdeps/x86_64/multiarch/strcmp-avx2.S
+--- a/sysdeps/x86_64/multiarch/strcmp-avx2.S
++++ b/sysdeps/x86_64/multiarch/strcmp-avx2.S
+@@ -204,6 +204,7 @@ END (STRCASECMP)
+ STRCMP:
+ 	cfi_startproc
+ 	_CET_ENDBR
++	RR_SOFTTICK_ENTRY
+ 	CALL_MCOUNT
+ 
+ # if defined USE_AS_STRCASECMP_L
+diff --git a/sysdeps/x86_64/multiarch/strcmp-evex.S b/sysdeps/x86_64/multiarch/strcmp-evex.S
+--- a/sysdeps/x86_64/multiarch/strcmp-evex.S
++++ b/sysdeps/x86_64/multiarch/strcmp-evex.S
+@@ -229,6 +229,7 @@ END (STRCASECMP)
+ STRCMP:
+ 	cfi_startproc
+ 	_CET_ENDBR
++	RR_SOFTTICK_ENTRY
+ 	CALL_MCOUNT
+ 
+ # if defined USE_AS_STRCASECMP_L
+diff --git a/sysdeps/x86_64/multiarch/strcmp-sse4_2.S b/sysdeps/x86_64/multiarch/strcmp-sse4_2.S
+--- a/sysdeps/x86_64/multiarch/strcmp-sse4_2.S
++++ b/sysdeps/x86_64/multiarch/strcmp-sse4_2.S
+@@ -106,6 +106,7 @@ END (STRCASECMP)
+ STRCMP:
+ 	cfi_startproc
+ 	_CET_ENDBR
++	RR_SOFTTICK_ENTRY
+ 	CALL_MCOUNT
+ 
+ /*
+diff --git a/sysdeps/x86_64/start.S b/sysdeps/x86_64/start.S
+--- a/sysdeps/x86_64/start.S
++++ b/sysdeps/x86_64/start.S
+@@ -54,6 +54,11 @@
+ 
+ #include <sysdep.h>
+ 
++/* rr software ticks: _start must not tick before it has mapped the
++   countdown's page (see RR_SOFTTICK in sysdep.h).  */
++#undef RR_SOFTTICK_ENTRY
++#define RR_SOFTTICK_ENTRY
++
+ ENTRY (_start)
+ 	/* Clearing frame pointer is insufficient, use CFI.  */
+ 	cfi_undefined (rip)
+diff --git a/sysdeps/x86_64/sysdep.h b/sysdeps/x86_64/sysdep.h
+--- a/sysdeps/x86_64/sysdep.h
++++ b/sysdeps/x86_64/sysdep.h
+@@ -58,6 +58,48 @@ enum cf_protection_level
+ # define _CET_NOTRACK
+ #endif
+ 
++/* rr software ticks (rr's tracee ABI version 1, include/rr/softticks.h in
++   rr).  A compiler built for them predefines __RR_SOFTTICKS__ and ticks the
++   code it compiles, so that no instruction runs twice at the same pc and
++   stack pointer without a tick in between: at the entry of every function
++   and once on every way round each loop.  The assembly does so by hand:
++   ENTRY ticks (RR_SOFTTICK_ENTRY), the functions defined without it tick
++   where they start, and every loop ticks with RR_SOFTTICK (or one of the
++   variants below) on each iteration.
++
++   RR_SOFTTICK is the ABI's x86-64 tick sequence, exactly: rr recognizes a
++   tick by its bytes.  It tests the top bit of the countdown at 0x70001800,
++   which is set (the countdown is disarmed) whenever rr does not arm it, and
++   only then decrements the countdown and traps (int3) when that reaches 0.
++   The dynamic loader and the static programs' _start map the countdown's
++   page before anything ticks.  The tick clobbers the arithmetic flags and
++   nothing else, so it goes where no flag is live; the numeric label 7731 is
++   local to it.  RR_SOFTTICK_CF (r8) is a tick where only CF is live and the
++   8-bit register r8 is dead: r8 keeps CF across the tick (setc, and 0xff
++   plus 0 or 1 carries iff CF was set).  Without __RR_SOFTTICKS__ they are
++   empty, and the object code is the same as without them.  */
++#ifdef __RR_SOFTTICKS__
++# define RR_SOFTTICK							      \
++	testb $0x80, 0x70001807;					      \
++	jnz 7731f;							      \
++	decq 0x70001800;						      \
++	jnz 7731f;							      \
++	int3;								      \
++7731:
++# define RR_SOFTTICK_CF(r8)						      \
++	setc r8;							      \
++	RR_SOFTTICK;							      \
++	addb $-1, r8
++#else
++# define RR_SOFTTICK
++# define RR_SOFTTICK_CF(r8)
++#endif
++
++/* The tick at the entry of every function that ENTRY defines.  A file whose
++   function must not tick there (_start, which runs before the countdown's
++   page is mapped) redefines it as empty before ENTRY.  */
++#define RR_SOFTTICK_ENTRY RR_SOFTTICK
++
+ /* Define an entry point visible from C.  */
+ #define	ENTRY_P2ALIGN(name, alignment)					      \
+   .globl C_SYMBOL_NAME(name);						      \
+@@ -66,6 +108,7 @@ enum cf_protection_level
+   C_LABEL(name)								      \
+   cfi_startproc;							      \
+   _CET_ENDBR;								      \
++  RR_SOFTTICK_ENTRY;							      \
+   CALL_MCOUNT
+ 
+ /* This macro is for setting proper CFI with DW_CFA_expression describing
+diff --git a/sysdeps/x86_64/dl-machine.h b/sysdeps/x86_64/dl-machine.h
+--- a/sysdeps/x86_64/dl-machine.h
++++ b/sysdeps/x86_64/dl-machine.h
+@@ -153,7 +153,7 @@ _start:\n\
+ 	syscall\n\
+ 	mov %" RSP_LP ", %" RDI_LP "\n\
+ 	call _dl_start\n\
+-_dl_start_user:\n\
++_dl_start_user:\n" RTLD_START_SOFTTICK "\
+ 	# Save the user entry point address in %r12.\n\
+ 	mov %" RAX_LP ", %" R12_LP "\n\
+ 	# Save %rsp value in %r13.\n\
+@@ -772,3 +772,21 @@ x86_64_dynamic_after_reloc (struct link_map *map, int lazy)
+   x86_64_rewrite_plt_in_place (map);
+ }
+ #endif
++
++/* rr software ticks (see RR_SOFTTICK in sysdep.h): _dl_start_user in
++   RTLD_START ticks at its start like every assembled function (_start, which
++   runs before the countdown's page is mapped, does not).  At the end of the
++   file, so that the lines of the asserts above stay where they were.  */
++#ifndef RTLD_START_SOFTTICK
++# ifdef __RR_SOFTTICKS__
++#  define RTLD_START_SOFTTICK "\
++	testb $0x80, 0x70001807\n\
++	jnz 7731f\n\
++	decq 0x70001800\n\
++	jnz 7731f\n\
++	int3\n\
++7731:\n"
++# else
++#  define RTLD_START_SOFTTICK ""
++# endif
++#endif

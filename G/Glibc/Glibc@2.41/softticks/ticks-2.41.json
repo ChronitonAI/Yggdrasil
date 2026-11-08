@@ -1,0 +1,4968 @@
+{
+ "glibc": "2.41",
+ "note": "rr software ticks in glibc's x86-64 assembly: glibc-101-rr-softticks-asm.patch (hand) and glibc-102-rr-softticks-loops.patch (the loops below). tick_line: the RR_SOFTTICK's line in the patched source; before: the source line it precedes; label: the loop's label; functions/objects: where that line is assembled.",
+ "hand": [
+  {
+   "file": "sysdeps/x86_64/sysdep.h",
+   "what": "RR_SOFTTICK_ENTRY in ENTRY_P2ALIGN: every function ENTRY defines (string/memory/wide functions of every ISA, __mpn_*, setjmp/longjmp, the context functions, clone/vfork/syscall stubs, __tls_get_addr, _mcount/__fentry__, libm's .S, libmvec's .S, rtld's copies)"
+  },
+  {
+   "file": "sysdeps/x86_64/start.S",
+   "what": "_start: no entry tick (runs once, before the countdown page is mapped in a static program)"
+  },
+  {
+   "file": "sysdeps/x86_64/dl-tlsdesc.S",
+   "what": "entry ticks: _dl_tlsdesc_return, _dl_tlsdesc_undefweak"
+  },
+  {
+   "file": "sysdeps/x86_64/dl-tlsdesc-dynamic.h",
+   "what": "entry tick: _dl_tlsdesc_dynamic_{fxsave,xsave,xsavec}"
+  },
+  {
+   "file": "sysdeps/x86_64/dl-trampoline.h",
+   "what": "entry ticks: _dl_runtime_resolve_{fxsave,xsave,xsavec}, _dl_runtime_profile_{sse,avx,avx512}"
+  },
+  {
+   "file": "sysdeps/x86_64/dl-machine.h",
+   "what": "entry tick: _dl_start_user (RTLD_START)"
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-avx2.S, strcmp-evex.S, strcmp-sse4_2.S",
+   "what": "entry ticks at the hand-written STRCMP labels (strcmp, strncmp, wcscmp, wcsncmp, strcasecmp_l, strncasecmp_l; avx2, avx2_rtm, evex, sse42)"
+  },
+  {
+   "file": "sysdeps/x86_64/add_n.S",
+   "what": "__mpn_add_n, __mpn_sub_n: RR_SOFTTICK_CF (%al) before the jmp L(top) (CF live round the loop, %rax dead)"
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memmove-ssse3.S",
+   "what": "__memmove_ssse3 (memcpy, mempcpy, _chk): the 48 copy loops (loop_fwd_*, large_loop_fwd_*, loop_bkwd_*) tick at their tops, 128 bytes apart (LOOP_P2ALIGN/LOOP_SHIFT 7) for the computed jumps"
+  },
+  {
+   "file": "sysdeps/x86_64/__longjmp.S",
+   "what": "CET only: L(find_restore_token_loop), L(loop) (incsspq)"
+  },
+  {
+   "file": "sysdeps/unix/sysv/linux/x86_64/setcontext.S, swapcontext.S",
+   "what": "CET only: L(find_restore_token_loop), L(loop)"
+  }
+ ],
+ "loops": [
+  {
+   "file": "sysdeps/x86_64/addmul_1.S",
+   "tick_line": 76,
+   "before": "mul\t%rcx",
+   "label": "L(top):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__mpn_addmul_1",
+    "__mpn_submul_1"
+   ],
+   "objects": [
+    "libc.so",
+    "stdlib/addmul_1.o",
+    "stdlib/submul_1.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/e_fmodl.S",
+   "tick_line": 15,
+   "before": "fprem",
+   "label": "1:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__ieee754_fmodl"
+   ],
+   "objects": [
+    "math/e_fmodl.o",
+    "math/libm.so"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/e_powl.S",
+   "tick_line": 167,
+   "before": "shrdl\t$1, %edx, %eax",
+   "label": "6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__ieee754_powl",
+    "__powl_finite@GLIBC_2.15"
+   ],
+   "objects": [
+    "math/e_powl.o",
+    "math/libm.so"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/e_remainderl.S",
+   "tick_line": 13,
+   "before": "fprem1",
+   "label": "1:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__ieee754_remainderl",
+    "__remainderl_finite@GLIBC_2.15"
+   ],
+   "objects": [
+    "math/e_remainderl.o",
+    "math/libm.so"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_acos2_core_sse4.S",
+   "tick_line": 192,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_acos_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_acos2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_acos4_core_avx2.S",
+   "tick_line": 171,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_acos_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_acos4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_acos8_core_avx512.S",
+   "tick_line": 193,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_acos_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_acos8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_acosh2_core_sse4.S",
+   "tick_line": 288,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_acosh_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_acosh2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_acosh4_core_avx2.S",
+   "tick_line": 333,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_acosh_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_acosh4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_acosh8_core_avx512.S",
+   "tick_line": 278,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_acosh_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_acosh8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_asin2_core_sse4.S",
+   "tick_line": 181,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_asin_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_asin2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_asin4_core_avx2.S",
+   "tick_line": 163,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_asin_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_asin4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_asin8_core_avx512.S",
+   "tick_line": 185,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_asin_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_asin8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_asinh2_core_sse4.S",
+   "tick_line": 441,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_asinh_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_asinh2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_asinh4_core_avx2.S",
+   "tick_line": 390,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_asinh_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_asinh4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_asinh8_core_avx512.S",
+   "tick_line": 304,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_asinh_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_asinh8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_atan22_core_sse4.S",
+   "tick_line": 286,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2vv_atan2_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_atan22_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_atan24_core_avx2.S",
+   "tick_line": 238,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4vv_atan2_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_atan24_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_atan28_core_avx512.S",
+   "tick_line": 256,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8vv_atan2_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_atan28_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_atanh2_core_sse4.S",
+   "tick_line": 334,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_atanh_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_atanh2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_atanh4_core_avx2.S",
+   "tick_line": 300,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_atanh_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_atanh4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_atanh8_core_avx512.S",
+   "tick_line": 235,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_atanh_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_atanh8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_cbrt2_core_sse4.S",
+   "tick_line": 211,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_cbrt_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_cbrt2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_cbrt4_core_avx2.S",
+   "tick_line": 223,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_cbrt_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_cbrt4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_cos2_core_sse4.S",
+   "tick_line": 167,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_cos_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_cos2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_cos4_core_avx2.S",
+   "tick_line": 149,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_cos_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_cos4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_cos8_core_avx512.S",
+   "tick_line": 169,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_cos_knl"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_cos8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_cos8_core_avx512.S",
+   "tick_line": 380,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_2_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_cos_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_cos8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_cosh2_core_sse4.S",
+   "tick_line": 230,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_cosh_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_cosh2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_cosh4_core_avx2.S",
+   "tick_line": 243,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_cosh_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_cosh4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_cosh8_core_avx512.S",
+   "tick_line": 192,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_cosh_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_cosh8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_erfc2_core_sse4.S",
+   "tick_line": 221,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_erfc_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_erfc2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_erfc4_core_avx2.S",
+   "tick_line": 219,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_erfc_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_erfc4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_erfc8_core_avx512.S",
+   "tick_line": 222,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_erfc_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_erfc8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_exp102_core_sse4.S",
+   "tick_line": 184,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_exp10_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_exp102_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_exp104_core_avx2.S",
+   "tick_line": 192,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_exp10_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_exp104_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_exp108_core_avx512.S",
+   "tick_line": 152,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_exp10_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_exp108_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_exp22_core_sse4.S",
+   "tick_line": 171,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_exp2_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_exp22_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_exp24_core_avx2.S",
+   "tick_line": 184,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_exp2_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_exp24_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_exp28_core_avx512.S",
+   "tick_line": 188,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_exp2_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_exp28_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_exp2_core_sse4.S",
+   "tick_line": 169,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_exp_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_exp2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_exp4_core_avx2.S",
+   "tick_line": 154,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_exp_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_exp4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_exp8_core_avx512.S",
+   "tick_line": 171,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_exp_knl"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_exp8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_exp8_core_avx512.S",
+   "tick_line": 381,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_2_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_exp_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_exp8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_expm12_core_sse4.S",
+   "tick_line": 173,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_expm1_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_expm12_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_expm14_core_avx2.S",
+   "tick_line": 166,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_expm1_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_expm14_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_expm18_core_avx512.S",
+   "tick_line": 172,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_expm1_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_expm18_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_hypot2_core_sse4.S",
+   "tick_line": 185,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2vv_hypot_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_hypot2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_hypot4_core_avx2.S",
+   "tick_line": 192,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4vv_hypot_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_hypot4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_hypot8_core_avx512.S",
+   "tick_line": 155,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8vv_hypot_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_hypot8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_log102_core_sse4.S",
+   "tick_line": 194,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_log10_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_log102_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_log104_core_avx2.S",
+   "tick_line": 186,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_log10_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_log104_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_log108_core_avx512.S",
+   "tick_line": 168,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_log10_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_log108_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_log1p2_core_sse4.S",
+   "tick_line": 232,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_log1p_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_log1p2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_log1p4_core_avx2.S",
+   "tick_line": 224,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_log1p_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_log1p4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_log1p8_core_avx512.S",
+   "tick_line": 186,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_log1p_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_log1p8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_log22_core_sse4.S",
+   "tick_line": 192,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_log2_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_log22_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_log24_core_avx2.S",
+   "tick_line": 184,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_log2_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_log24_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_log28_core_avx512.S",
+   "tick_line": 166,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_log2_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_log28_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_log2_core_sse4.S",
+   "tick_line": 173,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_log_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_log2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_log4_core_avx2.S",
+   "tick_line": 152,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_log_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_log4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_log8_core_avx512.S",
+   "tick_line": 170,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_log_knl"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_log8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_log8_core_avx512.S",
+   "tick_line": 385,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_2_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_log_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_log8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_pow2_core_sse4.S",
+   "tick_line": 382,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2vv_pow_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_pow2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_pow4_core_avx2.S",
+   "tick_line": 332,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4vv_pow_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_pow4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_pow8_core_avx512.S",
+   "tick_line": 339,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8vv_pow_knl"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_pow8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_pow8_core_avx512.S",
+   "tick_line": 662,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_2_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8vv_pow_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_pow8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_sin2_core_sse4.S",
+   "tick_line": 173,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_sin_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_sin2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_sin4_core_avx2.S",
+   "tick_line": 152,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_sin_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_sin4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_sin8_core_avx512.S",
+   "tick_line": 170,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_sin_knl"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_sin8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_sin8_core_avx512.S",
+   "tick_line": 382,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_2_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_sin_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_sin8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_sincos2_core_sse4.S",
+   "tick_line": 251,
+   "before": "btl       %r13d, %r14d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2vl8l8_sincos_sse4",
+    "__GI__ZGVbN2vl8l8_sincos_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_sincos2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_sincos4_core_avx2.S",
+   "tick_line": 210,
+   "before": "btl       %r13d, %r14d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4vl8l8_sincos_avx2",
+    "__GI__ZGVdN4vl8l8_sincos_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_sincos4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_sincos8_core_avx512.S",
+   "tick_line": 223,
+   "before": "btl       %r13d, %r14d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8vl8l8_sincos_knl",
+    "__GI__ZGVeN8vl8l8_sincos_knl"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_sincos8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_sincos8_core_avx512.S",
+   "tick_line": 498,
+   "before": "btl       %r13d, %r14d",
+   "label": ".LBL_2_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8vl8l8_sincos_skx",
+    "__GI__ZGVeN8vl8l8_sincos_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_sincos8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_sinh2_core_sse4.S",
+   "tick_line": 230,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_sinh_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_sinh2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_sinh4_core_avx2.S",
+   "tick_line": 241,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_sinh_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_sinh4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_sinh8_core_avx512.S",
+   "tick_line": 232,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_sinh_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_sinh8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_tan2_core_sse4.S",
+   "tick_line": 234,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_tan_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_tan2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_tan4_core_avx2.S",
+   "tick_line": 228,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_tan_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_tan4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_tan8_core_avx512.S",
+   "tick_line": 200,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_tan_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_tan8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_tanh2_core_sse4.S",
+   "tick_line": 229,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN2v_tanh_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_tanh2_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_tanh4_core_avx2.S",
+   "tick_line": 233,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN4v_tanh_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_tanh4_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_d_tanh8_core_avx512.S",
+   "tick_line": 247,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN8v_tanh_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_d_tanh8_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_acosf16_core_avx512.S",
+   "tick_line": 166,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_acosf_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_acosf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_acosf4_core_sse4.S",
+   "tick_line": 168,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_acosf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_acosf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_acosf8_core_avx2.S",
+   "tick_line": 159,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_acosf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_acosf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_acoshf16_core_avx512.S",
+   "tick_line": 251,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_acoshf_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_acoshf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_acoshf4_core_sse4.S",
+   "tick_line": 269,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_acoshf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_acoshf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_acoshf8_core_avx2.S",
+   "tick_line": 247,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_acoshf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_acoshf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_asinf16_core_avx512.S",
+   "tick_line": 159,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_asinf_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_asinf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_asinf4_core_sse4.S",
+   "tick_line": 154,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_asinf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_asinf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_asinf8_core_avx2.S",
+   "tick_line": 148,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_asinf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_asinf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_asinhf16_core_avx512.S",
+   "tick_line": 274,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_asinhf_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_asinhf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_asinhf4_core_sse4.S",
+   "tick_line": 373,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_asinhf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_asinhf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_asinhf8_core_avx2.S",
+   "tick_line": 322,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_asinhf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_asinhf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_atan2f16_core_avx512.S",
+   "tick_line": 218,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16vv_atan2f_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_atan2f16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_atan2f4_core_sse4.S",
+   "tick_line": 214,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4vv_atan2f_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_atan2f4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_atan2f8_core_avx2.S",
+   "tick_line": 199,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8vv_atan2f_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_atan2f8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_atanhf16_core_avx512.S",
+   "tick_line": 221,
+   "before": "xorl\t%ebp, %ebp",
+   "label": "L(SPECIAL_VALUES_LOOP):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_atanhf_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_atanhf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_atanhf4_core_sse4.S",
+   "tick_line": 242,
+   "before": "xorl\t%ebp, %ebp",
+   "label": "L(SPECIAL_VALUES_LOOP):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_atanhf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_atanhf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_atanhf8_core_avx2.S",
+   "tick_line": 230,
+   "before": "xorl\t%ebp, %ebp",
+   "label": "L(SPECIAL_VALUES_LOOP):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_atanhf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_atanhf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_cbrtf4_core_sse4.S",
+   "tick_line": 243,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_cbrtf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_cbrtf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_cbrtf8_core_avx2.S",
+   "tick_line": 265,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_cbrtf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_cbrtf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_cosf16_core_avx512.S",
+   "tick_line": 174,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_cosf_knl"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_cosf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_cosf16_core_avx512.S",
+   "tick_line": 387,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_2_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_cosf_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_cosf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_cosf4_core_sse4.S",
+   "tick_line": 174,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_cosf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_cosf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_cosf8_core_avx2.S",
+   "tick_line": 159,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_cosf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_cosf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_coshf16_core_avx512.S",
+   "tick_line": 189,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_coshf_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_coshf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_coshf4_core_sse4.S",
+   "tick_line": 203,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_coshf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_coshf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_coshf8_core_avx2.S",
+   "tick_line": 203,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_coshf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_coshf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_erfcf16_core_avx512.S",
+   "tick_line": 179,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_erfcf_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_erfcf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_erfcf4_core_sse4.S",
+   "tick_line": 189,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_erfcf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_erfcf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_erfcf8_core_avx2.S",
+   "tick_line": 204,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_erfcf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_erfcf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_exp10f16_core_avx512.S",
+   "tick_line": 147,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_exp10f_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_exp10f16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_exp10f4_core_sse4.S",
+   "tick_line": 182,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_exp10f_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_exp10f4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_exp10f8_core_avx2.S",
+   "tick_line": 199,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_exp10f_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_exp10f8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_exp2f16_core_avx512.S",
+   "tick_line": 170,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_exp2f_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_exp2f16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_exp2f4_core_sse4.S",
+   "tick_line": 145,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_exp2f_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_exp2f4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_exp2f8_core_avx2.S",
+   "tick_line": 149,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_exp2f_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_exp2f8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_expf16_core_avx512.S",
+   "tick_line": 161,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_expf_knl"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_expf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_expf16_core_avx512.S",
+   "tick_line": 365,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_2_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_expf_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_expf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_expf4_core_sse4.S",
+   "tick_line": 158,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_expf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_expf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_expf8_core_avx2.S",
+   "tick_line": 146,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_expf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_expf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_expm1f16_core_avx512.S",
+   "tick_line": 155,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_expm1f_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_expm1f16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_expm1f4_core_sse4.S",
+   "tick_line": 174,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_expm1f_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_expm1f4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_expm1f8_core_avx2.S",
+   "tick_line": 173,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_expm1f_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_expm1f8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_hypotf16_core_avx512.S",
+   "tick_line": 163,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16vv_hypotf_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_hypotf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_hypotf4_core_sse4.S",
+   "tick_line": 186,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4vv_hypotf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_hypotf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_hypotf8_core_avx2.S",
+   "tick_line": 187,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8vv_hypotf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_hypotf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_log10f16_core_avx512.S",
+   "tick_line": 122,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_log10f_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_log10f16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_log10f4_core_sse4.S",
+   "tick_line": 138,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_log10f_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_log10f4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_log10f8_core_avx2.S",
+   "tick_line": 135,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_log10f_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_log10f8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_log1pf16_core_avx512.S",
+   "tick_line": 168,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_log1pf_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_log1pf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_log1pf4_core_sse4.S",
+   "tick_line": 152,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_log1pf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_log1pf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_log1pf8_core_avx2.S",
+   "tick_line": 151,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_log1pf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_log1pf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_log2f16_core_avx512.S",
+   "tick_line": 119,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_log2f_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_log2f16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_log2f4_core_sse4.S",
+   "tick_line": 130,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_log2f_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_log2f4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_log2f8_core_avx2.S",
+   "tick_line": 130,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_log2f_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_log2f8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_logf16_core_avx512.S",
+   "tick_line": 146,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_logf_knl"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_logf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_logf16_core_avx512.S",
+   "tick_line": 334,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_2_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_logf_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_logf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_logf4_core_sse4.S",
+   "tick_line": 140,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_logf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_logf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_logf8_core_avx2.S",
+   "tick_line": 128,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_logf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_logf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_powf16_core_avx512.S",
+   "tick_line": 292,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16vv_powf_knl"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_powf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_powf16_core_avx512.S",
+   "tick_line": 574,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_2_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16vv_powf_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_powf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_powf4_core_sse4.S",
+   "tick_line": 326,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4vv_powf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_powf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_powf8_core_avx2.S",
+   "tick_line": 286,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8vv_powf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_powf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_sincosf16_core_avx512.S",
+   "tick_line": 189,
+   "before": "btl       %r13d, %r14d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16vl4l4_sincosf_knl",
+    "__GI__ZGVeN16vl4l4_sincosf_knl"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_sincosf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_sincosf16_core_avx512.S",
+   "tick_line": 412,
+   "before": "btl       %r13d, %r14d",
+   "label": ".LBL_2_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16vl4l4_sincosf_skx",
+    "__GI__ZGVeN16vl4l4_sincosf_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_sincosf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_sincosf4_core_sse4.S",
+   "tick_line": 206,
+   "before": "btl       %r13d, %r14d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4vl4l4_sincosf_sse4",
+    "__GI__ZGVbN4vl4l4_sincosf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_sincosf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_sincosf8_core_avx2.S",
+   "tick_line": 175,
+   "before": "btl       %r13d, %r14d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8vl4l4_sincosf_avx2",
+    "__GI__ZGVdN8vl4l4_sincosf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_sincosf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_sinf16_core_avx512.S",
+   "tick_line": 178,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_sinf_knl"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_sinf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_sinf16_core_avx512.S",
+   "tick_line": 398,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_2_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_sinf_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_sinf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_sinf4_core_sse4.S",
+   "tick_line": 170,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_sinf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_sinf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_sinf8_core_avx2.S",
+   "tick_line": 163,
+   "before": "btl       %r14d, %r13d",
+   "label": ".LBL_1_6:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_sinf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_sinf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_sinhf16_core_avx512.S",
+   "tick_line": 213,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_sinhf_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_sinhf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_sinhf4_core_sse4.S",
+   "tick_line": 206,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_sinhf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_sinhf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_sinhf8_core_avx2.S",
+   "tick_line": 204,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_sinhf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_sinhf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_tanf16_core_avx512.S",
+   "tick_line": 196,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_tanf_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_tanf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_tanf4_core_sse4.S",
+   "tick_line": 228,
+   "before": "btl\t%r12d, %r13d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_tanf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_tanf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_tanf8_core_avx2.S",
+   "tick_line": 226,
+   "before": "btl\t%ebx, %r12d",
+   "label": "L(RANGEMASK_CHECK):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_tanf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_tanf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_tanhf16_core_avx512.S",
+   "tick_line": 220,
+   "before": "xorl\t%ebp, %ebp",
+   "label": "L(SPECIAL_VALUES_LOOP):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVeN16v_tanhf_skx"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_tanhf16_core_avx512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_tanhf4_core_sse4.S",
+   "tick_line": 217,
+   "before": "xorl\t%ebp, %ebp",
+   "label": "L(SPECIAL_VALUES_LOOP):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVbN4v_tanhf_sse4"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_tanhf4_core_sse4.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/fpu/multiarch/svml_s_tanhf8_core_avx2.S",
+   "tick_line": 239,
+   "before": "xorl\t%ebp, %ebp",
+   "label": "L(SPECIAL_VALUES_LOOP):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "_ZGVdN8v_tanhf_avx2"
+   ],
+   "objects": [
+    "mathvec/libmvec.so",
+    "mathvec/svml_s_tanhf8_core_avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/lshift.S",
+   "tick_line": 93,
+   "before": "shld\t%cl, %r8, %r11",
+   "label": "L(top):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__mpn_lshift"
+   ],
+   "objects": [
+    "libc.so",
+    "stdlib/lshift.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/mul_1.S",
+   "tick_line": 91,
+   "before": "mov\t%r10, (rp,n,8)",
+   "label": "L(top):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__mpn_mul_1"
+   ],
+   "objects": [
+    "libc.so",
+    "stdlib/mul_1.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memchr-avx2.S",
+   "tick_line": 224,
+   "before": "VPCMPEQ\t1(%rdi), %ymm0, %ymm1",
+   "label": "L(loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memchr_avx2",
+    "__memchr_avx2_rtm",
+    "__rawmemchr_avx2",
+    "__rawmemchr_avx2_rtm",
+    "__wmemchr_avx2",
+    "__wmemchr_avx2_rtm"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memchr-avx2-rtm.o",
+    "string/memchr-avx2.o",
+    "string/rawmemchr-avx2-rtm.o",
+    "string/rawmemchr-avx2.o",
+    "wcsmbs/wmemchr-avx2-rtm.o",
+    "wcsmbs/wmemchr-avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memchr-evex-base.S",
+   "tick_line": 229,
+   "before": "VPCMPNE\t(VEC_SIZE * 4)(%rdi), %VMM(1), %k1",
+   "label": "L(loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memchr_evex512",
+    "__rawmemchr_evex512",
+    "__wmemchr_evex512"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memchr-evex512.o",
+    "string/rawmemchr-evex512.o",
+    "wcsmbs/wmemchr-evex512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memchr-evex.S",
+   "tick_line": 454,
+   "before": "VPCMP\t$4, (VEC_SIZE * 0)(%rdi), %VMATCH, %k1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__wmemchr_evex"
+   ],
+   "objects": [
+    "libc.so",
+    "wcsmbs/wmemchr-evex.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memchr-evex.S",
+   "tick_line": 457,
+   "before": "VPCMPEQ\t(VEC_SIZE * 0)(%rdi), %VMATCH, %k1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memchr_evex"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memchr-evex.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memchr-evex.S",
+   "tick_line": 481,
+   "before": "VPCMP\t$4, (VEC_SIZE * 0)(%rdi), %VMATCH, %k1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memchr_evex_rtm",
+    "__wmemchr_evex_rtm"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memchr-evex-rtm.o",
+    "wcsmbs/wmemchr-evex-rtm.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memchr-sse2.S",
+   "tick_line": 195,
+   "before": "sub\t$(CHAR_PER_VEC * 4), %rdx",
+   "label": "L(align64_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memchr_sse2",
+    "__wmemchr_sse2",
+    "memchr"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/memchr-sse2.o",
+    "wcsmbs/wmemchr-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memcmp-avx2-movbe.S",
+   "tick_line": 252,
+   "before": "vmovdqu\t(%rsi, %rdi), %ymm1",
+   "label": "L(loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memcmp_avx2_movbe",
+    "__memcmp_avx2_movbe_rtm",
+    "__wmemcmp_avx2_movbe",
+    "__wmemcmp_avx2_movbe_rtm"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memcmp-avx2-movbe-rtm.o",
+    "string/memcmp-avx2-movbe.o",
+    "wcsmbs/wmemcmp-avx2-movbe-rtm.o",
+    "wcsmbs/wmemcmp-avx2-movbe.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memcmp-evex-movbe.S",
+   "tick_line": 338,
+   "before": "VMOVU\t(%rsi, %rdi), %VMM(1)",
+   "label": "L(loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memcmp_evex_movbe",
+    "__wmemcmp_evex_movbe"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memcmp-evex-movbe.o",
+    "wcsmbs/wmemcmp-evex-movbe.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memcmp-sse2.S",
+   "tick_line": 485,
+   "before": "movups\t(VEC_SIZE * 2)(%rsi), %xmm0",
+   "label": "L(loop_4x):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memcmp_sse2",
+    "__memcmpeq_sse2",
+    "__wmemcmp_sse2",
+    "memcmp"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/memcmp-sse2.o",
+    "string/memcmpeq-sse2.o",
+    "wcsmbs/wmemcmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memcmpeq-avx2.S",
+   "tick_line": 210,
+   "before": "vmovdqu\t(%rsi, %rdi), %ymm1",
+   "label": "L(loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memcmpeq_avx2",
+    "__memcmpeq_avx2_rtm"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memcmpeq-avx2-rtm.o",
+    "string/memcmpeq-avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memcmpeq-evex.S",
+   "tick_line": 223,
+   "before": "VMOVU\t(%rsi, %rdi), %VMM(1)",
+   "label": "L(loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memcmpeq_evex"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memcmpeq-evex.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memmove-avx512-no-vzeroupper.S",
+   "tick_line": 241,
+   "before": "vmovups\t(%rsi), %zmm0",
+   "label": "L(gobble_512bytes_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memmove_avx512_no_vzeroupper"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memmove-avx512-no-vzeroupper.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memmove-avx512-no-vzeroupper.S",
+   "tick_line": 301,
+   "before": "vmovups -0x40(%rcx), %zmm0",
+   "label": "L(gobble_512bytes_loop_bkw):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memmove_avx512_no_vzeroupper"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memmove-avx512-no-vzeroupper.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memmove-avx512-no-vzeroupper.S",
+   "tick_line": 355,
+   "before": "prefetcht1 0x200(%rsi)",
+   "label": "L(gobble_256bytes_nt_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memmove_avx512_no_vzeroupper"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memmove-avx512-no-vzeroupper.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memmove-avx512-no-vzeroupper.S",
+   "tick_line": 394,
+   "before": "prefetcht1 -0x400(%rcx)",
+   "label": "L(gobble_256bytes_nt_loop_bkw):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memmove_avx512_no_vzeroupper"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memmove-avx512-no-vzeroupper.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S",
+   "tick_line": 483,
+   "before": "VMOVU\t(%rsi), %VMM(1)",
+   "label": "L(loop_4x_vec_forward):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memmove_avx512_unaligned_erms",
+    "__memmove_avx_unaligned_erms",
+    "__memmove_avx_unaligned_erms_rtm",
+    "__memmove_evex_unaligned_erms",
+    "__memmove_sse2_unaligned_erms",
+    "memmove"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/memmove-avx-unaligned-erms-rtm.o",
+    "string/memmove-avx-unaligned-erms.o",
+    "string/memmove-avx512-unaligned-erms.o",
+    "string/memmove-evex-unaligned-erms.o",
+    "string/memmove-sse2-unaligned-erms.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S",
+   "tick_line": 536,
+   "before": "VMOVU\t(VEC_SIZE * 3)(%rsi), %VMM(1)",
+   "label": "L(loop_4x_vec_backward):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memmove_avx512_unaligned_erms",
+    "__memmove_avx_unaligned_erms",
+    "__memmove_avx_unaligned_erms_rtm",
+    "__memmove_evex_unaligned_erms",
+    "__memmove_sse2_unaligned_erms",
+    "memmove"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/memmove-avx-unaligned-erms-rtm.o",
+    "string/memmove-avx-unaligned-erms.o",
+    "string/memmove-avx512-unaligned-erms.o",
+    "string/memmove-evex-unaligned-erms.o",
+    "string/memmove-sse2-unaligned-erms.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S",
+   "tick_line": 757,
+   "before": "PREFETCH_ONE_SET(1, (%rsi), PREFETCHED_LOAD_SIZE)",
+   "label": "L(loop_large_memcpy_2x_inner):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memmove_avx512_unaligned_erms",
+    "__memmove_avx_unaligned_erms",
+    "__memmove_avx_unaligned_erms_rtm",
+    "__memmove_evex_unaligned_erms",
+    "__memmove_sse2_unaligned_erms"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memmove-avx-unaligned-erms-rtm.o",
+    "string/memmove-avx-unaligned-erms.o",
+    "string/memmove-avx512-unaligned-erms.o",
+    "string/memmove-evex-unaligned-erms.o",
+    "string/memmove-sse2-unaligned-erms.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S",
+   "tick_line": 785,
+   "before": "PREFETCH_ONE_SET (1, (%rsi), PREFETCHED_LOAD_SIZE)",
+   "label": "L(loop_large_memcpy_2x_tail):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memmove_avx512_unaligned_erms",
+    "__memmove_avx_unaligned_erms",
+    "__memmove_avx_unaligned_erms_rtm",
+    "__memmove_evex_unaligned_erms",
+    "__memmove_sse2_unaligned_erms"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memmove-avx-unaligned-erms-rtm.o",
+    "string/memmove-avx-unaligned-erms.o",
+    "string/memmove-avx512-unaligned-erms.o",
+    "string/memmove-evex-unaligned-erms.o",
+    "string/memmove-sse2-unaligned-erms.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S",
+   "tick_line": 829,
+   "before": "PREFETCH_ONE_SET(1, (%rsi), PREFETCHED_LOAD_SIZE)",
+   "label": "L(loop_large_memcpy_4x_inner):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memmove_avx512_unaligned_erms",
+    "__memmove_avx_unaligned_erms",
+    "__memmove_avx_unaligned_erms_rtm",
+    "__memmove_evex_unaligned_erms",
+    "__memmove_sse2_unaligned_erms"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memmove-avx-unaligned-erms-rtm.o",
+    "string/memmove-avx-unaligned-erms.o",
+    "string/memmove-avx512-unaligned-erms.o",
+    "string/memmove-evex-unaligned-erms.o",
+    "string/memmove-sse2-unaligned-erms.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S",
+   "tick_line": 860,
+   "before": "PREFETCH_ONE_SET (1, (%rsi), PREFETCHED_LOAD_SIZE)",
+   "label": "L(loop_large_memcpy_4x_tail):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memmove_avx512_unaligned_erms",
+    "__memmove_avx_unaligned_erms",
+    "__memmove_avx_unaligned_erms_rtm",
+    "__memmove_evex_unaligned_erms",
+    "__memmove_sse2_unaligned_erms"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memmove-avx-unaligned-erms-rtm.o",
+    "string/memmove-avx-unaligned-erms.o",
+    "string/memmove-avx512-unaligned-erms.o",
+    "string/memmove-evex-unaligned-erms.o",
+    "string/memmove-sse2-unaligned-erms.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memrchr-avx2.S",
+   "tick_line": 251,
+   "before": "vpcmpeqb -(VEC_SIZE * 1 - 1)(%rax), %ymm0, %ymm1",
+   "label": "L(loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memrchr_avx2",
+    "__memrchr_avx2_rtm"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memrchr-avx2-rtm.o",
+    "string/memrchr-avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memrchr-evex.S",
+   "tick_line": 172,
+   "before": "cmpl\t$(VEC_SIZE * 2), %eax",
+   "label": "L(last_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memrchr_evex"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memrchr-evex.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memrchr-evex.S",
+   "tick_line": 322,
+   "before": "cmpq\t%rdx, %rax",
+   "label": "L(loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memrchr_evex"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memrchr-evex.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memrchr-sse2.S",
+   "tick_line": 269,
+   "before": "movaps\t(VEC_SIZE * -1)(%rcx), %xmm1",
+   "label": "L(loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memrchr_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memrchr-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memset-avx512-no-vzeroupper.S",
+   "tick_line": 156,
+   "before": "vmovaps\t%zmm2, (%rdi)",
+   "label": "L(gobble_256bytes_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memset_avx512_no_vzeroupper"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memset-avx512-no-vzeroupper.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memset-avx512-no-vzeroupper.S",
+   "tick_line": 179,
+   "before": "vmovntdq %zmm2, (%rdi)",
+   "label": "L(gobble_512bytes_nt_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memset_avx512_no_vzeroupper"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memset-avx512-no-vzeroupper.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S",
+   "tick_line": 291,
+   "before": "VMOVA\t%VMM(0), LOOP_4X_OFFSET(%LOOP_REG)",
+   "label": "L(loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memset_avx2_unaligned_erms",
+    "__memset_avx2_unaligned_erms_rtm",
+    "__memset_avx512_unaligned_erms",
+    "__memset_evex_unaligned_erms",
+    "__memset_sse2_unaligned_erms",
+    "memset"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/memset-avx2-unaligned-erms-rtm.o",
+    "string/memset-avx2-unaligned-erms.o",
+    "string/memset-avx512-unaligned-erms.o",
+    "string/memset-evex-unaligned-erms.o",
+    "string/memset-sse2-unaligned-erms.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S",
+   "tick_line": 445,
+   "before": "VMOVNT\t%VMM(0), (VEC_SIZE * 0)(%rdi)",
+   "label": "L(nt_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__memset_avx2_unaligned_erms",
+    "__memset_avx2_unaligned_erms_rtm",
+    "__memset_avx512_unaligned_erms",
+    "__memset_evex_unaligned_erms",
+    "__memset_sse2_unaligned_erms"
+   ],
+   "objects": [
+    "libc.so",
+    "string/memset-avx2-unaligned-erms-rtm.o",
+    "string/memset-avx2-unaligned-erms.o",
+    "string/memset-avx512-unaligned-erms.o",
+    "string/memset-evex-unaligned-erms.o",
+    "string/memset-sse2-unaligned-erms.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/rawmemchr-evex.S",
+   "tick_line": 197,
+   "before": "VPCMPEQ\t(VEC_SIZE * 4)(%rdi), %VMATCH, %k1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__rawmemchr_evex"
+   ],
+   "objects": [
+    "libc.so",
+    "string/rawmemchr-evex.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/rawmemchr-evex.S",
+   "tick_line": 220,
+   "before": "VPCMP\t$4, (VEC_SIZE * 4)(%rdi), %VMATCH, %k1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__rawmemchr_evex_rtm"
+   ],
+   "objects": [
+    "libc.so",
+    "string/rawmemchr-evex-rtm.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/rawmemchr-sse2.S",
+   "tick_line": 139,
+   "before": "movdqa\t(%rdi), %xmm0",
+   "label": "L(align64_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__rawmemchr_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/rawmemchr-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcat-sse2-unaligned.S",
+   "tick_line": 200,
+   "before": "movaps\t(%rax),\t%xmm4",
+   "label": "L(align64_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcat_sse2_unaligned",
+    "__strncat_sse2_unaligned"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcat-sse2-unaligned.o",
+    "string/strncat-sse2-unaligned.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcat-sse2.S",
+   "tick_line": 46,
+   "before": "cmpb $0x0,(%rax)\t/* is byte NUL? */",
+   "label": "0:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcat_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcat-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcat-sse2.S",
+   "tick_line": 59,
+   "before": "movq (%rax), %rcx\t/* get double word (= 8 bytes) in question */",
+   "label": "4:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcat_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcat-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcat-sse2.S",
+   "tick_line": 160,
+   "before": "movb\t(%rsi), %al\t/* Fetch a byte */",
+   "label": "21:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcat_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcat-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcat-sse2.S",
+   "tick_line": 176,
+   "before": "movq\t(%rsi), %rax\t/* Read double word (8 bytes).  */",
+   "label": "22:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcat_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcat-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcat-sse2.S",
+   "tick_line": 253,
+   "before": "movb\t%al, (%rdx)\t/* 1st byte.  */",
+   "label": "23:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcat_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcat-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcat-strlen-avx2.h.S",
+   "tick_line": 59,
+   "before": "VMOVA\t(VEC_SIZE * 0 + 1)(%rdi), %VMM(0)",
+   "label": "L(loop_2x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcat_avx2",
+    "__strcat_avx2_rtm",
+    "__strncat_avx2",
+    "__strncat_avx2_rtm",
+    "__wcscat_avx2",
+    "__wcsncat_avx2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcat-avx2-rtm.o",
+    "string/strcat-avx2.o",
+    "string/strncat-avx2-rtm.o",
+    "string/strncat-avx2.o",
+    "wcsmbs/wcscat-avx2.o",
+    "wcsmbs/wcsncat-avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcat-strlen-evex.h.S",
+   "tick_line": 68,
+   "before": "VMOVA\t(VEC_SIZE * 4)(%rdi), %VMM(0)",
+   "label": "L(loop_2x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcat_evex",
+    "__strncat_evex",
+    "__wcscat_evex",
+    "__wcsncat_evex"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcat-evex.o",
+    "string/strncat-evex.o",
+    "wcsmbs/wcscat-evex.o",
+    "wcsmbs/wcsncat-evex.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strchr-avx2.S",
+   "tick_line": 198,
+   "before": "vmovdqa\t1(%rdi), %ymm6",
+   "label": "L(loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strchr_avx2",
+    "__strchr_avx2_rtm",
+    "__strchrnul_avx2",
+    "__strchrnul_avx2_rtm",
+    "__wcschr_avx2",
+    "__wcschr_avx2_rtm"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strchr-avx2-rtm.o",
+    "string/strchr-avx2.o",
+    "string/strchrnul-avx2-rtm.o",
+    "string/strchrnul-avx2.o",
+    "wcsmbs/wcschr-avx2-rtm.o",
+    "wcsmbs/wcschr-avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strchr-evex-base.S",
+   "tick_line": 209,
+   "before": "VMOVA\t(VEC_SIZE * 4)(%rdi), %VMM(1)",
+   "label": "L(loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strchr_evex512",
+    "__strchrnul_evex512",
+    "__wcschr_evex512"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strchr-evex512.o",
+    "string/strchrnul-evex512.o",
+    "wcsmbs/wcschr-evex512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strchr-evex.S",
+   "tick_line": 285,
+   "before": "VMOVA\t(VEC_SIZE * 4)(%LOOP_REG), %VMM(1)",
+   "label": "L(loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strchr_evex",
+    "__strchrnul_evex",
+    "__wcschr_evex"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strchr-evex.o",
+    "string/strchrnul-evex.o",
+    "wcsmbs/wcschr-evex.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strchr-sse2-no-bsf.S",
+   "tick_line": 55,
+   "before": "movdqa\t(%rdi), %xmm0",
+   "label": "L(loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strchr_sse2_no_bsf"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strchr-sse2-no-bsf.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strchr-sse2.S",
+   "tick_line": 95,
+   "before": "addq\t$64, %rdi",
+   "label": "L(loop64):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strchr_sse2",
+    "__strchrnul_sse2",
+    "strchr",
+    "strchrnul"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strchr-sse2.o",
+    "string/strchrnul-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-avx2.S",
+   "tick_line": 539,
+   "before": "subq\t$-(VEC_SIZE * 4), %rdi",
+   "label": "L(loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_avx2",
+    "__strcasecmp_l_avx2_rtm",
+    "__strcmp_avx2",
+    "__strcmp_avx2_rtm",
+    "__strncasecmp_l_avx2",
+    "__strncasecmp_l_avx2_rtm",
+    "__strncmp_avx2",
+    "__strncmp_avx2_rtm",
+    "__wcscmp_avx2",
+    "__wcscmp_avx2_rtm",
+    "__wcsncmp_avx2",
+    "__wcsncmp_avx2_rtm"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-avx2-rtm.o",
+    "string/strcasecmp_l-avx2.o",
+    "string/strcmp-avx2-rtm.o",
+    "string/strcmp-avx2.o",
+    "string/strncase_l-avx2-rtm.o",
+    "string/strncase_l-avx2.o",
+    "string/strncmp-avx2-rtm.o",
+    "string/strncmp-avx2.o",
+    "wcsmbs/wcscmp-avx2-rtm.o",
+    "wcsmbs/wcscmp-avx2.o",
+    "wcsmbs/wcsncmp-avx2-rtm.o",
+    "wcsmbs/wcsncmp-avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-avx2.S",
+   "tick_line": 995,
+   "before": "VMOVU\t(%rdi, %OFFSET_REG64), %ymm0",
+   "label": "L(page_cross_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_avx2",
+    "__strcasecmp_l_avx2_rtm",
+    "__strcmp_avx2",
+    "__strcmp_avx2_rtm",
+    "__strncasecmp_l_avx2",
+    "__strncasecmp_l_avx2_rtm",
+    "__strncmp_avx2",
+    "__strncmp_avx2_rtm",
+    "__wcscmp_avx2",
+    "__wcscmp_avx2_rtm",
+    "__wcsncmp_avx2",
+    "__wcsncmp_avx2_rtm"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-avx2-rtm.o",
+    "string/strcasecmp_l-avx2.o",
+    "string/strcmp-avx2-rtm.o",
+    "string/strcmp-avx2.o",
+    "string/strncase_l-avx2-rtm.o",
+    "string/strncase_l-avx2.o",
+    "string/strncmp-avx2-rtm.o",
+    "string/strncmp-avx2.o",
+    "wcsmbs/wcscmp-avx2-rtm.o",
+    "wcsmbs/wcscmp-avx2.o",
+    "wcsmbs/wcsncmp-avx2-rtm.o",
+    "wcsmbs/wcsncmp-avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-avx2.S",
+   "tick_line": 1290,
+   "before": "movzbl\t(%rdi), %eax",
+   "label": "L(less_4_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_avx2",
+    "__strcasecmp_l_avx2_rtm",
+    "__strcmp_avx2",
+    "__strcmp_avx2_rtm",
+    "__strncasecmp_l_avx2",
+    "__strncasecmp_l_avx2_rtm",
+    "__strncmp_avx2",
+    "__strncmp_avx2_rtm"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-avx2-rtm.o",
+    "string/strcasecmp_l-avx2.o",
+    "string/strcmp-avx2-rtm.o",
+    "string/strcmp-avx2.o",
+    "string/strncase_l-avx2-rtm.o",
+    "string/strncase_l-avx2.o",
+    "string/strncmp-avx2-rtm.o",
+    "string/strncmp-avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-evex.S",
+   "tick_line": 609,
+   "before": "subq\t$-(VEC_SIZE * 4), %rdi",
+   "label": "L(loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_evex",
+    "__strcmp_evex",
+    "__strncasecmp_l_evex",
+    "__strncmp_evex",
+    "__wcscmp_evex",
+    "__wcsncmp_evex"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-evex.o",
+    "string/strcmp-evex.o",
+    "string/strncase_l-evex.o",
+    "string/strncmp-evex.o",
+    "wcsmbs/wcscmp-evex.o",
+    "wcsmbs/wcsncmp-evex.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-evex.S",
+   "tick_line": 1194,
+   "before": "VMOVU\t(%rdi, %OFFSET_REG64, SIZE_OF_CHAR), %VMM(0)",
+   "label": "L(page_cross_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_evex",
+    "__strcmp_evex",
+    "__strncasecmp_l_evex",
+    "__strncmp_evex",
+    "__wcscmp_evex",
+    "__wcsncmp_evex"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-evex.o",
+    "string/strcmp-evex.o",
+    "string/strncase_l-evex.o",
+    "string/strncmp-evex.o",
+    "wcsmbs/wcscmp-evex.o",
+    "wcsmbs/wcsncmp-evex.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-evex.S",
+   "tick_line": 1574,
+   "before": "movzbl\t(%rdi), %eax",
+   "label": "L(less_4_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_evex",
+    "__strcmp_evex",
+    "__strncasecmp_l_evex",
+    "__strncmp_evex"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-evex.o",
+    "string/strcmp-evex.o",
+    "string/strncase_l-evex.o",
+    "string/strncmp-evex.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse2-unaligned.S",
+   "tick_line": 100,
+   "before": "addq\t$64, %rax",
+   "label": "L(loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcmp_sse2_unaligned"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcmp-sse2-unaligned.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse2-unaligned.S",
+   "tick_line": 207,
+   "before": "cmpb\t%cl, %al",
+   "label": "L(cross_page_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcmp_sse2_unaligned"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcmp-sse2-unaligned.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse2.S",
+   "tick_line": 260,
+   "before": "movdqa\t(%rsi, %rcx), %xmm1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse2",
+    "__strcmp_sse2",
+    "__strncasecmp_l_sse2",
+    "__strncmp_sse2",
+    "strcmp",
+    "strncmp"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strcasecmp_l-sse2.o",
+    "string/strcmp-sse2.o",
+    "string/strncase_l-sse2.o",
+    "string/strncmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse2.S",
+   "tick_line": 335,
+   "before": "movdqa\t(%rsi, %rcx), %xmm1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse2",
+    "__strcmp_sse2",
+    "__strncasecmp_l_sse2",
+    "__strncmp_sse2",
+    "strcmp",
+    "strncmp"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strcasecmp_l-sse2.o",
+    "string/strcmp-sse2.o",
+    "string/strncase_l-sse2.o",
+    "string/strncmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse2.S",
+   "tick_line": 460,
+   "before": "movdqa\t(%rsi, %rcx), %xmm1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse2",
+    "__strcmp_sse2",
+    "__strncasecmp_l_sse2",
+    "__strncmp_sse2",
+    "strcmp",
+    "strncmp"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strcasecmp_l-sse2.o",
+    "string/strcmp-sse2.o",
+    "string/strncase_l-sse2.o",
+    "string/strncmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse2.S",
+   "tick_line": 580,
+   "before": "movdqa\t(%rsi, %rcx), %xmm1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse2",
+    "__strcmp_sse2",
+    "__strncasecmp_l_sse2",
+    "__strncmp_sse2",
+    "strcmp",
+    "strncmp"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strcasecmp_l-sse2.o",
+    "string/strcmp-sse2.o",
+    "string/strncase_l-sse2.o",
+    "string/strncmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse2.S",
+   "tick_line": 700,
+   "before": "movdqa\t(%rsi, %rcx), %xmm1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse2",
+    "__strcmp_sse2",
+    "__strncasecmp_l_sse2",
+    "__strncmp_sse2",
+    "strcmp",
+    "strncmp"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strcasecmp_l-sse2.o",
+    "string/strcmp-sse2.o",
+    "string/strncase_l-sse2.o",
+    "string/strncmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse2.S",
+   "tick_line": 820,
+   "before": "movdqa\t(%rsi, %rcx), %xmm1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse2",
+    "__strcmp_sse2",
+    "__strncasecmp_l_sse2",
+    "__strncmp_sse2",
+    "strcmp",
+    "strncmp"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strcasecmp_l-sse2.o",
+    "string/strcmp-sse2.o",
+    "string/strncase_l-sse2.o",
+    "string/strncmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse2.S",
+   "tick_line": 940,
+   "before": "movdqa\t(%rsi, %rcx), %xmm1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse2",
+    "__strcmp_sse2",
+    "__strncasecmp_l_sse2",
+    "__strncmp_sse2",
+    "strcmp",
+    "strncmp"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strcasecmp_l-sse2.o",
+    "string/strcmp-sse2.o",
+    "string/strncase_l-sse2.o",
+    "string/strncmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse2.S",
+   "tick_line": 1060,
+   "before": "movdqa\t(%rsi, %rcx), %xmm1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse2",
+    "__strcmp_sse2",
+    "__strncasecmp_l_sse2",
+    "__strncmp_sse2",
+    "strcmp",
+    "strncmp"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strcasecmp_l-sse2.o",
+    "string/strcmp-sse2.o",
+    "string/strncase_l-sse2.o",
+    "string/strncmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse2.S",
+   "tick_line": 1180,
+   "before": "movdqa\t(%rsi, %rcx), %xmm1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse2",
+    "__strcmp_sse2",
+    "__strncasecmp_l_sse2",
+    "__strncmp_sse2",
+    "strcmp",
+    "strncmp"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strcasecmp_l-sse2.o",
+    "string/strcmp-sse2.o",
+    "string/strncase_l-sse2.o",
+    "string/strncmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse2.S",
+   "tick_line": 1300,
+   "before": "movdqa\t(%rsi, %rcx), %xmm1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse2",
+    "__strcmp_sse2",
+    "__strncasecmp_l_sse2",
+    "__strncmp_sse2",
+    "strcmp",
+    "strncmp"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strcasecmp_l-sse2.o",
+    "string/strcmp-sse2.o",
+    "string/strncase_l-sse2.o",
+    "string/strncmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse2.S",
+   "tick_line": 1420,
+   "before": "movdqa\t(%rsi, %rcx), %xmm1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse2",
+    "__strcmp_sse2",
+    "__strncasecmp_l_sse2",
+    "__strncmp_sse2",
+    "strcmp",
+    "strncmp"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strcasecmp_l-sse2.o",
+    "string/strcmp-sse2.o",
+    "string/strncase_l-sse2.o",
+    "string/strncmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse2.S",
+   "tick_line": 1540,
+   "before": "movdqa\t(%rsi, %rcx), %xmm1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse2",
+    "__strcmp_sse2",
+    "__strncasecmp_l_sse2",
+    "__strncmp_sse2",
+    "strcmp",
+    "strncmp"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strcasecmp_l-sse2.o",
+    "string/strcmp-sse2.o",
+    "string/strncase_l-sse2.o",
+    "string/strncmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse2.S",
+   "tick_line": 1660,
+   "before": "movdqa\t(%rsi, %rcx), %xmm1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse2",
+    "__strcmp_sse2",
+    "__strncasecmp_l_sse2",
+    "__strncmp_sse2",
+    "strcmp",
+    "strncmp"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strcasecmp_l-sse2.o",
+    "string/strcmp-sse2.o",
+    "string/strncase_l-sse2.o",
+    "string/strncmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse2.S",
+   "tick_line": 1780,
+   "before": "movdqa\t(%rsi, %rcx), %xmm1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse2",
+    "__strcmp_sse2",
+    "__strncasecmp_l_sse2",
+    "__strncmp_sse2",
+    "strcmp",
+    "strncmp"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strcasecmp_l-sse2.o",
+    "string/strcmp-sse2.o",
+    "string/strncase_l-sse2.o",
+    "string/strncmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse2.S",
+   "tick_line": 1900,
+   "before": "movdqa\t(%rsi, %rcx), %xmm1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse2",
+    "__strcmp_sse2",
+    "__strncasecmp_l_sse2",
+    "__strncmp_sse2",
+    "strcmp",
+    "strncmp"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strcasecmp_l-sse2.o",
+    "string/strcmp-sse2.o",
+    "string/strncase_l-sse2.o",
+    "string/strncmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse2.S",
+   "tick_line": 2022,
+   "before": "movdqa\t(%rsi, %rcx), %xmm1",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse2",
+    "__strcmp_sse2",
+    "__strncasecmp_l_sse2",
+    "__strncmp_sse2",
+    "strcmp",
+    "strncmp"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strcasecmp_l-sse2.o",
+    "string/strcmp-sse2.o",
+    "string/strncase_l-sse2.o",
+    "string/strncmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse4_2.S",
+   "tick_line": 276,
+   "before": "movdqa\t(%rdi,%rdx), %xmm0",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse42",
+    "__strcmp_sse42",
+    "__strncasecmp_l_sse42",
+    "__strncmp_sse42"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-sse4_2.o",
+    "string/strcmp-sse4_2.o",
+    "string/strncase_l-sse4_2.o",
+    "string/strncmp-sse4_2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse4_2.S",
+   "tick_line": 366,
+   "before": "movdqa\t(%rdi, %rdx), %xmm0",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse42",
+    "__strcmp_sse42",
+    "__strncasecmp_l_sse42",
+    "__strncmp_sse42"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-sse4_2.o",
+    "string/strcmp-sse4_2.o",
+    "string/strncase_l-sse4_2.o",
+    "string/strncmp-sse4_2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse4_2.S",
+   "tick_line": 455,
+   "before": "movdqa\t(%rdi, %rdx), %xmm0",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse42",
+    "__strcmp_sse42",
+    "__strncasecmp_l_sse42",
+    "__strncmp_sse42"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-sse4_2.o",
+    "string/strcmp-sse4_2.o",
+    "string/strncase_l-sse4_2.o",
+    "string/strncmp-sse4_2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse4_2.S",
+   "tick_line": 544,
+   "before": "movdqa\t(%rdi, %rdx), %xmm0",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse42",
+    "__strcmp_sse42",
+    "__strncasecmp_l_sse42",
+    "__strncmp_sse42"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-sse4_2.o",
+    "string/strcmp-sse4_2.o",
+    "string/strncase_l-sse4_2.o",
+    "string/strncmp-sse4_2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse4_2.S",
+   "tick_line": 634,
+   "before": "movdqa\t(%rdi, %rdx), %xmm0",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse42",
+    "__strcmp_sse42",
+    "__strncasecmp_l_sse42",
+    "__strncmp_sse42"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-sse4_2.o",
+    "string/strcmp-sse4_2.o",
+    "string/strncase_l-sse4_2.o",
+    "string/strncmp-sse4_2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse4_2.S",
+   "tick_line": 724,
+   "before": "movdqa\t(%rdi, %rdx), %xmm0",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse42",
+    "__strcmp_sse42",
+    "__strncasecmp_l_sse42",
+    "__strncmp_sse42"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-sse4_2.o",
+    "string/strcmp-sse4_2.o",
+    "string/strncase_l-sse4_2.o",
+    "string/strncmp-sse4_2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse4_2.S",
+   "tick_line": 815,
+   "before": "movdqa\t(%rdi, %rdx), %xmm0",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse42",
+    "__strcmp_sse42",
+    "__strncasecmp_l_sse42",
+    "__strncmp_sse42"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-sse4_2.o",
+    "string/strcmp-sse4_2.o",
+    "string/strncase_l-sse4_2.o",
+    "string/strncmp-sse4_2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse4_2.S",
+   "tick_line": 905,
+   "before": "movdqa\t(%rdi, %rdx), %xmm0",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse42",
+    "__strcmp_sse42",
+    "__strncasecmp_l_sse42",
+    "__strncmp_sse42"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-sse4_2.o",
+    "string/strcmp-sse4_2.o",
+    "string/strncase_l-sse4_2.o",
+    "string/strncmp-sse4_2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse4_2.S",
+   "tick_line": 995,
+   "before": "movdqa\t(%rdi, %rdx), %xmm0",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse42",
+    "__strcmp_sse42",
+    "__strncasecmp_l_sse42",
+    "__strncmp_sse42"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-sse4_2.o",
+    "string/strcmp-sse4_2.o",
+    "string/strncase_l-sse4_2.o",
+    "string/strncmp-sse4_2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse4_2.S",
+   "tick_line": 1085,
+   "before": "movdqa\t(%rdi, %rdx), %xmm0",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse42",
+    "__strcmp_sse42",
+    "__strncasecmp_l_sse42",
+    "__strncmp_sse42"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-sse4_2.o",
+    "string/strcmp-sse4_2.o",
+    "string/strncase_l-sse4_2.o",
+    "string/strncmp-sse4_2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse4_2.S",
+   "tick_line": 1176,
+   "before": "movdqa\t(%rdi, %rdx), %xmm0",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse42",
+    "__strcmp_sse42",
+    "__strncasecmp_l_sse42",
+    "__strncmp_sse42"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-sse4_2.o",
+    "string/strcmp-sse4_2.o",
+    "string/strncase_l-sse4_2.o",
+    "string/strncmp-sse4_2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse4_2.S",
+   "tick_line": 1266,
+   "before": "movdqa\t(%rdi, %rdx), %xmm0",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse42",
+    "__strcmp_sse42",
+    "__strncasecmp_l_sse42",
+    "__strncmp_sse42"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-sse4_2.o",
+    "string/strcmp-sse4_2.o",
+    "string/strncase_l-sse4_2.o",
+    "string/strncmp-sse4_2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse4_2.S",
+   "tick_line": 1356,
+   "before": "movdqa\t(%rdi, %rdx), %xmm0",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse42",
+    "__strcmp_sse42",
+    "__strncasecmp_l_sse42",
+    "__strncmp_sse42"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-sse4_2.o",
+    "string/strcmp-sse4_2.o",
+    "string/strncase_l-sse4_2.o",
+    "string/strncmp-sse4_2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse4_2.S",
+   "tick_line": 1447,
+   "before": "movdqa\t(%rdi, %rdx), %xmm0",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse42",
+    "__strcmp_sse42",
+    "__strncasecmp_l_sse42",
+    "__strncmp_sse42"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-sse4_2.o",
+    "string/strcmp-sse4_2.o",
+    "string/strncase_l-sse4_2.o",
+    "string/strncmp-sse4_2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse4_2.S",
+   "tick_line": 1538,
+   "before": "movdqa\t(%rdi, %rdx), %xmm0",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse42",
+    "__strcmp_sse42",
+    "__strncasecmp_l_sse42",
+    "__strncmp_sse42"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-sse4_2.o",
+    "string/strcmp-sse4_2.o",
+    "string/strncase_l-sse4_2.o",
+    "string/strncmp-sse4_2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcmp-sse4_2.S",
+   "tick_line": 1631,
+   "before": "movdqa\t(%rdi, %rdx), %xmm0",
+   "label": null,
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strcasecmp_l_sse42",
+    "__strcmp_sse42",
+    "__strncasecmp_l_sse42",
+    "__strncmp_sse42"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strcasecmp_l-sse4_2.o",
+    "string/strcmp-sse4_2.o",
+    "string/strncase_l-sse4_2.o",
+    "string/strncmp-sse4_2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcpy-avx2.S",
+   "tick_line": 222,
+   "before": "VMOVU\t%VMM(0), (VEC_SIZE * 0 + 1)(%rdi)",
+   "label": "L(loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__stpcpy_avx2",
+    "__stpcpy_avx2_rtm",
+    "__strcat_avx2",
+    "__strcat_avx2_rtm",
+    "__strcpy_avx2",
+    "__strcpy_avx2_rtm",
+    "__wcpcpy_avx2",
+    "__wcscat_avx2",
+    "__wcscpy_avx2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/stpcpy-avx2-rtm.o",
+    "string/stpcpy-avx2.o",
+    "string/strcat-avx2-rtm.o",
+    "string/strcat-avx2.o",
+    "string/strcpy-avx2-rtm.o",
+    "string/strcpy-avx2.o",
+    "wcsmbs/wcpcpy-avx2.o",
+    "wcsmbs/wcscat-avx2.o",
+    "wcsmbs/wcscpy-avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcpy-evex.S",
+   "tick_line": 311,
+   "before": "VMOVU\t%VMM(0), (VEC_SIZE * 0 + 0)(%rdi, %rsi)",
+   "label": "L(loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__stpcpy_evex",
+    "__strcat_evex",
+    "__strcpy_evex",
+    "__wcpcpy_evex",
+    "__wcscat_evex",
+    "__wcscpy_evex"
+   ],
+   "objects": [
+    "libc.so",
+    "string/stpcpy-evex.o",
+    "string/strcat-evex.o",
+    "string/strcpy-evex.o",
+    "wcsmbs/wcpcpy-evex.o",
+    "wcsmbs/wcscat-evex.o",
+    "wcsmbs/wcscpy-evex.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcpy-sse2-unaligned.S",
+   "tick_line": 236,
+   "before": "add\t$64, %rdi",
+   "label": "L(Unaligned64Loop_start):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__stpcpy_sse2_unaligned",
+    "__stpncpy_sse2_unaligned",
+    "__strcat_sse2_unaligned",
+    "__strcpy_sse2_unaligned",
+    "__strncat_sse2_unaligned",
+    "__strncpy_sse2_unaligned",
+    "stpcpy"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/stpcpy-sse2-unaligned.o",
+    "string/stpncpy-sse2-unaligned.o",
+    "string/strcat-sse2-unaligned.o",
+    "string/strcpy-sse2-unaligned.o",
+    "string/strncat-sse2-unaligned.o",
+    "string/strncpy-sse2-unaligned.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcpy-sse2-unaligned.S",
+   "tick_line": 1676,
+   "before": "movdqa\t%xmm0, (%rdi)",
+   "label": "L(StrncpyFillLoopMovdqa):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__stpncpy_sse2_unaligned",
+    "__strncpy_sse2_unaligned"
+   ],
+   "objects": [
+    "libc.so",
+    "string/stpncpy-sse2-unaligned.o",
+    "string/strncpy-sse2-unaligned.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcpy-sse2.S",
+   "tick_line": 41,
+   "before": "movb\t(%rsi), %al\t/* Fetch a byte */",
+   "label": "0:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__stpcpy_sse2",
+    "__strcpy_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/stpcpy-sse2.o",
+    "string/strcpy-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcpy-sse2.S",
+   "tick_line": 60,
+   "before": "movq\t(%rsi), %rax\t/* Read double word (8 bytes).  */",
+   "label": "1:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__stpcpy_sse2",
+    "__strcpy_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/stpcpy-sse2.o",
+    "string/strcpy-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strcpy-sse2.S",
+   "tick_line": 139,
+   "before": "movb\t%al, (%rdx)\t/* 1st byte.  */",
+   "label": "3:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__stpcpy_sse2",
+    "__strcpy_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/stpcpy-sse2.o",
+    "string/strcpy-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strlen-avx2.S",
+   "tick_line": 292,
+   "before": "vmovdqa\t1(%rdi), %ymm1",
+   "label": "L(loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strlen_avx2",
+    "__strlen_avx2_rtm",
+    "__strnlen_avx2",
+    "__strnlen_avx2_rtm",
+    "__wcslen_avx2",
+    "__wcslen_avx2_rtm",
+    "__wcsnlen_avx2",
+    "__wcsnlen_avx2_rtm"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strlen-avx2-rtm.o",
+    "string/strlen-avx2.o",
+    "string/strnlen-avx2-rtm.o",
+    "string/strnlen-avx2.o",
+    "wcsmbs/wcslen-avx2-rtm.o",
+    "wcsmbs/wcslen-avx2.o",
+    "wcsmbs/wcsnlen-avx2-rtm.o",
+    "wcsmbs/wcsnlen-avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strlen-evex-base.S",
+   "tick_line": 143,
+   "before": "VMOVA\t(VEC_SIZE * 4)(%rdi), %VMM(1)",
+   "label": "L(loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strlen_evex",
+    "__strlen_evex512",
+    "__wcslen_evex",
+    "__wcslen_evex512"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strlen-evex.o",
+    "string/strlen-evex512.o",
+    "wcsmbs/wcslen-evex.o",
+    "wcsmbs/wcslen-evex512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strlen-sse2.S",
+   "tick_line": 197,
+   "before": "addq\t$64, %rax",
+   "label": "L(loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strnlen_sse2",
+    "__wcsnlen_sse4_1",
+    "strnlen"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strnlen-sse2.o",
+    "wcsmbs/wcsnlen-sse4_1.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strlen-sse2.S",
+   "tick_line": 244,
+   "before": "movdqa\t64(%rax), %xmm0",
+   "label": "L(loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strlen_sse2",
+    "__wcslen_sse4_1",
+    "strlen"
+   ],
+   "objects": [
+    "elf/ld.so",
+    "libc.so",
+    "string/strlen-sse2.o",
+    "wcsmbs/wcslen-sse4_1.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strncat-avx2.S",
+   "tick_line": 207,
+   "before": "subq\t$-(VEC_SIZE * 4), %rsi",
+   "label": "L(last_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strncat_avx2",
+    "__strncat_avx2_rtm",
+    "__wcsncat_avx2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strncat-avx2-rtm.o",
+    "string/strncat-avx2.o",
+    "wcsmbs/wcsncat-avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strncat-avx2.S",
+   "tick_line": 324,
+   "before": "VMOVU\t%VMM(0), (VEC_SIZE * 0 + 0)(%rdi)",
+   "label": "L(loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strncat_avx2",
+    "__strncat_avx2_rtm",
+    "__wcsncat_avx2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strncat-avx2-rtm.o",
+    "string/strncat-avx2.o",
+    "wcsmbs/wcsncat-avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strncat-evex.S",
+   "tick_line": 297,
+   "before": "addl\t$-(CHAR_PER_VEC * 4), %edx",
+   "label": "L(last_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strncat_evex",
+    "__wcsncat_evex"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strncat-evex.o",
+    "wcsmbs/wcsncat-evex.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strncat-evex.S",
+   "tick_line": 424,
+   "before": "VMOVU\t%VMM(0), (VEC_SIZE * 1 + 0)(%rdi, %rsi)",
+   "label": "L(loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strncat_evex",
+    "__wcsncat_evex"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strncat-evex.o",
+    "wcsmbs/wcsncat-evex.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strncpy-avx2.S",
+   "tick_line": 115,
+   "before": "addq\t%rsi, %rdi",
+   "label": "L(last_4x_vec):",
+   "placement": "the loop's header (a nested loop has its own tick)",
+   "functions": [
+    "__stpncpy_avx2",
+    "__stpncpy_avx2_rtm",
+    "__strncpy_avx2",
+    "__strncpy_avx2_rtm",
+    "__wcpncpy_avx2",
+    "__wcsncpy_avx2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/stpncpy-avx2-rtm.o",
+    "string/stpncpy-avx2.o",
+    "string/strncpy-avx2-rtm.o",
+    "string/strncpy-avx2.o",
+    "wcsmbs/wcpncpy-avx2.o",
+    "wcsmbs/wcsncpy-avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strncpy-avx2.S",
+   "tick_line": 326,
+   "before": "VMOVU\t%VMM(0), (VEC_SIZE * 0 + 0)(%rdi)",
+   "label": "L(loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__stpncpy_avx2",
+    "__stpncpy_avx2_rtm",
+    "__strncpy_avx2",
+    "__strncpy_avx2_rtm",
+    "__wcpncpy_avx2",
+    "__wcsncpy_avx2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/stpncpy-avx2-rtm.o",
+    "string/stpncpy-avx2.o",
+    "string/strncpy-avx2-rtm.o",
+    "string/strncpy-avx2.o",
+    "wcsmbs/wcpncpy-avx2.o",
+    "wcsmbs/wcsncpy-avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strncpy-avx2.S",
+   "tick_line": 441,
+   "before": "VMOVA\t%VZERO, (VEC_SIZE * 0)(%rdi)",
+   "label": "L(zfill_loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__stpncpy_avx2",
+    "__stpncpy_avx2_rtm",
+    "__strncpy_avx2",
+    "__strncpy_avx2_rtm",
+    "__wcpncpy_avx2",
+    "__wcsncpy_avx2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/stpncpy-avx2-rtm.o",
+    "string/stpncpy-avx2.o",
+    "string/strncpy-avx2-rtm.o",
+    "string/strncpy-avx2.o",
+    "wcsmbs/wcpncpy-avx2.o",
+    "wcsmbs/wcsncpy-avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strncpy-evex.S",
+   "tick_line": 305,
+   "before": "andl\t$(CHAR_PER_VEC * 4 - 1), %edx",
+   "label": "L(last_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__stpncpy_evex",
+    "__strncpy_evex",
+    "__wcpncpy_evex",
+    "__wcsncpy_evex"
+   ],
+   "objects": [
+    "libc.so",
+    "string/stpncpy-evex.o",
+    "string/strncpy-evex.o",
+    "wcsmbs/wcpncpy-evex.o",
+    "wcsmbs/wcsncpy-evex.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strncpy-evex.S",
+   "tick_line": 461,
+   "before": "VMOVU\t%VMM(0), (VEC_SIZE * 1 + 0)(%rdi, %rsi)",
+   "label": "L(loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__stpncpy_evex",
+    "__strncpy_evex",
+    "__wcpncpy_evex",
+    "__wcsncpy_evex"
+   ],
+   "objects": [
+    "libc.so",
+    "string/stpncpy-evex.o",
+    "string/strncpy-evex.o",
+    "wcsmbs/wcpncpy-evex.o",
+    "wcsmbs/wcsncpy-evex.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strncpy-evex.S",
+   "tick_line": 596,
+   "before": "VMOVA\t%VZERO, (VEC_SIZE * 0)(%rdi)",
+   "label": "L(zfill_loop_4x_vec):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__stpncpy_evex",
+    "__strncpy_evex",
+    "__wcpncpy_evex",
+    "__wcsncpy_evex"
+   ],
+   "objects": [
+    "libc.so",
+    "string/stpncpy-evex.o",
+    "string/strncpy-evex.o",
+    "wcsmbs/wcpncpy-evex.o",
+    "wcsmbs/wcsncpy-evex.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strnlen-evex-base.S",
+   "tick_line": 190,
+   "before": "addl\t$(CHAR_PER_VEC * -4), %eax",
+   "label": "L(last_4x_vec_or_less):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strnlen_evex",
+    "__strnlen_evex512",
+    "__wcsnlen_evex",
+    "__wcsnlen_evex512"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strnlen-evex.o",
+    "string/strnlen-evex512.o",
+    "wcsmbs/wcsnlen-evex.o",
+    "wcsmbs/wcsnlen-evex512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strnlen-evex-base.S",
+   "tick_line": 339,
+   "before": "VMOVA\t(VEC_SIZE * 4)(%rdi), %VMM(1)",
+   "label": "L(loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strnlen_evex",
+    "__strnlen_evex512",
+    "__wcsnlen_evex",
+    "__wcsnlen_evex512"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strnlen-evex.o",
+    "string/strnlen-evex512.o",
+    "wcsmbs/wcsnlen-evex.o",
+    "wcsmbs/wcsnlen-evex512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strrchr-avx2.S",
+   "tick_line": 180,
+   "before": "vmovdqa\t(VEC_SIZE * 0)(%rdi), %ymm4",
+   "label": "L(first_aligned_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strrchr_avx2",
+    "__strrchr_avx2_rtm",
+    "__wcsrchr_avx2",
+    "__wcsrchr_avx2_rtm"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strrchr-avx2-rtm.o",
+    "string/strrchr-avx2.o",
+    "wcsmbs/wcsrchr-avx2-rtm.o",
+    "wcsmbs/wcsrchr-avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strrchr-avx2.S",
+   "tick_line": 265,
+   "before": "vmovdqa\t(VEC_SIZE * 0)(%rdi), %ymm4",
+   "label": "L(second_aligned_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strrchr_avx2",
+    "__strrchr_avx2_rtm",
+    "__wcsrchr_avx2",
+    "__wcsrchr_avx2_rtm"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strrchr-avx2-rtm.o",
+    "string/strrchr-avx2.o",
+    "wcsmbs/wcsrchr-avx2-rtm.o",
+    "wcsmbs/wcsrchr-avx2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strrchr-evex-base.S",
+   "tick_line": 210,
+   "before": "VMOVA\t(VEC_SIZE * 4)(%rdi), %VMM(5)",
+   "label": "L(first_aligned_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strrchr_evex",
+    "__strrchr_evex512",
+    "__wcsrchr_evex",
+    "__wcsrchr_evex512"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strrchr-evex.o",
+    "string/strrchr-evex512.o",
+    "wcsmbs/wcsrchr-evex.o",
+    "wcsmbs/wcsrchr-evex512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strrchr-evex-base.S",
+   "tick_line": 289,
+   "before": "VMOVU\t(VEC_SIZE * 4)(%rdi), %VMM(5)",
+   "label": "L(second_aligned_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strrchr_evex",
+    "__strrchr_evex512",
+    "__wcsrchr_evex",
+    "__wcsrchr_evex512"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strrchr-evex.o",
+    "string/strrchr-evex512.o",
+    "wcsmbs/wcsrchr-evex.o",
+    "wcsmbs/wcsrchr-evex512.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strrchr-sse2.S",
+   "tick_line": 167,
+   "before": "movaps\t(VEC_SIZE * 2)(%rdi), %xmm4",
+   "label": "L(first_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strrchr_sse2",
+    "__wcsrchr_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strrchr-sse2.o",
+    "wcsmbs/wcsrchr-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strrchr-sse2.S",
+   "tick_line": 270,
+   "before": "movaps\t(VEC_SIZE * 2)(%rdi), %xmm4",
+   "label": "L(second_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strrchr_sse2",
+    "__wcsrchr_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strrchr-sse2.o",
+    "wcsmbs/wcsrchr-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strstr-sse2-unaligned.S",
+   "tick_line": 64,
+   "before": "bsf\t%r8, %rax",
+   "label": "L(next_pair_index):",
+   "placement": "the loop's header (a nested loop has its own tick)",
+   "functions": [
+    "__strstr_sse2_unaligned"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strstr-sse2-unaligned.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strstr-sse2-unaligned.S",
+   "tick_line": 84,
+   "before": "addq\t$1, %rdx",
+   "label": "L(pair_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strstr_sse2_unaligned"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strstr-sse2-unaligned.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strstr-sse2-unaligned.S",
+   "tick_line": 130,
+   "before": "bsfq\t%r8, %rax",
+   "label": "L(next_pair2_index):",
+   "placement": "the loop's header (a nested loop has its own tick)",
+   "functions": [
+    "__strstr_sse2_unaligned"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strstr-sse2-unaligned.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strstr-sse2-unaligned.S",
+   "tick_line": 145,
+   "before": "addq\t$1, %rdx",
+   "label": "L(pair_loop2):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strstr_sse2_unaligned"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strstr-sse2-unaligned.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strstr-sse2-unaligned.S",
+   "tick_line": 176,
+   "before": "movdqa\t64(%rdi), %xmm3",
+   "label": "L(loop):",
+   "placement": "the loop's header (a nested loop has its own tick)",
+   "functions": [
+    "__strstr_sse2_unaligned"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strstr-sse2-unaligned.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strstr-sse2-unaligned.S",
+   "tick_line": 236,
+   "before": "bsfq\t%r8, %rcx",
+   "label": "L(next_pair_index3):",
+   "placement": "the loop's header (a nested loop has its own tick)",
+   "functions": [
+    "__strstr_sse2_unaligned"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strstr-sse2-unaligned.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strstr-sse2-unaligned.S",
+   "tick_line": 251,
+   "before": "addq\t$1, %rax",
+   "label": "L(pair_loop3):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strstr_sse2_unaligned"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strstr-sse2-unaligned.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strstr-sse2-unaligned.S",
+   "tick_line": 335,
+   "before": "bsfq\t%r8, %rax",
+   "label": "L(next_pair_index4):",
+   "placement": "the loop's header (a nested loop has its own tick)",
+   "functions": [
+    "__strstr_sse2_unaligned"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strstr-sse2-unaligned.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/strstr-sse2-unaligned.S",
+   "tick_line": 354,
+   "before": "addq\t$1, %rdx",
+   "label": "L(pair_loop4):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__strstr_sse2_unaligned"
+   ],
+   "objects": [
+    "libc.so",
+    "string/strstr-sse2-unaligned.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/wcschr-sse2.S",
+   "tick_line": 103,
+   "before": "movdqa\t(%rdi), %xmm0",
+   "label": "L(loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__wcschr_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "wcsmbs/wcschr-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/wcscmp-sse2.S",
+   "tick_line": 65,
+   "before": "mov\t(%rsi), %ecx",
+   "label": "L(continue_48_48):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__wcscmp_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "wcsmbs/wcscmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/wcscmp-sse2.S",
+   "tick_line": 133,
+   "before": "mov\t(%rsi), %ecx",
+   "label": "L(continue_0_48):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__wcscmp_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "wcsmbs/wcscmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/wcscmp-sse2.S",
+   "tick_line": 217,
+   "before": "pcmpeqd\t(%rdi), %xmm0",
+   "label": "L(continue_00_48):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__wcscmp_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "wcsmbs/wcscmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/wcscmp-sse2.S",
+   "tick_line": 280,
+   "before": "mov\t(%rsi), %ecx",
+   "label": "L(continue_32_48):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__wcscmp_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "wcsmbs/wcscmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/wcscmp-sse2.S",
+   "tick_line": 364,
+   "before": "mov\t(%rsi), %ecx",
+   "label": "L(continue_16_48):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__wcscmp_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "wcsmbs/wcscmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/wcscmp-sse2.S",
+   "tick_line": 437,
+   "before": "movdqa\t(%rdi), %xmm1",
+   "label": "L(continue_00_00):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__wcscmp_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "wcsmbs/wcscmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/wcscmp-sse2.S",
+   "tick_line": 542,
+   "before": "pcmpeqd\t(%rsi), %xmm0",
+   "label": "L(continue_48_00):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__wcscmp_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "wcsmbs/wcscmp-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/wcscpy-ssse3.S",
+   "tick_line": 150,
+   "before": "movaps\t(%rcx), %xmm2",
+   "label": "L(Aligned64Loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__wcscpy_ssse3"
+   ],
+   "objects": [
+    "libc.so",
+    "wcsmbs/wcscpy-ssse3.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/wcscpy-ssse3.S",
+   "tick_line": 271,
+   "before": "movaps\t12(%rcx), %xmm2",
+   "label": "L(Shl4LoopStart):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__wcscpy_ssse3"
+   ],
+   "objects": [
+    "libc.so",
+    "wcsmbs/wcscpy-ssse3.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/wcscpy-ssse3.S",
+   "tick_line": 371,
+   "before": "movaps\t8(%rcx), %xmm2",
+   "label": "L(Shl8LoopStart):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__wcscpy_ssse3"
+   ],
+   "objects": [
+    "libc.so",
+    "wcsmbs/wcscpy-ssse3.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/wcscpy-ssse3.S",
+   "tick_line": 471,
+   "before": "movaps\t4(%rcx), %xmm2",
+   "label": "L(Shl12LoopStart):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__wcscpy_ssse3"
+   ],
+   "objects": [
+    "libc.so",
+    "wcsmbs/wcscpy-ssse3.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/multiarch/wcslen-sse2.S",
+   "tick_line": 134,
+   "before": "movaps\t(%rax), %xmm0",
+   "label": "L(aligned_64_loop):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__wcslen_sse2"
+   ],
+   "objects": [
+    "libc.so",
+    "wcsmbs/wcslen-sse2.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/nptl/pthread_spin_lock.S",
+   "tick_line": 32,
+   "before": "rep",
+   "label": "1:",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "pthread_spin_lock",
+    "pthread_spin_lock@GLIBC_2.2.5"
+   ],
+   "objects": [
+    "libc.so",
+    "nptl/pthread_spin_lock.o"
+   ]
+  },
+  {
+   "file": "sysdeps/x86_64/rshift.S",
+   "tick_line": 91,
+   "before": "shrd\t%cl, %r8, %r11",
+   "label": "L(top):",
+   "placement": "a block every cycle of the loop passes",
+   "functions": [
+    "__mpn_rshift"
+   ],
+   "objects": [
+    "libc.so",
+    "stdlib/rshift.o"
+   ]
+  }
+ ]
+}
