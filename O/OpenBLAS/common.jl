@@ -334,6 +334,10 @@ function openblas_script(;num_64bit_threads::Integer=32, openblas32::Bool=false,
 
     # Install the library
     make "${flags[@]}" "PREFIX=$prefix" install
+    # The license, explicitly: with the software ticks check's directory next to the source
+    # (srcdir/softticks), srcdir has two directories, and BinaryBuilder2's automatic license
+    # search only looks into a single one.
+    install_license LICENSE
 
     # Force the library to be named the same as in Julia-land.
     # Move things around, fix symlinks, and update install names/SONAMEs.
