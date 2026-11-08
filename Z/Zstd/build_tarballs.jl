@@ -15,6 +15,11 @@ cd ${WORKSPACE}/srcdir/zstd-*
 # zstd uses `qsort_r` which is not available from musl <https://github.com/facebook/zstd/issues/4311>.
 atomic_patch -p1 $WORKSPACE/srcdir/patches/qsort_r.patch
 
+# rr software ticks for the x86-64 Huffman decoding assembly (huf_decompress_amd64.S). It only
+# does something where the compiler predefines __RR_SOFTTICKS__ (the softticks plugin, on
+# rr_softticks platforms); elsewhere the objects are byte-identical.
+atomic_patch -p1 $WORKSPACE/srcdir/patches/rr-softticks-huf-asm.patch
+
 if ! command -v meson >/dev/null; then
     # ygglet (BinaryBuilder2): BB2 has no meson toolchain; zstd's own Makefiles build the
     # same library and programs. `-lrt` for `clock_gettime` on the glibc 2.17 sysroot.

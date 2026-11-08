@@ -1,0 +1,472 @@
+rr software ticks (rr's include/rr/softticks.h, ABI version 1) for 7-Zip's hand-written x86-64
+assembly (Asm/x86, MASM syntax, assembled by uasm with USE_ASM): 7zAsm.asm defines MY_SOFTTICK,
+the ABI's x86-64 tick sequence byte for byte, and MY_PROC ticks every function at its entry;
+every loop of 7zCrcOpt, XzCrc64Opt, Sha1Opt, Sha256Opt, AesOpt, LzFindOpt, LzmaDecOpt and Sort
+ticks where every cycle through it passes and no flag is live (a loop around another one that
+always runs needs no tick; the byte loops of the LZMA decoder's match copy and of the match
+finder's compare are unrolled 4 times under the macro). All of it is conditional on
+__RR_SOFTTICKS__, which the recipe passes to uasm when the C compiler predefines it (the
+software-ticks plugin does): without it the objects are byte-identical. On anything but x86-64
+the macro makes the x86 files and Asm/arm64/LzmaDecOpt.S fail to assemble (they have no ticks
+for those targets yet) rather than build unticked code. Applies to the sources with their CRLF
+line ends converted to LF (the recipe does that first; uasm reads either).
+
+diff --git a/Asm/arm64/LzmaDecOpt.S b/Asm/arm64/LzmaDecOpt.S
+index 10dc473..91f4dda 100755
+--- a/Asm/arm64/LzmaDecOpt.S
++++ b/Asm/arm64/LzmaDecOpt.S
+@@ -13,6 +13,14 @@
+ 
+ #include "7zAsm.S"
+ 
++#if defined(__RR_SOFTTICKS__)
++/* rr software ticks (rr's include/rr/softticks.h): a compiler with a software-ticks pass
++   predefines __RR_SOFTTICKS__ and ticks the code it compiles; this file has no ticks yet.
++   Its loops would need the arm64 tick, which clobbers x16 and x17, where this decoder keeps
++   bufLimit and dicBufSize (r16, r17). Until then, build without USE_ASM (the C decoder). */
++#error "LzmaDecOpt.S has no rr software ticks: build 7-Zip without USE_ASM"
++#endif
++
+ 	// .arch armv8-a
+ 	// .file        "LzmaDecOpt.c"
+ 	.text
+diff --git a/Asm/x86/7zAsm.asm b/Asm/x86/7zAsm.asm
+index 8910d16..8b2a4aa 100755
+--- a/Asm/x86/7zAsm.asm
++++ b/Asm/x86/7zAsm.asm
+@@ -46,6 +46,40 @@ endif
+ OPTION PROLOGUE:NONE
+ OPTION EPILOGUE:NONE
+ 
++; rr software ticks (rr's include/rr/softticks.h, ABI version 1). Code built
++; for rr's software-ticks mode counts its own progress: no instruction may run
++; twice in the same frame without a tick in between. The compiler plugin ticks
++; C code; this assembly ticks by hand: MY_SOFTTICK at every function entry (in
++; MY_PROC) and in every loop, at a place that every cycle through it passes (a
++; loop around another one that always runs needs no tick of its own; the
++; tightest byte loops are unrolled under __RR_SOFTTICKS__, one tick per 4
++; bytes). The build passes -D__RR_SOFTTICKS__=<ABI version> to the assembler
++; when the C compiler predefines __RR_SOFTTICKS__ (the softticks plugins do);
++; otherwise MY_SOFTTICK is empty and the code is unchanged.
++; The tick clobbers the flags (only): it goes where no flag is live.
++; Its label is LOCAL, so it never captures an @B / @F of the code around it.
++ifdef __RR_SOFTTICKS__
++  if __RR_SOFTTICKS__ ne 1
++    .err <unsupported rr software ticks ABI version>
++  endif
++  ifndef x64
++    .err <rr software ticks: only the x86-64 tick is implemented>
++  endif
++MY_SOFTTICK macro
++    LOCAL done
++        ; the byte-exact x86-64 RR_SOFTTICKS_TICK_ASM
++        test    byte ptr [70001807h], 80h
++        jnz     done
++        dec     qword ptr [70001800h]
++        jnz     done
++        int     3
++done:
++endm
++else
++MY_SOFTTICK macro
++endm
++endif
++
+ MY_ASM_START macro
+   ifdef x64
+     .code
+@@ -69,6 +103,7 @@ MY_PROC macro name:req, numParams:req
+     proc_name equ @CatStr(@,name,@, %numParams * 4)
+   endif
+   proc_name PROC
++  MY_SOFTTICK
+ endm
+ 
+ MY_ENDP macro
+diff --git a/Asm/x86/7zCrcOpt.asm b/Asm/x86/7zCrcOpt.asm
+index c5de808..267db21 100755
+--- a/Asm/x86/7zCrcOpt.asm
++++ b/Asm/x86/7zCrcOpt.asm
+@@ -187,6 +187,7 @@ MY_PROC @CatStr(CrcUpdateT, %(NUM_WORDS * 4)), 4
+         cmp     rN, NUM_BYTES_LIMIT + ALIGN_MASK
+         jb      crc_end
+ @@:
++        MY_SOFTTICK
+         test    rD_x, ALIGN_MASK    ; test    rD, ALIGN_MASK
+         jz      @F
+         CRC1b
+@@ -198,6 +199,7 @@ MY_PROC @CatStr(CrcUpdateT, %(NUM_WORDS * 4)), 4
+ 
+ align 16
+ @@:
++        MY_SOFTTICK
+ unr_index = 0
+ while unr_index lt UNROLL_CNT
+     if (unr_index and 1) eq 0
+@@ -221,6 +223,7 @@ else
+         add     rN, 4 * NUM_WORDS * UNROLL_CNT
+         sub     rD, 4 * NUM_WORDS * UNROLL_CNT
+ @@:
++        MY_SOFTTICK
+         MOVZXLO x3, x0
+         MOVZXHI x1, x0
+         shr     x0, 16
+@@ -248,6 +251,7 @@ crc_end:
+         test    rN, rN
+         jz      func_end
+ @@:
++        MY_SOFTTICK
+         CRC1b
+         jnz     @B
+ 
+diff --git a/Asm/x86/AesOpt.asm b/Asm/x86/AesOpt.asm
+index 84bf897..1fff82a 100755
+--- a/Asm/x86/AesOpt.asm
++++ b/Asm/x86/AesOpt.asm
+@@ -264,6 +264,10 @@ NUM_CBC_REGS    equ  (ways_start_reg + ways + 3)
+ 
+ 
+ MY_SEG_PROC AesCbc_Decode_HW, 3
++    ; Software ticks (see 7zAsm.asm): each loop over the AES rounds (@@) ticks; the loops
++    ; over blocks need no tick of their own, since every way round them runs through the
++    ; round loop, which runs at least once. The *_start* labels are only jumped to, from
++    ; the _256 functions, which tick at their entry.
+ 
+     AesCbc_Decode_HW_start::
+         MY_PROLOG NUM_CBC_REGS
+@@ -285,6 +289,7 @@ MY_SEG_PROC AesCbc_Decode_HW, 3
+         WOP     pxor, key0
+     ; align 16
+     @@:
++        MY_SOFTTICK
+         WOP_KEY aesdec, 1 * koffs_r
+         sub     koffs_r, 16
+         jnz     @B
+@@ -319,6 +324,7 @@ MY_SEG_PROC AesCbc_Decode_HW, 3
+         ; movdqa  state, key0
+         ; pxor    state, state0
+     @@:
++        MY_SOFTTICK
+         OP_KEY  aesdec, 1 * koffs_r + 16
+         OP_KEY  aesdec, 1 * koffs_r
+         sub     koffs_r, 32
+@@ -471,6 +477,7 @@ MY_PROC AesCbc_Decode_HW_256, 3
+         mov     keys2, r4
+         and     keys2, -32
+     broad:
++        MY_SOFTTICK
+         vbroadcasti128  key_ymm, xmmword ptr [keys + 1 * koffs_r]
+         vmovdqa         ymmword ptr [keys2 + koffs_r * 2], key_ymm
+         sub     koffs_r, 16
+@@ -485,6 +492,7 @@ MY_PROC AesCbc_Decode_HW_256, 3
+         ; AVX__WOP_KEY    AVX__CBC_START, 1 * koffs_r + 32
+         AVX__WOP    AVX__CBC_START
+     @@:
++        MY_SOFTTICK
+         AVX__WOP_KEY    AVX__VAES_DEC, 1 * koffs_r
+         sub     koffs_r, 32
+         jnz     @B
+@@ -559,6 +567,7 @@ MY_SEG_PROC AesCbc_Encode_HW, 3
+     endm
+ 
+     @@:
++        MY_SOFTTICK
+         OP_KEY  aesenc, 1 * koffs_r
+         OP_KEY  aesenc, 1 * koffs_r + 16
+         add     koffs_r, 32
+@@ -623,6 +632,7 @@ MY_SEG_PROC AesCtr_Code_HW, 3
+         ; WOP_KEY pxor, 1 * koffs_r -16
+         WOP     pxor, key0
+     @@:
++        MY_SOFTTICK
+         WOP_KEY aesenc, 1 * koffs_r
+         add     koffs_r, 16
+         jnz     @B
+@@ -650,6 +660,7 @@ MY_SEG_PROC AesCtr_Code_HW, 3
+         pxor    state, iv
+         
+     @@:
++        MY_SOFTTICK
+         OP_KEY  aesenc, 1 * koffs_r
+         OP_KEY  aesenc, 1 * koffs_r + 16
+         add     koffs_r, 32
+@@ -699,6 +710,7 @@ MY_PROC AesCtr_Code_HW_256, 3
+         vbroadcasti128  key_ymm, xmmword ptr [keys]
+         vmovdqa         ymmword ptr [keys2], key_ymm
+      @@:
++        MY_SOFTTICK
+         vbroadcasti128  key_ymm, xmmword ptr [keys + 1 * koffs_r]
+         vmovdqa         ymmword ptr [keys2 + koffs_r * 2], key_ymm
+         add     koffs_r, 16
+@@ -712,6 +724,7 @@ MY_PROC AesCtr_Code_HW_256, 3
+         AVX__WOP        AVX__CTR_START
+         ; AVX__WOP_KEY    AVX__CTR_START, 1 * koffs_r - 32
+     @@:
++        MY_SOFTTICK
+         AVX__WOP_KEY    AVX__VAES_ENC, 1 * koffs_r
+         add     koffs_r, 32
+         jnz     @B
+diff --git a/Asm/x86/LzFindOpt.asm b/Asm/x86/LzFindOpt.asm
+index 94c5c76..ad50f25 100755
+--- a/Asm/x86/LzFindOpt.asm
++++ b/Asm/x86/LzFindOpt.asm
+@@ -218,6 +218,9 @@ fill_empty:
+ 
+ ; MY_ALIGN_64
+ main_loop:
++        ; fill_empty and next_node, which are jumped back to too, are only reached
++        ; through main_loop and tree_loop: their ticks cover those cycles.
++        MY_SOFTTICK
+         ; UInt32 delta = *hash++;
+         mov     diff_x, [hash]  ; delta
+         add     hash, 4
+@@ -274,6 +277,7 @@ prepare_for_tree_loop:
+ 
+ MY_ALIGN_32
+ tree_loop:
++        MY_SOFTTICK
+         neg     diff
+         mov     len, len0
+         cmp     len1, len0
+@@ -366,7 +370,9 @@ matched_1:
+ 
+         inc     len
+         ; cmp     len_x, lenLimit_x
+-        je      short lenLimit_reach
++        ; (not "short": with MY_SOFTTICK in match_loop, lenLimit_reach is out of a
++        ; short jump's range; where it is in range, the assembler picks a short jump)
++        je      lenLimit_reach
+         movzx   t0_x, BYTE PTR [diff + 1 * len]
+         cmp     [cur + 1 * len], t0_L
+         jne     mismatch
+@@ -374,13 +380,25 @@ matched_1:
+         
+ MY_ALIGN_32
+ match_loop:
++        MY_SOFTTICK
+         ;  while (++len != lenLimit)  (len[diff] != len[0]) ;
+ 
+         inc     len
+         ; cmp     len_x, lenLimit_x
+-        je      short lenLimit_reach
++        je      lenLimit_reach
+         movzx   t0_x, BYTE PTR [diff + 1 * len]
+         cmp     BYTE PTR [cur + 1 * len], t0_L
++    ifdef __RR_SOFTTICKS__
++        ; with software ticks, one tick per 4 bytes: the compare unrolled 4 times
++        ; (mismatch reads the flags of the last cmp, as when it falls through)
++      rept 3
++        jne     mismatch
++        inc     len
++        je      lenLimit_reach
++        movzx   t0_x, BYTE PTR [diff + 1 * len]
++        cmp     BYTE PTR [cur + 1 * len], t0_L
++      endm
++    endif
+         je      match_loop
+ 
+ mismatch:
+@@ -478,6 +496,7 @@ lenLimit_reach:
+        
+ MY_ALIGN_32
+ long_loop:
++        MY_SOFTTICK
+         add     hash, 4
+         
+         ; *(UInt64 *)(void *)ptr = ((const UInt64 *)(const void *)ptr)[diff];
+diff --git a/Asm/x86/LzmaDecOpt.asm b/Asm/x86/LzmaDecOpt.asm
+index 7c568df..cf0fdbb 100755
+--- a/Asm/x86/LzmaDecOpt.asm
++++ b/Asm/x86/LzmaDecOpt.asm
+@@ -743,6 +743,11 @@ MY_ALIGN_64
+ lit_start:
+         xor     state, state
+ lit_start_2:
++        ; Every symbol starts at lit_start_2 or at IsMatch_label, so their ticks
++        ; cover the decoder's outer cycles: the other labels that are jumped back to
++        ; (lit_start, len_decode, IsRep0Short_label, decode_dist_end, copy_common,
++        ; lz_end_match) are only reached through one of them.
++        MY_SOFTTICK
+         LIT_PROBS lpMask_reg
+ 
+     ifdef _LZMA_SIZE_OPT
+@@ -751,6 +756,7 @@ lit_start_2:
+         mov     sym, 1
+ MY_ALIGN_16
+ lit_loop:
++        MY_SOFTTICK
+         BIT_1   x1, x2
+         mov     x1, x2
+         cmp     sym, 127
+@@ -785,6 +791,7 @@ lit_end:
+ ; ---------- MATCHES ----------
+ ; MY_ALIGN_32
+ IsMatch_label:
++        MY_SOFTTICK
+         UPDATE_1 probs_state_R, pbPos_R, IsMatch
+         IF_BIT_1 probs_state_R, 0, IsRep, IsRep_label
+ 
+@@ -806,6 +813,7 @@ len_decode:
+ 
+ MY_ALIGN_32
+ len8_loop:
++        MY_SOFTTICK
+         BIT_1   x1, x2
+         mov     x1, x2
+         cmp     sym, 64
+@@ -847,6 +855,7 @@ len_mid_2:
+         mov     sym, 1
+ MY_ALIGN_16
+ slot_loop:
++        MY_SOFTTICK
+         BIT_1   x1, x2
+         mov     x1, x2
+         cmp     sym, 32
+@@ -886,6 +895,7 @@ slot_loop:
+ ; ---------- DIRECT DISTANCE ----------
+ MY_ALIGN_32
+ direct_loop:
++        MY_SOFTTICK
+         shr     range, 1
+         mov     t0, cod
+         sub     cod, range
+@@ -1028,9 +1038,19 @@ copy_common:
+         jz      copy_end
+ MY_ALIGN_16
+ @@:
++        MY_SOFTTICK
+         mov     byte ptr[cnt_R * 1 + dicPos], sym_L
+         movzx   sym, byte ptr[cnt_R * 1 + t0_R]
+         inc     cnt_R
++    ifdef __RR_SOFTTICKS__
++        ; with software ticks, one tick per 4 bytes: the copy unrolled 4 times
++      rept 3
++        jz      copy_end
++        mov     byte ptr[cnt_R * 1 + dicPos], sym_L
++        movzx   sym, byte ptr[cnt_R * 1 + t0_R]
++        inc     cnt_R
++      endm
++    endif
+         jnz     @b
+ 
+ copy_end:
+@@ -1081,6 +1101,7 @@ lz_end:
+         mov     sym, 1
+ MY_ALIGN_16
+ litm_loop:
++        MY_SOFTTICK
+         LITM
+         cmp     sym, 256
+         jb      litm_loop
+@@ -1221,6 +1242,7 @@ short_dist:
+         mov     sym2, PMULT ; step
+ MY_ALIGN_32
+ spec_loop:
++        MY_SOFTTICK
+         REV_1_VAR x2
+         dec     x1
+         jnz     spec_loop
+@@ -1245,6 +1267,7 @@ copy_match_cross:
+         mov     r1, LOC dicBufSize   ;
+         neg     cnt_R
+ @@:
++        MY_SOFTTICK
+         movzx   sym, byte ptr[t1_R * 1 + t0_R]
+         inc     t1_R
+         mov     byte ptr[cnt_R * 1 + dicPos], sym_L
+diff --git a/Asm/x86/Sha1Opt.asm b/Asm/x86/Sha1Opt.asm
+index 0b63aeb..b392f92 100755
+--- a/Asm/x86/Sha1Opt.asm
++++ b/Asm/x86/Sha1Opt.asm
+@@ -224,6 +224,7 @@ MY_PROC Sha1_UpdateBlocks_HW, 3
+ 
+     align 16
+     nextBlock:
++        MY_SOFTTICK
+         movdqa  abcd_save, abcd
+         movdqa  e0_save, e0
+         
+diff --git a/Asm/x86/Sha256Opt.asm b/Asm/x86/Sha256Opt.asm
+index bc2f9da..092c080 100755
+--- a/Asm/x86/Sha256Opt.asm
++++ b/Asm/x86/Sha256Opt.asm
+@@ -236,6 +236,7 @@ MY_PROC Sha256_UpdateBlocks_HW, 3
+ 
+     align 16
+     nextBlock:
++        MY_SOFTTICK
+         movdqa  state0_save, state0
+         movdqa  state1_save, state1
+         
+diff --git a/Asm/x86/Sort.asm b/Asm/x86/Sort.asm
+index 517c615..9d51a8b 100755
+--- a/Asm/x86/Sort.asm
++++ b/Asm/x86/Sort.asm
+@@ -228,6 +228,7 @@ MOVE_SMALLEST_UP macro STEP, use_prefetch, num_unrolls
+   
+ MY_ALIGN_16
+ opt_loop:
++        MY_SOFTTICK
+         STEP    exit_2, prefetch_macro
+         cmp     k, pref_lim_2
+         jb      opt_loop
+@@ -385,6 +386,7 @@ endif
+ 
+ MY_ALIGN_16
+ loop_down_1:
++        MY_SOFTTICK
+         ; we compare parent with max of childs:
+         ; lea     s, dword ptr [2 * k]
+         mov     s, k
+@@ -412,6 +414,7 @@ endif
+        
+ MY_ALIGN_16
+ loop_down:
++        MY_SOFTTICK
+         mov     t0, [p + i * 8]
+         mov     t1, [p + i * 8 + 4]
+         LOAD    qq, i
+@@ -435,6 +438,7 @@ loop_down:
+ 
+ MY_ALIGN_16
+ main_loop_sort:
++        MY_SOFTTICK
+         ; num_last > LEVEL_3_LIMIT
+         ; p[size--] = p[0];
+         LOAD    qq, num_last
+@@ -479,6 +483,7 @@ next_iter_main:
+ 
+         ; num_last == LEVEL_3_LIMIT
+ main_loop_sort_5:
++        MY_SOFTTICK
+         ; 4 <= num_last <= LEVEL_3_LIMIT
+         ; p[size--] = p[0];
+         LOAD    qq, num_last
+diff --git a/Asm/x86/XzCrc64Opt.asm b/Asm/x86/XzCrc64Opt.asm
+index 283424c..1b0a726 100755
+--- a/Asm/x86/XzCrc64Opt.asm
++++ b/Asm/x86/XzCrc64Opt.asm
+@@ -99,6 +99,7 @@ endif
+         cmp     rN, NUM_BYTES_LIMIT + ALIGN_MASK
+         jb      crc_end
+ @@:
++        MY_SOFTTICK
+         test    rD, ALIGN_MASK
+         jz      @F
+         CRC1b
+@@ -111,6 +112,7 @@ endif
+ 
+ align 16
+ @@:
++        MY_SOFTTICK
+ 
+ if NUM_WORDS eq 1
+   
+@@ -203,6 +205,7 @@ crc_end:
+         test    rN, rN
+         jz      func_end
+ @@:
++        MY_SOFTTICK
+         CRC1b
+         jnz      @B
+ func_end:
