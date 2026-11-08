@@ -30,6 +30,13 @@ atomic_patch -p1 ${WORKSPACE}/srcdir/patches/libunwind-revert_prelink_unwind.pat
 
 atomic_patch -p1 ${WORKSPACE}/srcdir/patches/libunwind-disable-initial-exec-tls.patch
 
+# rr software ticks for the x86-64 assembly (getcontext.S, setcontext.S, longjmp.S,
+# siglongjmp.S): a tick at each function's entry, which the compiler's ticks plugin cannot
+# add to assembly. Only where the compiler predefines __RR_SOFTTICKS__ (the plugin, on the
+# rr_softticks platforms); elsewhere the objects are byte-identical. The static liblzma
+# linked in below comes from XZ_jll, whose own patch ticks its one inline-asm loop.
+atomic_patch -p1 ${WORKSPACE}/srcdir/patches/libunwind-rr-softticks.patch
+
 if [[ ${bb_full_target} == *-sanitize+memory* ]]; then
     # Install msan runtime (for clang)
     cp -rL ${libdir}/linux/* /opt/x86_64-linux-musl/lib/clang/*/lib/linux/
@@ -55,6 +62,77 @@ fi
     --enable-per-thread-cache
 make -j${nproc}
 make install
+
+# rr_softticks: fail the build if the software ticks did not land, which it would not notice
+# otherwise (the patch is a no-op without __RR_SOFTTICKS__, a hunk can apply in the wrong
+# place after a version bump, and XZ_jll may predate XZ's own patch): every x86-64 .S
+# object must carry its entry ticks, and the asm loop of liblzma's rc_direct(), linked into
+# libunwind.so from XZ_jll's static liblzma, must tick. Only x86-64's assembly has ticks.
+if [[ "${bb_full_target}" == *rr_softticks* ]]; then
+    if [[ "${target}" != x86_64-* ]]; then
+        echo "LibUnwind: only the x86-64 assembly has software ticks, not ${target}'s" >&2
+        exit 1
+    fi
+    # The software ticks (rr's x86-64 sequence of ABI version 1: testb $0x80,0x70001807;
+    # jne; decq 0x70001800; jne; int3) in an object's code
+    count_ticks() {
+        local d
+        d=$(${OBJDUMP:-objdump} -d --no-show-raw-insn "$1") || return 1
+        awk '{ sub(/^ *[0-9a-f]+:[ \t]+/, ""); gsub(/[ \t]+/, " "); gsub(/, /, ","); sub(/ $/, "") }
+             /^testb \$-?0x80,0x70001807$/ { s = 1; next }
+             s == 1 && /^jne / { s = 2; next }
+             s == 2 && /^decq 0x70001800$/ { s = 3; next }
+             s == 3 && /^jne / { s = 4; next }
+             s == 4 && /^int3$/ { n++ }
+             { s = 0 }
+             END { print n + 0 }' <<< "${d}"
+    }
+    # rc_direct()'s asm loops in a file, as "LOOPS TICKED": a jne back to the loop head right
+    # after the asm's fixed tail (shr, mov, sub, cmov, cmov, dec); TICKED counts the loops
+    # with a tick between their head and that jne.
+    rc_direct_loops() {
+        local d
+        d=$(${OBJDUMP:-objdump} -d --no-show-raw-insn "$1") || return 1
+        awk '/^ *[0-9a-f]+:[ \t]/ {
+                 a = $1; sub(/:$/, "", a); i = $2; t = $3; sub(/^0x/, "", t)
+                 n++; addr[n] = a
+                 tick[n] = (i == "testb" && $0 ~ /\$-?0x80, ?0x70001807 *$/)
+                 m[n] = (i ~ /^cmov/ ? "cmov" : i ~ /^(shr|mov|sub|dec)/ ? substr(i, 1, 3) : i)
+                 if (i == "jne" && n > 6 && m[n-6] == "shr" && m[n-5] == "mov" && m[n-4] == "sub" &&
+                     m[n-3] == "cmov" && m[n-2] == "cmov" && m[n-1] == "dec") {
+                     for (j = n - 1; j > 0 && addr[j] != t; j--) {}
+                     if (j > 0) { loops++; for (; j < n; j++) if (tick[j]) { ticked++; break } }
+                 }
+                 next
+             }
+             { m[n] = "" }
+             END { print loops + 0, ticked + 0 }' <<< "${d}"
+    }
+    # getcontext.S: _Ux86_64_getcontext and _Ux86_64_getcontext_trace; the others one function
+    for spec in getcontext:2 setcontext:1 longjmp:1 siglongjmp:1; do
+        found=0
+        for o in src/x86_64/${spec%:*}.o src/x86_64/.libs/${spec%:*}.o; do
+            [[ -f "${o}" ]] || continue
+            found=1
+            n=$(count_ticks "${o}") || exit 1
+            if [[ "${n}" != "${spec#*:}" ]]; then
+                echo "LibUnwind: ${o} has ${n} software ticks, not ${spec#*:}" >&2
+                exit 1
+            fi
+        done
+        if (( ! found )); then
+            echo "LibUnwind: no object of src/x86_64/${spec%:*}.S" >&2
+            exit 1
+        fi
+    done
+    r=$(rc_direct_loops ${libdir}/libunwind.so) || exit 1
+    read -r loops ticked <<< "${r}"
+    if (( loops == 0 || ticked != loops )); then
+        echo "LibUnwind: ${ticked} of the ${loops} rc_direct() asm loops in libunwind.so tick" \
+             "(XZ_jll's liblzma.a must be built with XZ's software ticks patch)" >&2
+        exit 1
+    fi
+fi
 
 # Shoe-horn liblzma.a into libunwind.a
 mkdir -p unpacked/{liblzma,libunwind}
