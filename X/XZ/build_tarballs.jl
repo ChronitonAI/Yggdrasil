@@ -38,6 +38,10 @@ fi
 
 if [[ "${target}" != *-gnu* ]]; then
     ./configure "${BUILD_FLAGS[@]}"
+    # libtool records ${libdir} (the build sandbox's prefix) as a RUNPATH of what it links
+    # against other libtool libraries, and BinaryBuilder2's audit keeps it (it only rewrites
+    # RPATHs under the prefix it extracts from); the audit adds the $ORIGIN-relative ones itself.
+    sed -i 's|^hardcode_libdir_flag_spec=.*|hardcode_libdir_flag_spec=""|; s|^runpath_var=LD_RUN_PATH|runpath_var=DIE_RPATH_DIE|' libtool
     make -j${nproc}
     make install
 else
@@ -51,6 +55,7 @@ else
     #      possibly picking only src/liblzma/.libs/liblzma.a from the static build.
     for TOGGLE in "${STATIC_SHARED_TOGGLE[@]}"; do
         ./configure "${BUILD_FLAGS[@]}" "${TOGGLE[@]}"
+        sed -i 's|^hardcode_libdir_flag_spec=.*|hardcode_libdir_flag_spec=""|; s|^runpath_var=LD_RUN_PATH|runpath_var=DIE_RPATH_DIE|' libtool
         make -j${nproc}
         make install
     done

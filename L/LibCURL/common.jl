@@ -173,6 +173,10 @@ function build_libcurl(ARGS, name::String, version::VersionNumber; with_zstd=fal
     fi
 
     ./configure --prefix=$prefix --host=$target --build=${MACHTYPE} "${FLAGS[@]}"
+    # libtool records ${libdir} (the build sandbox's prefix) as a RUNPATH of what it links
+    # against other libtool libraries, and BinaryBuilder2's audit keeps it (it only rewrites
+    # RPATHs under the prefix it extracts from); the audit adds the $ORIGIN-relative ones itself.
+    sed -i 's|^hardcode_libdir_flag_spec=.*|hardcode_libdir_flag_spec=""|; s|^runpath_var=LD_RUN_PATH|runpath_var=DIE_RPATH_DIE|' libtool
     make -j${nproc}
     if [[ "${THIS_IS_CURL}" == true ]]; then
         # Manually install only `curl`

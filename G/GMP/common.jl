@@ -51,6 +51,10 @@ fi
 # (BinaryBuilder2 ships libtool 2.4.7, the tarball 2.4.6)
 autoreconf -fi
 ./configure --prefix=$prefix --build=${MACHTYPE} --host=${target} ${flags[@]}
+# libtool records ${libdir} (the build sandbox's prefix) as a RUNPATH of what it links
+# against other libtool libraries, and BinaryBuilder2's audit keeps it (it only rewrites
+# RPATHs under the prefix it extracts from); the audit adds the $ORIGIN-relative ones itself.
+sed -i 's|^hardcode_libdir_flag_spec=.*|hardcode_libdir_flag_spec=""|; s|^runpath_var=LD_RUN_PATH|runpath_var=DIE_RPATH_DIE|' libtool
 
 make -j${nproc}
 make install
