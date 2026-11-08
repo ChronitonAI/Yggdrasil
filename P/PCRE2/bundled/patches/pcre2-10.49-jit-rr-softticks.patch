@@ -1,0 +1,835 @@
+From 92deab2a888d3b8981d45b3861c6ee76d9414da1 Mon Sep 17 00:00:00 2001
+From: Keno Fischer <keno@chroniton.ai>
+Date: Fri, 6 Nov 2026 22:35:21 +0000
+Subject: [PATCH] JIT: count rr's software ticks in the generated code
+
+rr (https://rr-project.org) can record and replay a program without the
+CPU's branch counter (in VMs, on CPUs without a usable counter) when the
+program is built with a compiler pass that counts "software ticks": the
+pass places a short, fixed code sequence, a tick, so that no instruction
+runs twice in the same stack frame without a tick in between (at function
+entries and loop heads). rr preempts threads, and places asynchronous
+signals on replay, by the tick count. The pass predefines __RR_SOFTTICKS__
+to the version of the ABI (1), which rr's include/rr/softticks.h defines.
+
+The pass does not see the machine code the JIT compiler generates. While a
+thread matches in JIT code, rr cannot switch to another thread, and a
+signal that arrives there can only be found again on replay by stopping at
+its address on every pass and comparing registers. In our tests, a thread
+was not preempted for the whole of a long match, and replaying a recording
+of a 0.1 second run with signals in JIT code took about two minutes.
+
+When __RR_SOFTTICKS__ is defined, emit the tick (with sljit_emit_op_custom)
+at the start of the generated function and at every label made by LABEL():
+loop heads, the targets of backtracking jumps, the entries of fast-call
+subroutines, and (after their ENDBR) the targets of indirect jumps. Labels
+that only forward jumps reach get none: JUMPHERE() already makes such
+labels, and set_jumps() of a new label now says so with FORWARD_LABEL().
+The stack-allocation stubs jump back only after calling a subroutine that
+ticks, so the labels they return to are FORWARD_LABEL()s too.
+
+Fast calls keep the machine stack pointer, so the nested activations of a
+recursion all return to the same code at the same stack pointer. The code
+therefore also ticks right after each call into a recursion, once per
+return.
+
+The x86 tick clobbers the status flags. They are dead at the function
+start and at every label made by LABEL(). The one place where flags set
+before a label are used after it is check_result in
+compile_xclass_matchingpath on CPUs without cmov (the code declares them
+with sljit_set_current_flags): that label is a FORWARD_LABEL() and must
+not tick. The ARM64 tick clobbers x16 and x17, which the JIT does not
+allocate. Supported on x86-64, x86-32 and ARM64, the architectures rr
+supports; elsewhere __RR_SOFTTICKS__ is an error.
+
+Without __RR_SOFTTICKS__ nothing changes: the compiled library is
+byte-identical (checked on x86-64 and ARM64).
+
+Tested on x86-64 and x86-32 with RunTest, RunGrepTest and pcre2_jit_test,
+also in a debug build, and by checking each code buffer the tests
+generate: every call and indirect jump target is a tick, the code has no
+cycle without one (following each return to the sites of the calls that
+can reach it), and no path from a tick reads a status flag before writing
+it. Single-stepping every match in testinput1 and testinput2, at all
+three code unit widths, found no instruction that ran twice at the same
+address and stack pointer without a tick in between.
+---
+ src/pcre2_jit_char_inc.h |  17 +--
+ src/pcre2_jit_compile.c  | 247 +++++++++++++++++++++++++++++----------
+ 2 files changed, 193 insertions(+), 71 deletions(-)
+
+diff --git a/src/pcre2_jit_char_inc.h b/src/pcre2_jit_char_inc.h
+index 0976742..81f3bcb 100644
+--- a/src/pcre2_jit_char_inc.h
++++ b/src/pcre2_jit_char_inc.h
+@@ -1036,7 +1036,7 @@ while (*cc == XCL_PROP || *cc == XCL_NOTPROP)
+ if (compares == 0)
+   {
+   if (found != NULL)
+-    set_jumps(found, LABEL());
++    set_jumps(found, FORWARD_LABEL());
+ 
+   if (status & XCLASS_IS_ECLASS)
+     OP2(SLJIT_OR, ECLASS_STACK_DATA, 0, ECLASS_STACK_DATA, 0, SLJIT_IMM, 1);
+@@ -1085,7 +1085,7 @@ if (ranges.range_count == 2)
+ 
+   SLJIT_ASSERT(ranges.stack == ranges.local_stack);
+   if (found != NULL)
+-    set_jumps(found, LABEL());
++    set_jumps(found, FORWARD_LABEL());
+ 
+   if (status & XCLASS_IS_ECLASS)
+     OP2(SLJIT_OR, ECLASS_STACK_DATA, 0, ECLASS_STACK_DATA, 0, SLJIT_IMM, 1);
+@@ -1205,8 +1205,9 @@ while (TRUE)
+   JUMPHERE(ranges.stack[depth].jump);
+   }
+ 
++/* Without cmov the Z flag is live across this label: it must not tick. */
+ if (check_result != NULL)
+-  set_jumps(check_result, LABEL());
++  set_jumps(check_result, FORWARD_LABEL());
+ 
+ if (has_cmov)
+   jump = CMP(SLJIT_NOT_EQUAL ^ invertcmp, TMP2, 0, SLJIT_IMM, 0);
+@@ -1219,7 +1220,7 @@ else
+ add_jump(compiler, backtracks, jump);
+ 
+ if (found != NULL)
+-  set_jumps(found, LABEL());
++  set_jumps(found, FORWARD_LABEL());
+ 
+ if (status & XCLASS_IS_ECLASS)
+   OP2(SLJIT_OR, ECLASS_STACK_DATA, 0, ECLASS_STACK_DATA, 0, SLJIT_IMM, 1);
+@@ -1297,7 +1298,7 @@ while (cc < end)
+ 
+     not_found = NULL;
+     compile_xclass_matchingpath(common, cc + 1 + LINK_SIZE, &not_found, XCLASS_IS_ECLASS);
+-    set_jumps(not_found, LABEL());
++    set_jumps(not_found, FORWARD_LABEL());
+ 
+     cc += GET(cc, 1);
+     break;
+@@ -1308,7 +1309,7 @@ OP2U(SLJIT_SUB | SLJIT_SET_Z, ECLASS_STACK_DATA, 0, SLJIT_IMM, 0);
+ OP1(SLJIT_MOV, ECLASS_CHAR_DATA, 0, SLJIT_MEM1(SLJIT_SP), LOCAL0);
+ OP1(SLJIT_MOV, ECLASS_STACK_DATA, 0, SLJIT_MEM1(SLJIT_SP), LOCAL1);
+ add_jump(compiler, backtracks, JUMP(SLJIT_EQUAL));
+-set_jumps(found, LABEL());
++set_jumps(found, FORWARD_LABEL());
+ return end;
+ }
+ 
+@@ -1886,7 +1887,7 @@ switch(type)
+ 
+     OP1(MOV_UCHAR, TMP1, 0, SLJIT_MEM1(STR_PTR), 0);
+     add_jump(compiler, backtracks, CMP(SLJIT_EQUAL, TMP1, 0, SLJIT_IMM, common->newline & 0xff));
+-    set_jumps(end_list, LABEL());
++    set_jumps(end_list, FORWARD_LABEL());
+     JUMPHERE(jump[0]);
+     }
+   else
+@@ -1954,7 +1955,7 @@ switch(type)
+   jump[1] = JUMP(SLJIT_JUMP);
+   JUMPHERE(jump[0]);
+   check_newlinechar(common, common->bsr_nltype, backtracks, FALSE);
+-  set_jumps(end_list, LABEL());
++  set_jumps(end_list, FORWARD_LABEL());
+   JUMPHERE(jump[1]);
+   return cc;
+ 
+diff --git a/src/pcre2_jit_compile.c b/src/pcre2_jit_compile.c
+index c5da883..dd501ef 100644
+--- a/src/pcre2_jit_compile.c
++++ b/src/pcre2_jit_compile.c
+@@ -659,7 +659,19 @@ the start pointers when the end of the capturing group has not yet reached. */
+   sljit_emit_op2u(compiler, (op), (src1), (src1w), (src2), (src2w))
+ #define OP_SRC(op, src, srcw) \
+   sljit_emit_op_src(compiler, (op), (src), (srcw))
++#ifdef __RR_SOFTTICKS__
+ #define LABEL() \
++  emit_softtick_label(compiler)
++#define SOFTTICK() \
++  emit_softtick(compiler)
++#else
++#define LABEL() \
++  sljit_emit_label(compiler)
++#define SOFTTICK() do {} while(0)
++#endif
++/* A label that needs no tick: only jumps emitted before it can reach it (or,
++for the stack-allocation stubs, jumps that come after a tick). */
++#define FORWARD_LABEL() \
+   sljit_emit_label(compiler)
+ #define JUMP(type) \
+   sljit_emit_jump(compiler, (type))
+@@ -680,6 +692,102 @@ the start pointers when the end of the capturing group has not yet reached. */
+ #define GET_LOCAL_BASE(dst, dstw, offset) \
+   sljit_get_local_base(compiler, (dst), (dstw), (offset))
+ 
++#ifdef __RR_SOFTTICKS__
++
++/* Software ticks for the rr debugger. A program built with a compiler pass
++that counts software ticks (the pass predefines __RR_SOFTTICKS__ to the
++version of rr's software-ticks ABI, include/rr/softticks.h in rr) counts its
++own progress instead of relying on the CPU's branch counter: the pass places a
++short code sequence, a tick, so that no instruction runs twice in the same
++stack frame without a tick in between. rr can preempt such a program, and place
++asynchronous signals in it on replay, only where it ticks, so the machine code
++generated here must tick in the same way.
++
++Fast calls keep the machine stack pointer, so the activations of a recursion
++share one stack frame as far as rr can tell: the generated code also ticks at
++the return site of every call into a recursion (see
++compile_recurse_matchingpath).
++
++The generated code ticks at the start of the main function, and at every label
++made by LABEL(): those are the only labels that can be jumped to backwards
++(loop heads, the targets of backtracking jumps), called (fast-call subroutines)
++or jumped to indirectly (after their SLJIT_ENDBR). A label made by JUMPHERE()
++or FORWARD_LABEL() is only the target of jumps emitted before it, i.e. forward
++jumps, and needs none (the entry label of a fast-call subroutine is a LABEL()).
++The tick clobbers the status flags on x86, which are dead at the function
++start and at every label made by LABEL() (the one place where flags set before
++a label are used after it, check_result in compile_xclass_matchingpath, uses
++FORWARD_LABEL()), and x16 and x17 on ARM64, which the generated code
++never allocates (it uses 5 scratch and 5 saved registers, and sljit's own
++temporaries are x9, x10 and x30). The sequence is part of the ABI: rr
++recognizes a tick trap by its bytes. */
++
++#if __RR_SOFTTICKS__ != 1
++#error "Unsupported version of the rr software-ticks ABI"
++#endif
++
++static void emit_softtick(struct sljit_compiler *compiler)
++{
++#if defined SLJIT_CONFIG_X86_64 && SLJIT_CONFIG_X86_64
++static const sljit_u8 tick[] = {
++  0xf6, 0x04, 0x25, 0x07, 0x18, 0x00, 0x70, 0x80, /* testb $0x80, 0x70001807 */
++  0x75, 0x0b,                                     /* jnz 1f */
++  0x48, 0xff, 0x0c, 0x25, 0x00, 0x18, 0x00, 0x70, /* decq 0x70001800 */
++  0x75, 0x01,                                     /* jnz 1f */
++  0xcc                                            /* int3; 1: */
++};
++static const sljit_u8 lengths[] = { 8, 2, 8, 2, 1 };
++#elif defined SLJIT_CONFIG_X86_32 && SLJIT_CONFIG_X86_32
++static const sljit_u8 tick[] = {
++  0xf6, 0x05, 0x07, 0x18, 0x00, 0x70, 0x80, /* testb $0x80, 0x70001807 */
++  0x75, 0x13,                               /* jnz 1f */
++  0x83, 0x2d, 0x00, 0x18, 0x00, 0x70, 0x01, /* subl $1, 0x70001800 */
++  0x75, 0x0a,                               /* jnz 1f */
++  0x83, 0x2d, 0x04, 0x18, 0x00, 0x70, 0x01, /* subl $1, 0x70001804 */
++  0x73, 0x01,                               /* jae 1f */
++  0xcc                                      /* int3; 1: */
++};
++static const sljit_u8 lengths[] = { 7, 2, 7, 2, 7, 2, 1 };
++#elif defined SLJIT_CONFIG_ARM_64 && SLJIT_CONFIG_ARM_64
++static const sljit_u32 tick[] = {
++  0xd2ae0030, /* movz x16, #0x7001, lsl #16 */
++  0xf9440211, /* ldr x17, [x16, #0x800] */
++  0xb7f800b1, /* tbnz x17, #63, 1f */
++  0xd1000631, /* sub x17, x17, #1 */
++  0xf9040211, /* str x17, [x16, #0x800] */
++  0xb5000051, /* cbnz x17, 1f */
++  0xd42a6a80, /* brk #0x5354 */
++  0xaa1f03f1  /* 1: mov x17, xzr */
++};
++#else
++#error "The JIT compiler does not support rr software ticks on this architecture"
++#endif
++sljit_u32 i;
++
++#if defined SLJIT_CONFIG_X86 && SLJIT_CONFIG_X86
++const sljit_u8 *inst = tick;
++
++for (i = 0; i < sizeof(lengths); i++)
++  {
++  sljit_emit_op_custom(compiler, (void *)inst, lengths[i]);
++  inst += lengths[i];
++  }
++#else
++for (i = 0; i < sizeof(tick) / sizeof(tick[0]); i++)
++  sljit_emit_op_custom(compiler, (void *)(tick + i), sizeof(tick[0]));
++#endif
++}
++
++static struct sljit_label *emit_softtick_label(struct sljit_compiler *compiler)
++{
++struct sljit_label *label = sljit_emit_label(compiler);
++
++emit_softtick(compiler);
++return label;
++}
++
++#endif /* __RR_SOFTTICKS__ */
++
+ #define READ_CHAR_MAX ((sljit_u32)0xffffffff)
+ 
+ #define INVALID_UTF_CHAR -1
+@@ -3495,7 +3603,9 @@ stub_list *list_item = sljit_alloc_memory(compiler, sizeof(stub_list));
+ if (list_item)
+   {
+   list_item->start = start;
+-  list_item->quit = LABEL();
++  /* No tick: the stub jumps back here (a backward jump), but only after
++  calling common->stackalloc, which ticks at its entry. */
++  list_item->quit = FORWARD_LABEL();
+   list_item->next = common->stubs;
+   common->stubs = list_item;
+   }
+@@ -5688,7 +5798,7 @@ if ((overall_options & PCRE2_FIRSTLINE) != 0)
+     CMPTO(SLJIT_LESS, STR_PTR, 0, STR_END, 0, mainloop);
+     JUMPHERE(end);
+     OP1(SLJIT_MOV, SLJIT_MEM1(SLJIT_SP), common->match_end_ptr, STR_PTR, 0);
+-    set_jumps(newline, LABEL());
++    set_jumps(newline, FORWARD_LABEL());
+     }
+ 
+   OP1(SLJIT_MOV, STR_PTR, 0, TMP3, 0);
+@@ -7282,7 +7392,7 @@ else
+     JUMPHERE(jump);
+ #endif /* PCRE2_CODE_UNIT_WIDTH == 8 */
+   }
+-set_jumps(skipread_list, LABEL());
++set_jumps(skipread_list, FORWARD_LABEL());
+ 
+ OP1(SLJIT_MOV, TMP1, 0, SLJIT_MEM1(SLJIT_SP), LOCAL0);
+ OP2(SLJIT_XOR | SLJIT_SET_Z, TMP2, 0, TMP2, 0, TMP3, 0);
+@@ -7291,7 +7401,7 @@ OP_SRC(SLJIT_FAST_RETURN, TMP1, 0);
+ #ifdef SUPPORT_UNICODE
+ if (common->invalid_utf)
+   {
+-  set_jumps(invalid_utf1, LABEL());
++  set_jumps(invalid_utf1, FORWARD_LABEL());
+ 
+   peek_char(common, READ_CHAR_MAX, SLJIT_MEM1(SLJIT_SP), LOCAL1, NULL);
+   CMPTO(SLJIT_NOT_EQUAL, TMP1, 0, SLJIT_IMM, INVALID_UTF_CHAR, valid_utf);
+@@ -7300,7 +7410,7 @@ if (common->invalid_utf)
+   OP1(SLJIT_MOV, TMP2, 0, SLJIT_IMM, -1);
+   OP_SRC(SLJIT_FAST_RETURN, TMP1, 0);
+ 
+-  set_jumps(invalid_utf2, LABEL());
++  set_jumps(invalid_utf2, FORWARD_LABEL());
+   OP1(SLJIT_MOV, TMP1, 0, SLJIT_MEM1(SLJIT_SP), LOCAL0);
+   OP1(SLJIT_MOV, TMP2, 0, TMP3, 0);
+   OP_SRC(SLJIT_FAST_RETURN, TMP1, 0);
+@@ -8173,7 +8283,7 @@ GET_LOCAL_BASE(TMP2, 0, OVECTOR(offset));
+ if (backtracks != NULL && !common->unset_backref)
+   add_jump(compiler, backtracks, CMP(SLJIT_EQUAL, SLJIT_MEM1(SLJIT_SP), OVECTOR(offset), TMP1, 0));
+ 
+-set_jumps(found, LABEL());
++set_jumps(found, FORWARD_LABEL());
+ }
+ 
+ static void compile_ref_matchingpath(compiler_common *common, PCRE2_SPTR cc, jump_list **backtracks, BOOL withchecks, BOOL emptyfail)
+@@ -8311,7 +8421,7 @@ if ((common->utf || common->ucp) && (*cc == OP_REFI || *cc == OP_DNREFI))
+     CMPTO(SLJIT_EQUAL, TMP1, 0, char1_reg, 0, loop);
+     }
+ 
+-  set_jumps(no_match, LABEL());
++  set_jumps(no_match, FORWARD_LABEL());
+   if (common->mode == PCRE2_JIT_COMPLETE)
+     JUMPHERE(partial);
+ 
+@@ -8539,7 +8649,7 @@ if (type >= OP_CRPOSSTAR || exact)
+ 
+   if (!exact)
+     {
+-    set_jumps(match_failed, LABEL());
++    set_jumps(match_failed, FORWARD_LABEL());
+     OP1(SLJIT_MOV, STR_PTR, 0, SLJIT_MEM1(SLJIT_SP), local_start);
+ 
+     if (type != OP_CRPOSSTAR)
+@@ -8774,6 +8884,10 @@ if (entry->entry_label == NULL)
+   add_jump(compiler, &entry->entry_calls, JUMP(SLJIT_FAST_CALL));
+ else
+   JUMPTO(SLJIT_FAST_CALL, entry->entry_label);
++/* Nested activations of a recursion all return here at the same machine
++stack pointer (fast calls keep the frames on the JIT stack): tick once per
++return. */
++SOFTTICK();
+ /* Leave if the match is failed. */
+ add_jump(compiler, &backtrack->own_backtracks, CMP(SLJIT_EQUAL, TMP1, 0, SLJIT_IMM, 0));
+ BACKTRACK_AS(recurse_backtrack)->matchingpath = LABEL();
+@@ -9316,7 +9430,7 @@ while (1)
+     common->accept = save_accept;
+     return NULL;
+     }
+-  set_jumps(altbacktrack.own_backtracks, LABEL());
++  set_jumps(altbacktrack.own_backtracks, FORWARD_LABEL());
+ 
+   if (*cc != OP_ALT)
+     break;
+@@ -9336,7 +9450,7 @@ if (local_quit_available)
+ if (common->positive_assertion_quit != NULL)
+   {
+   jump = JUMP(SLJIT_JUMP);
+-  set_jumps(common->positive_assertion_quit, LABEL());
++  set_jumps(common->positive_assertion_quit, FORWARD_LABEL());
+   SLJIT_ASSERT(framesize != no_stack);
+   if (framesize < 0)
+     OP2(SLJIT_SUB, STACK_TOP, 0, SLJIT_MEM1(SLJIT_SP), private_data_ptr, SLJIT_IMM, extrasize * sizeof(sljit_sw));
+@@ -9391,7 +9505,7 @@ if (opcode == OP_ASSERT || opcode == OP_ASSERTBACK)
+     add_jump(compiler, target, jump);
+ 
+   /* Assert is successful. */
+-  set_jumps(tmp, LABEL());
++  set_jumps(tmp, FORWARD_LABEL());
+   if (framesize < 0)
+     {
+     /* We know that STR_PTR was stored on the top of the stack. */
+@@ -9458,7 +9572,7 @@ if (opcode == OP_ASSERT || opcode == OP_ASSERTBACK)
+       OP2(SLJIT_ADD, STACK_TOP, 0, STACK_TOP, 0, SLJIT_IMM, (framesize - 1) * sizeof(sljit_sw));
+       OP1(SLJIT_MOV, SLJIT_MEM1(SLJIT_SP), private_data_ptr, TMP1, 0);
+       }
+-    set_jumps(backtrack->common.own_backtracks, LABEL());
++    set_jumps(backtrack->common.own_backtracks, FORWARD_LABEL());
+     }
+   }
+ else
+@@ -9504,7 +9618,7 @@ else
+   if (bra != OP_BRA)
+     {
+     SLJIT_ASSERT(found == &backtrack->common.own_backtracks);
+-    set_jumps(backtrack->common.own_backtracks, LABEL());
++    set_jumps(backtrack->common.own_backtracks, FORWARD_LABEL());
+     backtrack->common.own_backtracks = NULL;
+     }
+   }
+@@ -10047,7 +10161,7 @@ else if (opcode == OP_ASSERT_SCS)
+     add_jump(compiler, &(BACKTRACK_AS(bracket_backtrack)->u.no_capture),
+       CMP(SLJIT_EQUAL, SLJIT_MEM1(TMP2), 0, TMP1, 0));
+ 
+-    set_jumps(jumplist, LABEL());
++    set_jumps(jumplist, FORWARD_LABEL());
+ 
+     allocate_stack(common, has_alternatives ? 3 : 2);
+ 
+@@ -10622,7 +10736,7 @@ while (*cc != OP_KETRPOS)
+   compile_backtrackingpath(common, backtrack->top);
+   if (SLJIT_UNLIKELY(sljit_get_compiler_error(compiler)))
+     return NULL;
+-  set_jumps(backtrack->own_backtracks, LABEL());
++  set_jumps(backtrack->own_backtracks, FORWARD_LABEL());
+ 
+   if (framesize < 0)
+     {
+@@ -10664,7 +10778,7 @@ if (!zero)
+   }
+ 
+ /* None of them matched. */
+-set_jumps(emptymatch, LABEL());
++set_jumps(emptymatch, FORWARD_LABEL());
+ count_match(common);
+ return cc + 1 + LINK_SIZE;
+ }
+@@ -11148,7 +11262,7 @@ switch(opcode)
+         }
+       JUMPTO(SLJIT_JUMP, label);
+ 
+-      set_jumps(no_match, LABEL());
++      set_jumps(no_match, FORWARD_LABEL());
+       OP1(SLJIT_MOV, STR_PTR, 0, base, offset0);
+       if (use_tmp)
+         OP1(SLJIT_MOV, base, offset1, TMP3, 0);
+@@ -11235,8 +11349,8 @@ switch(opcode)
+ #if defined SUPPORT_UNICODE && PCRE2_CODE_UNIT_WIDTH != 32
+   if (common->utf)
+     {
+-    set_jumps(no_char1_match, LABEL());
+-    set_jumps(no_match, LABEL());
++    set_jumps(no_char1_match, FORWARD_LABEL());
++    set_jumps(no_match, FORWARD_LABEL());
+     if (use_tmp)
+       {
+       OP1(SLJIT_MOV, STR_PTR, 0, TMP3, 0);
+@@ -11254,10 +11368,10 @@ switch(opcode)
+     {
+     if (opcode != OP_UPTO || exact == 0)
+       OP2(SLJIT_ADD, STR_PTR, 0, STR_PTR, 0, SLJIT_IMM, IN_UCHARS(1));
+-    set_jumps(no_char1_match, LABEL());
++    set_jumps(no_char1_match, FORWARD_LABEL());
+ 
+     OP2(SLJIT_SUB, STR_PTR, 0, STR_PTR, 0, SLJIT_IMM, IN_UCHARS(1));
+-    set_jumps(no_match, LABEL());
++    set_jumps(no_match, FORWARD_LABEL());
+     OP1(SLJIT_MOV, base, offset0, STR_PTR, 0);
+     }
+ 
+@@ -11410,7 +11524,7 @@ switch(opcode)
+     OP1(SLJIT_MOV, tmp_base, 0, STR_PTR, 0);
+     detect_partial_match_to(common, label);
+ 
+-    set_jumps(no_match, LABEL());
++    set_jumps(no_match, FORWARD_LABEL());
+     OP1(SLJIT_MOV, STR_PTR, 0, tmp_base, 0);
+ 
+     if (tmp_base != TMP3)
+@@ -11437,11 +11551,11 @@ switch(opcode)
+   if (type != OP_EXTUNI)
+     OP2(SLJIT_ADD, STR_PTR, 0, STR_PTR, 0, SLJIT_IMM, IN_UCHARS(1));
+ 
+-  set_jumps(no_char1_match, LABEL());
++  set_jumps(no_char1_match, FORWARD_LABEL());
+   if (type != OP_EXTUNI)
+     OP2(SLJIT_SUB, STR_PTR, 0, STR_PTR, 0, SLJIT_IMM, IN_UCHARS(1));
+ 
+-  set_jumps(no_match, LABEL());
++  set_jumps(no_match, FORWARD_LABEL());
+ 
+   if (exact == 1)
+     add_jump(compiler, prev_backtracks, CMP(SLJIT_EQUAL, tmp_base, tmp_offset, STR_PTR, 0));
+@@ -11483,7 +11597,7 @@ switch(opcode)
+       OP1(SLJIT_MOV, TMP3, 0, STR_PTR, 0);
+       }
+ 
+-    set_jumps(no_match, LABEL());
++    set_jumps(no_match, FORWARD_LABEL());
+ 
+     if (exact > 0)
+       {
+@@ -11519,9 +11633,9 @@ switch(opcode)
+   detect_partial_match_to(common, label);
+   OP2(SLJIT_ADD, STR_PTR, 0, STR_PTR, 0, SLJIT_IMM, IN_UCHARS(1));
+ 
+-  set_jumps(no_char1_match, LABEL());
++  set_jumps(no_char1_match, FORWARD_LABEL());
+   OP2(SLJIT_SUB, STR_PTR, 0, STR_PTR, 0, SLJIT_IMM, IN_UCHARS(1));
+-  set_jumps(no_match, LABEL());
++  set_jumps(no_match, FORWARD_LABEL());
+ 
+   if (exact > 0)
+     {
+@@ -11540,7 +11654,7 @@ switch(opcode)
+   OP1(SLJIT_MOV, tmp_base, tmp_offset, STR_PTR, 0);
+   compile_char1_matchingpath(common, type, cc, &no_match, TRUE);
+   OP1(SLJIT_MOV, tmp_base, tmp_offset, STR_PTR, 0);
+-  set_jumps(no_match, LABEL());
++  set_jumps(no_match, FORWARD_LABEL());
+   OP1(SLJIT_MOV, STR_PTR, 0, tmp_base, tmp_offset);
+   break;
+ 
+@@ -12078,7 +12192,7 @@ switch(opcode)
+   if (type == OP_EXTUNI)
+     {
+     SLJIT_ASSERT(private_data_ptr == 0);
+-    set_jumps(current->own_backtracks, LABEL());
++    set_jumps(current->own_backtracks, FORWARD_LABEL());
+     OP1(SLJIT_MOV, STR_PTR, 0, SLJIT_MEM1(STACK_TOP), STACK(0));
+     free_stack(common, 1);
+     CMPTO(SLJIT_NOT_EQUAL, STR_PTR, 0, SLJIT_IMM, 0, CURRENT_AS(char_iterator_backtrack)->matchingpath);
+@@ -12103,7 +12217,7 @@ switch(opcode)
+       /* The range beginning must match, no need to compare. */
+       JUMPTO(SLJIT_JUMP, label);
+ 
+-      set_jumps(current->own_backtracks, LABEL());
++      set_jumps(current->own_backtracks, FORWARD_LABEL());
+       current->own_backtracks = NULL;
+       }
+     else
+@@ -12138,7 +12252,7 @@ switch(opcode)
+       OP1(SLJIT_MOV, base, offset0, STR_PTR, 0);
+       JUMPTO(SLJIT_JUMP, CURRENT_AS(char_iterator_backtrack)->matchingpath);
+ 
+-      set_jumps(current->own_backtracks, LABEL());
++      set_jumps(current->own_backtracks, FORWARD_LABEL());
+       }
+ 
+     JUMPHERE(jump);
+@@ -12152,7 +12266,7 @@ switch(opcode)
+   OP1(SLJIT_MOV, base, offset0, SLJIT_IMM, 0);
+   CMPTO(SLJIT_NOT_EQUAL, STR_PTR, 0, SLJIT_IMM, 0, CURRENT_AS(char_iterator_backtrack)->matchingpath);
+   jump = JUMP(SLJIT_JUMP);
+-  set_jumps(current->own_backtracks, LABEL());
++  set_jumps(current->own_backtracks, FORWARD_LABEL());
+   OP1(SLJIT_MOV, STR_PTR, 0, base, offset0);
+   OP1(SLJIT_MOV, base, offset0, SLJIT_IMM, 0);
+   JUMPTO(SLJIT_JUMP, CURRENT_AS(char_iterator_backtrack)->matchingpath);
+@@ -12172,7 +12286,7 @@ switch(opcode)
+     OP1(SLJIT_MOV, TMP3, 0, SLJIT_IMM, 1);
+ 
+   JUMPTO(SLJIT_JUMP, CURRENT_AS(char_iterator_backtrack)->matchingpath);
+-  set_jumps(exact > 0 ? current->own_backtracks : jumplist, LABEL());
++  set_jumps(exact > 0 ? current->own_backtracks : jumplist, FORWARD_LABEL());
+   if (private_data_ptr == 0)
+     free_stack(common, 1);
+   break;
+@@ -12191,7 +12305,7 @@ switch(opcode)
+     OP1(SLJIT_MOV, base, offset0, STR_PTR, 0);
+     JUMPTO(SLJIT_JUMP, CURRENT_AS(char_iterator_backtrack)->matchingpath);
+ 
+-    set_jumps(jumplist, LABEL());
++    set_jumps(jumplist, FORWARD_LABEL());
+     }
+   else
+     {
+@@ -12200,7 +12314,7 @@ switch(opcode)
+     OP1(SLJIT_MOV, base, offset1, TMP1, 0);
+     JUMPTO(SLJIT_NOT_ZERO, CURRENT_AS(char_iterator_backtrack)->matchingpath);
+ 
+-    set_jumps(current->own_backtracks, LABEL());
++    set_jumps(current->own_backtracks, FORWARD_LABEL());
+     }
+ 
+   if (private_data_ptr == 0)
+@@ -12216,14 +12330,14 @@ switch(opcode)
+     if (exact >= 2)
+       OP1(SLJIT_MOV, TMP3, 0, SLJIT_IMM, 1);
+     CMPTO(SLJIT_NOT_EQUAL, STR_PTR, 0, SLJIT_IMM, 0, CURRENT_AS(char_iterator_backtrack)->matchingpath);
+-    set_jumps(current->own_backtracks, LABEL());
++    set_jumps(current->own_backtracks, FORWARD_LABEL());
+     }
+   else
+     {
+     jump = CMP(SLJIT_EQUAL, STR_PTR, 0, SLJIT_IMM, 0);
+     compile_char1_matchingpath(common, type, cc, &jumplist, TRUE);
+     JUMPTO(SLJIT_JUMP, CURRENT_AS(char_iterator_backtrack)->matchingpath);
+-    set_jumps(jumplist, LABEL());
++    set_jumps(jumplist, FORWARD_LABEL());
+     JUMPHERE(jump);
+     }
+ 
+@@ -12248,14 +12362,14 @@ type = cc[PRIV(OP_lengths)[*cc]];
+ 
+ if (CURRENT_AS(ref_iterator_backtrack)->possessive_or_exact)
+   {
+-  set_jumps(current->own_backtracks, LABEL());
++  set_jumps(current->own_backtracks, FORWARD_LABEL());
+   return;
+   }
+ 
+ if ((type & 0x1) == 0)
+   {
+   /* Maximize case. */
+-  set_jumps(current->own_backtracks, LABEL());
++  set_jumps(current->own_backtracks, FORWARD_LABEL());
+   OP1(SLJIT_MOV, STR_PTR, 0, SLJIT_MEM1(STACK_TOP), STACK(0));
+   free_stack(common, 1);
+   CMPTO(SLJIT_NOT_EQUAL, STR_PTR, 0, SLJIT_IMM, 0, CURRENT_AS(ref_iterator_backtrack)->matchingpath);
+@@ -12264,7 +12378,7 @@ if ((type & 0x1) == 0)
+ 
+ OP1(SLJIT_MOV, STR_PTR, 0, SLJIT_MEM1(STACK_TOP), STACK(0));
+ CMPTO(SLJIT_NOT_EQUAL, STR_PTR, 0, SLJIT_IMM, 0, CURRENT_AS(ref_iterator_backtrack)->matchingpath);
+-set_jumps(current->own_backtracks, LABEL());
++set_jumps(current->own_backtracks, FORWARD_LABEL());
+ free_stack(common, ref ? 2 : 3);
+ }
+ 
+@@ -12280,12 +12394,14 @@ if (!CURRENT_AS(recurse_backtrack)->inlined_pattern)
+     add_jump(compiler, &entry->backtrack_calls, JUMP(SLJIT_FAST_CALL));
+   else
+     JUMPTO(SLJIT_FAST_CALL, entry->backtrack_label);
++  /* See compile_recurse_matchingpath. */
++  SOFTTICK();
+   CMPTO(SLJIT_NOT_EQUAL, TMP1, 0, SLJIT_IMM, 0, CURRENT_AS(recurse_backtrack)->matchingpath);
+   }
+ else
+   compile_backtrackingpath(common, current->top);
+ 
+-set_jumps(current->own_backtracks, LABEL());
++set_jumps(current->own_backtracks, FORWARD_LABEL());
+ }
+ 
+ static void compile_assert_backtrackingpath(compiler_common *common, struct backtrack_common *current)
+@@ -12310,7 +12426,7 @@ if (bra == OP_BRAZERO)
+ 
+ if (CURRENT_AS(assert_backtrack)->framesize < 0)
+   {
+-  set_jumps(current->own_backtracks, LABEL());
++  set_jumps(current->own_backtracks, FORWARD_LABEL());
+ 
+   if (bra == OP_BRAZERO)
+     {
+@@ -12342,10 +12458,10 @@ if (*cc == OP_ASSERT || *cc == OP_ASSERTBACK)
+   OP2(SLJIT_ADD, STACK_TOP, 0, STACK_TOP, 0, SLJIT_IMM, (CURRENT_AS(assert_backtrack)->framesize - 1) * sizeof(sljit_sw));
+   OP1(SLJIT_MOV, SLJIT_MEM1(SLJIT_SP), CURRENT_AS(assert_backtrack)->private_data_ptr, TMP1, 0);
+ 
+-  set_jumps(current->own_backtracks, LABEL());
++  set_jumps(current->own_backtracks, FORWARD_LABEL());
+   }
+ else
+-  set_jumps(current->own_backtracks, LABEL());
++  set_jumps(current->own_backtracks, FORWARD_LABEL());
+ 
+ if (bra == OP_BRAZERO)
+   {
+@@ -12556,8 +12672,9 @@ else if (has_alternatives)
+     sljit_emit_ijump(compiler, SLJIT_JUMP, TMP1, 0);
+ 
+     SLJIT_ASSERT(CURRENT_AS(bracket_backtrack)->matching_mov_addr != NULL);
+-    sljit_set_label(CURRENT_AS(bracket_backtrack)->matching_mov_addr, LABEL());
++    JUMPHERE(CURRENT_AS(bracket_backtrack)->matching_mov_addr);
+     sljit_emit_op0(compiler, SLJIT_ENDBR);
++    SOFTTICK();
+     }
+   else
+     next_alt = CMP(SLJIT_NOT_EQUAL, TMP1, 0, SLJIT_IMM, 0);
+@@ -12565,7 +12682,7 @@ else if (has_alternatives)
+ 
+ COMPILE_BACKTRACKINGPATH(current->top);
+ if (current->own_backtracks)
+-  set_jumps(current->own_backtracks, LABEL());
++  set_jumps(current->own_backtracks, FORWARD_LABEL());
+ 
+ if (SLJIT_UNLIKELY(opcode == OP_COND) || SLJIT_UNLIKELY(opcode == OP_SCOND))
+   {
+@@ -12584,13 +12701,13 @@ if (SLJIT_UNLIKELY(opcode == OP_COND) || SLJIT_UNLIKELY(opcode == OP_SCOND))
+       OP1(SLJIT_MOV, SLJIT_MEM1(SLJIT_SP), assert->private_data_ptr, TMP1, 0);
+       }
+     cond = JUMP(SLJIT_JUMP);
+-    set_jumps(CURRENT_AS(bracket_backtrack)->u.assert->condfailed, LABEL());
++    set_jumps(CURRENT_AS(bracket_backtrack)->u.assert->condfailed, FORWARD_LABEL());
+     }
+   else if (CURRENT_AS(bracket_backtrack)->u.no_capture != NULL)
+     {
+     SLJIT_ASSERT(has_alternatives);
+     cond = JUMP(SLJIT_JUMP);
+-    set_jumps(CURRENT_AS(bracket_backtrack)->u.no_capture, LABEL());
++    set_jumps(CURRENT_AS(bracket_backtrack)->u.no_capture, FORWARD_LABEL());
+     }
+   else
+     SLJIT_ASSERT(!has_alternatives);
+@@ -12743,14 +12860,15 @@ if (has_alternatives)
+         }
+       else
+         {
+-        sljit_set_label(mov_addr, LABEL());
++        JUMPHERE(mov_addr);
+         sljit_emit_op0(compiler, SLJIT_ENDBR);
++        SOFTTICK();
+         }
+       }
+ 
+     COMPILE_BACKTRACKINGPATH(current->top);
+     if (current->own_backtracks)
+-      set_jumps(current->own_backtracks, LABEL());
++      set_jumps(current->own_backtracks, FORWARD_LABEL());
+     SLJIT_ASSERT(!current->simple_backtracks);
+     }
+   while (*cc == OP_ALT);
+@@ -12820,7 +12938,7 @@ else if (opcode == OP_ASSERT_SCS)
+   OP1(SLJIT_MOV, SLJIT_MEM1(SLJIT_SP), private_data_ptr + sizeof(sljit_sw), TMP2, 0);
+   free_stack(common, has_alternatives ? 3 : 2);
+ 
+-  set_jumps(CURRENT_AS(bracket_backtrack)->u.no_capture, LABEL());
++  set_jumps(CURRENT_AS(bracket_backtrack)->u.no_capture, FORWARD_LABEL());
+ 
+   /* Nested scs blocks will not update this variable. */
+   if (common->restore_end_ptr == private_data_ptr + SSIZE_OF(sw))
+@@ -12929,7 +13047,7 @@ if (CURRENT_AS(bracketpos_backtrack)->framesize < 0)
+     if (common->capture_last_ptr != 0)
+       OP1(SLJIT_MOV, SLJIT_MEM1(SLJIT_SP), common->capture_last_ptr, TMP1, 0);
+     }
+-  set_jumps(current->own_backtracks, LABEL());
++  set_jumps(current->own_backtracks, FORWARD_LABEL());
+   free_stack(common, CURRENT_AS(bracketpos_backtrack)->stacksize);
+   return;
+   }
+@@ -12941,7 +13059,7 @@ OP2(SLJIT_ADD, STACK_TOP, 0, STACK_TOP, 0, SLJIT_IMM, (CURRENT_AS(bracketpos_bac
+ if (current->own_backtracks)
+   {
+   jump = JUMP(SLJIT_JUMP);
+-  set_jumps(current->own_backtracks, LABEL());
++  set_jumps(current->own_backtracks, FORWARD_LABEL());
+   /* Drop the stack frame. */
+   free_stack(common, CURRENT_AS(bracketpos_backtrack)->stacksize);
+   JUMPHERE(jump);
+@@ -13089,7 +13207,7 @@ OP1(SLJIT_MOV, TMP1, 0, SLJIT_MEM1(STACK_TOP), STACK(size - 3));
+ free_stack(common, size);
+ jump = JUMP(SLJIT_JUMP);
+ 
+-set_jumps(CURRENT_AS(then_trap_backtrack)->quit, LABEL());
++set_jumps(CURRENT_AS(then_trap_backtrack)->quit, FORWARD_LABEL());
+ 
+ framesize = CURRENT_AS(then_trap_backtrack)->framesize;
+ SLJIT_ASSERT(framesize != 0);
+@@ -13115,7 +13233,7 @@ then_trap_backtrack *save_then_trap = common->then_trap;
+ while (current)
+   {
+   if (current->simple_backtracks != NULL)
+-    set_jumps(current->simple_backtracks, LABEL());
++    set_jumps(current->simple_backtracks, FORWARD_LABEL());
+   switch(*current->cc)
+     {
+     case OP_SET_SOM:
+@@ -13289,7 +13407,7 @@ while (current)
+     case OP_FAIL:
+     case OP_ACCEPT:
+     case OP_ASSERT_ACCEPT:
+-    set_jumps(current->own_backtracks, LABEL());
++    set_jumps(current->own_backtracks, FORWARD_LABEL());
+     break;
+ 
+     case OP_VREVERSE:
+@@ -13420,8 +13538,9 @@ while (1)
+       if (alt_max > 3)
+         {
+         sljit_emit_ijump(compiler, SLJIT_JUMP, TMP1, 0);
+-        sljit_set_label(mov_addr, LABEL());
++        JUMPHERE(mov_addr);
+         sljit_emit_op0(compiler, SLJIT_ENDBR);
++        SOFTTICK();
+         }
+       else
+         next_alt = CMP(SLJIT_NOT_EQUAL, TMP1, 0, SLJIT_IMM, 0);
+@@ -13431,8 +13550,9 @@ while (1)
+     }
+   else if (alt_max > 3)
+     {
+-    sljit_set_label(mov_addr, LABEL());
++    JUMPHERE(mov_addr);
+     sljit_emit_op0(compiler, SLJIT_ENDBR);
++    SOFTTICK();
+     }
+   else
+     {
+@@ -13449,7 +13569,7 @@ while (1)
+   compile_backtrackingpath(common, altbacktrack.top);
+   if (SLJIT_UNLIKELY(sljit_get_compiler_error(compiler)))
+     return;
+-  set_jumps(altbacktrack.own_backtracks, LABEL());
++  set_jumps(altbacktrack.own_backtracks, FORWARD_LABEL());
+ 
+   if (*cc != OP_ALT)
+     break;
+@@ -13473,7 +13593,7 @@ if (common->quit != NULL)
+   {
+   SLJIT_ASSERT(recurse_flags & recurse_flag_quit_found);
+ 
+-  set_jumps(common->quit, LABEL());
++  set_jumps(common->quit, FORWARD_LABEL());
+   OP1(SLJIT_MOV, STACK_TOP, 0, SLJIT_MEM1(SLJIT_SP), common->recursive_head_ptr);
+   copy_recurse_data(common, ccbegin, ccend, recurse_copy_shared_to_global, local_size, private_data_size + local_size, recurse_flags);
+   JUMPTO(SLJIT_JUMP, quit);
+@@ -13499,7 +13619,7 @@ if (common->accept != NULL)
+   {
+   SLJIT_ASSERT(recurse_flags & recurse_flag_accept_found);
+ 
+-  set_jumps(common->accept, LABEL());
++  set_jumps(common->accept, FORWARD_LABEL());
+ 
+   OP1(SLJIT_MOV, STACK_TOP, 0, SLJIT_MEM1(SLJIT_SP), common->recursive_head_ptr);
+   OP1(SLJIT_MOV, TMP2, 0, STACK_TOP, 0);
+@@ -13508,7 +13628,7 @@ if (common->accept != NULL)
+   OP1(SLJIT_MOV, SLJIT_MEM1(STACK_TOP), STACK(1), SLJIT_IMM, -1);
+   }
+ 
+-set_jumps(match, LABEL());
++set_jumps(match, FORWARD_LABEL());
+ 
+ OP1(SLJIT_MOV, SLJIT_MEM1(STACK_TOP), STACK(0), TMP2, 0);
+ 
+@@ -13783,6 +13903,7 @@ common->compiler = compiler;
+ /* Main pcre2_jit_exec entry. */
+ SLJIT_ASSERT((private_data_size & (sizeof(sljit_sw) - 1)) == 0);
+ sljit_emit_enter(compiler, 0, SLJIT_ARGS1(W, W), 5 | SLJIT_ENTER_VECTOR(SLJIT_NUMBER_OF_SCRATCH_VECTOR_REGISTERS), 5, private_data_size);
++SOFTTICK();
+ 
+ /* Register init. */
+ reset_ovector(common, (re->top_bracket + 1) * 2);
+@@ -14005,7 +14126,7 @@ if ((re->overall_options & PCRE2_ANCHORED) == 0)
+ 
+ /* No more remaining characters. */
+ if (reqcu_not_found != NULL)
+-  set_jumps(reqcu_not_found, LABEL());
++  set_jumps(reqcu_not_found, FORWARD_LABEL());
+ 
+ if (mode == PCRE2_JIT_PARTIAL_SOFT)
+   CMPTO(SLJIT_NOT_EQUAL, SLJIT_MEM1(SLJIT_SP), common->hit_start, SLJIT_IMM, -1, common->partialmatchlabel);
