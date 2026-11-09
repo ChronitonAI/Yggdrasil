@@ -57,13 +57,23 @@ install_license COPYING
 export PYTHONDONTWRITEBYTECODE=1
 export CPPFLAGS="${CPPFLAGS} -I${includedir}"
 export LDFLAGS="${LDFLAGS} -L${libdir}"
+# The host tools' lib directory, first on LD_LIBRARY_PATH, has a libpython3.12 of its own (with
+# multiarch x86_64-linux-musl): the target's python3 and gdb would load it instead of ours.
+# Only libpython goes ahead of it: our libstdc++ needs a newer glibc than the build machine's.
+mkdir -p ${WORKSPACE}/pylib
+ln -s ${libdir}/libpython3*.so.1.0 ${WORKSPACE}/pylib/
+cat > ${WORKSPACE}/python3 << EOF
+#!/bin/bash
+LD_LIBRARY_PATH=${WORKSPACE}/pylib:\${LD_LIBRARY_PATH} exec ${bindir}/python3 "\$@"
+EOF
+chmod +x ${WORKSPACE}/python3
 mkdir build && cd build
 ../configure --prefix=${prefix} --build=${MACHTYPE} --host=${target} \
     --with-expat --with-libexpat-prefix=${prefix} \
     --with-system-zlib \
     --with-gmp=${prefix} --with-libgmp-prefix=${prefix} \
     --with-mpfr=${prefix} --with-libmpfr-prefix=${prefix} \
-    --with-python=${bindir}/python3 \
+    --with-python=${WORKSPACE}/python3 \
     --disable-nls \
     --disable-sim \
     --disable-werror \
@@ -72,7 +82,7 @@ make -j${nproc} all MAKEINFO=true
 # Only gdb and gdbserver: a plain `make install` also installs the bfd, opcodes and ctf
 # libraries and headers, which are Binutils_jll's.
 make install-gdb install-gdbserver MAKEINFO=true
-${bindir}/gdb --batch -ex 'python import sys; print(sys.version)'
+LD_LIBRARY_PATH=${WORKSPACE}/pylib:${LD_LIBRARY_PATH} ${bindir}/gdb --batch -ex 'python import sys; print(sys.version)'
 """
 end
 
