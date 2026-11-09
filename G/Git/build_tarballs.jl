@@ -39,9 +39,12 @@ fi
 
 cd $WORKSPACE/srcdir/git-*
 
-# We need a native "tclsh" to cross-compile
-apk update
-apk add tcl
+# We need a native "tclsh" to cross-compile (BinaryBuilder's Alpine build environment;
+# BinaryBuilder2's is Debian, without apk, and tcl/tk is disabled below anyway)
+if command -v apk >/dev/null; then
+    apk update
+    apk add tcl
+fi
 
 CACHE_VALUES=()
 if [[ "${target}" != *86*-linux-* ]]; then
