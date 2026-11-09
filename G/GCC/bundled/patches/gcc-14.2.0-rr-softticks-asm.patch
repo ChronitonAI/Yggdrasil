@@ -1,0 +1,371 @@
+rr software ticks (rr's include/rr/softticks.h, ABI version 1) for the hand-written x86-64
+assembly of GCC 14.2's runtime libraries, which the compiler plugin does not see:
+
+- libitm/config/x86/sjlj.S: _ITM_beginTransaction ticks at its entry and before
+  `jmp .Lhtm_fastpath`, the HTM retry's back edge (both outside the xbegin region, where an
+  RTM abort would roll a tick back); GTM_longjmp at its entry and at .L4, the head of its
+  loop over the shadow stack (CET).
+- libgcc/config/i386/morestack.S (-fsplit-stack): __morestack_non_split, __morestack,
+  __morestack_large_model, __stack_split_initialize and __morestack_{get,set,make}_guard tick
+  at their entry. And the plugin's page-mapping initializer runs first in morestack.S's
+  .init_array.00000 (priority 0, before the initializer's own priority 1): without it,
+  __stack_split_initialize and the C function it calls tick before anything has mapped the
+  countdown's page, and a split-stack program crashes at startup outside rr (unless another
+  instrumented library, or a C library that maps the page, initialized first).
+- libgcc/config/i386/{sav,res}ms64*.h (-mcall-ms2sysv-xlogues stubs, {sse,avx}_*.S): one
+  tick in front of each file's shared exit, which every entry falls through to. The sav and
+  plain res stubs keep the flags around it (pushfq/popfq): GCC emits their calls as insns
+  that do not clobber the flags, and keeps a comparison's flags live across them.
+
+The tick clobbers the flags only, which are dead at every other one of these places. A no-op
+unless the compiler predefines __RR_SOFTTICKS__ (the software ticks plugin does, also for
+.S files): without it the objects are byte-identical, debug info included (no line moves).
+A __RR_SOFTTICKS__ other than 1 is an error, as is a ticked build for i386 or x32, whose
+code paths have no ticks. See libgcc/config/i386/rr-softticks.h and
+libitm/config/x86/rr-softticks.h.
+
+--- a/libgcc/config/i386/rr-softticks.h
++++ b/libgcc/config/i386/rr-softticks.h
+@@ -0,0 +1,91 @@
++/* rr software ticks (rr's include/rr/softticks.h, ABI version 1) for libgcc's x86-64
++   assembly: morestack.S (-fsplit-stack) and the -mcall-ms2sysv-xlogues register save and
++   restore stubs ({sse,avx}_{sav,res}ms64*.S, through i386-asm.h).
++
++   Code built for rr's software-ticks mode counts its own progress: no instruction may run
++   twice at the same (pc, sp) without a tick in between.  The compiler plugin ticks compiled
++   code and predefines __RR_SOFTTICKS__ (the ABI version) for .S files too; this assembly is
++   ticked by hand.  None of it has a loop, but a function called twice from one frame runs
++   its first instructions at the same (pc, sp) twice, so each function ticks on every path
++   from its entry (RR_SOFTTICK):
++   - morestack.S: __morestack_non_split, __morestack, __morestack_large_model,
++     __stack_split_initialize and __morestack_{get,set,make}_guard, at their entry (after
++     the CFI that their first instruction has, so that the unwind info stays right);
++   - the stubs: each file's entry points fall through to one shared exit, which ticks just
++     before it (the ret; in the x variants, which return from their caller, the mov to %rsp
++     or the leave).
++   A tick clobbers the arithmetic flags and nothing else: no register, no stack.  The flags
++   are dead at morestack.S's entries (the split-stack prologue's call to __morestack, which
++   is a call insn, and plain calls from C).  They are not dead across the save and restore
++   stubs: GCC emits a call of one as an insn that only saves or restores registers through
++   %rax or %rsi (ix86_emit_outlined_ms2sysv_save/restore: no clobber of the flags), so it
++   may compare before the call and branch after it (gcc.target/x86_64/abi/ms-sysv's
++   shrink-wrapped functions do, around the save).  So the sav and the plain res stubs keep
++   the flags around their tick (RR_SOFTTICK_KEEP_FLAGS: pushfq and popfq, below the stack
++   pointer; their callers are ms_abi functions, which have no red zone).  The x variants
++   return from their caller, after which the flags are dead.
++
++   Ticks read the countdown's page, which outside rr each instrumented module's initializer
++   (__rr_softticks_init, from .init_array at priority 1) maps.  morestack.S's constructors
++   run at priority 0, before it: __stack_split_initialize ticks, and so does the C function
++   it calls, so a split-stack program whose page no module had mapped yet (no other
++   instrumented library loaded before it, a C library that does not map it) faulted at
++   startup.  RR_SOFTTICKS_INIT_FIRST, in morestack.S's .init_array.00000 ahead of
++   __stack_split_initialize, runs that initializer first (the ABI's code, in its COMDAT group
++   with its own .init_array entry and the note, as the plugin emits it: the linker keeps one
++   of the identical groups).  Mapping the page a second time fails with EEXIST, as under rr,
++   which the initializer ignores.
++
++   Without __RR_SOFTTICKS__ the macros are empty and the objects are byte-identical to the
++   unpatched ones, debug info included: the macros are on lines of their own that were blank
++   or on the line of the instruction they precede, and morestack.S includes this file from a
++   line that was blank (i386-asm.h makes no code), so no line moves.  The tick ends at the
++   local label 7731 and the initializer's exit is 7732, which nothing else here uses.  Only
++   x86-64 (LP64) is ticked: the i386 code paths would build without ticks, so a ticked i386 (or
++   x32) build is an error.  */
++
++#ifndef RR_SOFTTICKS_ASM_H
++#define RR_SOFTTICKS_ASM_H
++
++#if defined(__RR_SOFTTICKS__)
++# if __RR_SOFTTICKS__ != 1
++#  error "unsupported rr software ticks ABI version"
++# endif
++# if !defined(__x86_64__) || !defined(__LP64__)
++#  error "rr software ticks: only libgcc's x86-64 (LP64) assembly has them"
++# endif
++/* The byte-exact x86-64 RR_SOFTTICKS_X64_TICK_ASM.  */
++# define RR_SOFTTICK testb $0x80, 0x70001807; jnz 7731f; decq 0x70001800; jnz 7731f; int3; 7731:
++/* A tick that keeps the flags (all of EFLAGS, which popfq restores as they were).  */
++# define RR_SOFTTICK_KEEP_FLAGS pushfq; RR_SOFTTICK; popfq
++/* RR_SOFTTICKS_X64_INIT_ASM (with RR_SOFTTICKS_INIT_SYMBOL, RR_SOFTTICKS_INIT_PRIORITY,
++   RR_SOFTTICKS_MMAP_FLAGS and the note), and an entry for it in the current section.  */
++# if defined(HAVE_INITFINI_ARRAY_SUPPORT) && HAVE_INITFINI_ARRAY_SUPPORT
++#  define RR_SOFTTICKS_INIT_FIRST \
++	.quad __rr_softticks_init; \
++	.pushsection .text.__rr_softticks_init,"axG",@progbits,__rr_softticks_init,comdat; \
++	.weak __rr_softticks_init; .hidden __rr_softticks_init; \
++	.type __rr_softticks_init,%function; .p2align 4; \
++__rr_softticks_init: \
++	movl $9, %eax; movl $0x70001000, %edi; movl $4096, %esi; movl $3, %edx; \
++	movl $0x100022, %r10d; movq $-1, %r8; xorl %r9d, %r9d; syscall; \
++	cmpq $0x70001000, %rax; je 7732f; cmpq $-4095, %rax; jae 7732f; \
++	movq %rax, %rdi; movl $11, %eax; movl $4096, %esi; syscall; \
++7732:	ret; \
++	.size __rr_softticks_init,.-__rr_softticks_init; \
++	.section .init_array.00001,"awG",@init_array,__rr_softticks_init,comdat; \
++	.p2align 3; .quad __rr_softticks_init; \
++	.section .note.rrsoftticks,"aG",@note,__rr_softticks_init,comdat; \
++	.p2align 2; .long 3; .long 4; .long 1; .asciz "rr"; .p2align 2; .long 1; \
++	.popsection
++# else
++/* (.ctors would run it last) */
++#  define RR_SOFTTICKS_INIT_FIRST .error "rr software ticks: morestack.S needs .init_array"
++# endif
++#else
++# define RR_SOFTTICK
++# define RR_SOFTTICK_KEEP_FLAGS
++# define RR_SOFTTICKS_INIT_FIRST
++#endif
++
++#endif /* RR_SOFTTICKS_ASM_H */
+--- a/libgcc/config/i386/i386-asm.h
++++ b/libgcc/config/i386/i386-asm.h
+@@ -27,6 +27,7 @@
+ #define I386_ASM_H
+ 
+ #include "auto-target.h"
++#include "rr-softticks.h"
+ 
+ #ifdef __GCC_HAVE_DWARF2_CFI_ASM
+ # define cfi_startproc()		.cfi_startproc
+--- a/libgcc/config/i386/morestack.S
++++ b/libgcc/config/i386/morestack.S
+@@ -93,7 +93,7 @@
+ # requested stack space by 16K.
+ 
+ #include <cet.h>
+-
++#include "rr-softticks.h"
+ 	.global __morestack_non_split
+ 	.hidden	__morestack_non_split
+ 
+@@ -186,7 +186,7 @@
+ 
+ 	# See below for an extended explanation of this.
+ 	.cfi_def_cfa %rsp,16
+-
++	RR_SOFTTICK
+ 	pushq	%rax			# Save %rax in case caller is using
+ 					# it to preserve original %r10.
+ 	.cfi_adjust_cfa_offset 8	# Adjust for pushed register.
+@@ -468,7 +468,7 @@
+ 	# that single return instruction, and just return to the real
+ 	# caller.
+ 	.cfi_def_cfa %rsp,16
+-
++	RR_SOFTTICK
+ 	# Set up a normal backtrace.
+ 	pushq	%rbp
+ 	.cfi_adjust_cfa_offset 8
+@@ -705,7 +705,7 @@
+ 
+ 	.cfi_startproc
+ 	_CET_ENDBR
+-
++	RR_SOFTTICK
+ 	movq	%r10, %r11
+ 	andl	$0xffffffff, %r10d
+ 	sarq	$32, %r11
+@@ -732,7 +732,7 @@
+ 
+ __stack_split_initialize:
+ 	_CET_ENDBR
+-
++	RR_SOFTTICK
+ #ifndef __x86_64__
+ 
+ 	leal	-16000(%esp),%eax	# We should have at least 16K.
+@@ -782,7 +782,7 @@
+ #endif
+ 
+ __morestack_get_guard:
+-
++	RR_SOFTTICK
+ #ifndef __x86_64__
+ 	movl	%gs:0x30,%eax
+ #else
+@@ -807,7 +807,7 @@
+ #endif
+ 
+ __morestack_set_guard:
+-
++	RR_SOFTTICK
+ #ifndef __x86_64__
+ 	movl	4(%esp),%eax
+ 	movl	%eax,%gs:0x30
+@@ -830,7 +830,7 @@
+ #endif
+ 
+ __morestack_make_guard:
+-
++	RR_SOFTTICK
+ #ifndef __x86_64__
+ 	movl	4(%esp),%eax
+ 	subl	8(%esp),%eax
+@@ -854,7 +854,7 @@
+ #else
+ 	.section	.ctors.65535,"aw",@progbits
+ #endif
+-
++	RR_SOFTTICKS_INIT_FIRST
+ #ifndef __LP64__
+ 	.align	4
+ 	.long	__stack_split_initialize
+--- a/libgcc/config/i386/savms64.h
++++ b/libgcc/config/i386/savms64.h
+@@ -47,7 +47,7 @@
+ 	mov	%rdi,-0x40(%rax)
+ 	mov	%rsi,-0x38(%rax)
+ 	SSE_SAVE
+-	ret
++	RR_SOFTTICK_KEEP_FLAGS; ret
+ MS2SYSV_STUB_END(savms64_12)
+ MS2SYSV_STUB_END(savms64_13)
+ MS2SYSV_STUB_END(savms64_14)
+--- a/libgcc/config/i386/savms64f.h
++++ b/libgcc/config/i386/savms64f.h
+@@ -46,7 +46,7 @@
+ 	mov	%rdi,-0x40(%rax)
+ 	mov	%rsi,-0x38(%rax)
+ 	SSE_SAVE
+-	ret
++	RR_SOFTTICK_KEEP_FLAGS; ret
+ MS2SYSV_STUB_END(savms64f_12)
+ MS2SYSV_STUB_END(savms64f_13)
+ MS2SYSV_STUB_END(savms64f_14)
+--- a/libgcc/config/i386/resms64.h
++++ b/libgcc/config/i386/resms64.h
+@@ -47,7 +47,7 @@
+ 	mov	-0x40(%rsi),%rdi
+ 	SSE_RESTORE
+ 	mov	-0x38(%rsi),%rsi
+-	ret
++	RR_SOFTTICK_KEEP_FLAGS; ret
+ MS2SYSV_STUB_END(resms64_12)
+ MS2SYSV_STUB_END(resms64_13)
+ MS2SYSV_STUB_END(resms64_14)
+--- a/libgcc/config/i386/resms64f.h
++++ b/libgcc/config/i386/resms64f.h
+@@ -46,7 +46,7 @@
+ 	mov	-0x40(%rsi),%rdi
+ 	SSE_RESTORE
+ 	mov	-0x38(%rsi),%rsi
+-	ret
++	RR_SOFTTICK_KEEP_FLAGS; ret
+ MS2SYSV_STUB_END(resms64f_12)
+ MS2SYSV_STUB_END(resms64f_13)
+ MS2SYSV_STUB_END(resms64f_14)
+--- a/libgcc/config/i386/resms64x.h
++++ b/libgcc/config/i386/resms64x.h
+@@ -50,7 +50,7 @@
+ 	mov	-0x40(%rsi),%rdi
+ 	SSE_RESTORE
+ 	mov	-0x38(%rsi),%rsi
+-	mov	%r10,%rsp
++	RR_SOFTTICK; mov	%r10,%rsp
+ 	cfi_def_cfa_register(%rsp)
+ 	ret
+ 	cfi_endproc()
+--- a/libgcc/config/i386/resms64fx.h
++++ b/libgcc/config/i386/resms64fx.h
+@@ -50,7 +50,7 @@
+ 	mov	-0x40(%rsi),%rdi
+ 	SSE_RESTORE
+ 	mov	-0x38(%rsi),%rsi
+-	leaveq
++	RR_SOFTTICK; leaveq
+ 	cfi_def_cfa(%rsp, 8)
+ 	ret
+ 	cfi_endproc()
+--- a/libitm/config/x86/rr-softticks.h
++++ b/libitm/config/x86/rr-softticks.h
+@@ -0,0 +1,42 @@
++/* rr software ticks (rr's include/rr/softticks.h, ABI version 1) for libitm's x86-64
++   assembly, sjlj.S.
++
++   Code built for rr's software-ticks mode counts its own progress: no instruction may run
++   twice at the same (pc, sp) without a tick in between.  The compiler plugin ticks compiled
++   code and predefines __RR_SOFTTICKS__ (the ABI version) for .S files too; sjlj.S is ticked
++   by hand, at each function's entry (a function called twice from one frame runs its first
++   instructions at the same (pc, sp) twice) and once per iteration of each loop:
++   - _ITM_beginTransaction: at its entry, and just before `jmp .Lhtm_fastpath', the HTM
++     retry's back edge.  Both are outside the region from xbegin to the ret or xabort: a tick
++     in there would be rolled back with the hardware transaction when it aborts.
++   - GTM_longjmp: at its entry, and at .L4, the head of the loop that pops the shadow stack
++     255 frames at a time (with CET, -mshstk).
++   A tick clobbers the arithmetic flags and nothing else: no register, no stack.  The flags
++   are dead at all of these places: function entries; before the retry's jmp (xbegin reads
++   no flags, the cmpl after it writes them); at .L4 (incsspq reads none, the subq and cmpq
++   before the ja write them).
++
++   Without __RR_SOFTTICKS__, RR_SOFTTICK is empty and the objects are byte-identical to the
++   unpatched ones, debug info included: the ticks are on the line of the instruction they
++   follow or precede, and this file is included from a line that was blank, so no line
++   moves.  The tick sequence ends at the local label 7731, which nothing else here uses.
++   Only x86-64 is ticked: the i386 code paths would build without ticks, so a ticked i386
++   build is an error.  */
++
++#ifndef RR_SOFTTICKS_ASM_H
++#define RR_SOFTTICKS_ASM_H
++
++#if defined(__RR_SOFTTICKS__)
++# if __RR_SOFTTICKS__ != 1
++#  error "unsupported rr software ticks ABI version"
++# endif
++# if !defined(__x86_64__)
++#  error "rr software ticks: only libitm's x86-64 assembly has them"
++# endif
++/* The byte-exact x86-64 RR_SOFTTICKS_X64_TICK_ASM.  */
++# define RR_SOFTTICK testb $0x80, 0x70001807; jnz 7731f; decq 0x70001800; jnz 7731f; int3; 7731:
++#else
++# define RR_SOFTTICK
++#endif
++
++#endif /* RR_SOFTTICKS_ASM_H */
+--- a/libitm/config/x86/sjlj.S
++++ b/libitm/config/x86/sjlj.S
+@@ -22,7 +22,7 @@
+    see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
+-
++#include "rr-softticks.h"
+ #include "asmcfi.h"
+ #include "config.h"
+ #include "cet.h"
+@@ -74,7 +74,7 @@
+ 
+ SYM(_ITM_beginTransaction):
+ 	cfi_startproc
+-	_CET_ENDBR
++	_CET_ENDBR; RR_SOFTTICK
+ #ifdef __x86_64__
+ #ifdef HAVE_AS_RTM
+ 	/* Custom HTM fast path.  We start the HW transaction here and let
+@@ -162,7 +162,7 @@
+ 	jnz	2f
+ 	andl	$(0xffffffff-pr_HTMRetryableAbort), %edi
+ 	orl	$pr_HTMRetriedAfterAbort, %edi
+-	jmp	.Lhtm_fastpath
++	RR_SOFTTICK; jmp	.Lhtm_fastpath	/* the HTM retry: a back edge */
+ 2:
+ #endif
+ #else
+@@ -207,7 +207,7 @@
+ 
+ SYM(GTM_longjmp):
+ 	cfi_startproc
+-	_CET_ENDBR
++	_CET_ENDBR; RR_SOFTTICK
+ #ifdef __x86_64__
+ 	movq	(%rsi), %rcx
+ 	movq	8(%rsi), %rbx
+@@ -239,7 +239,7 @@
+ 	movl	$255, %edi
+ 	.p2align 4,,10
+ 	.p2align 3
+-.L4:
++.L4:	RR_SOFTTICK	/* the loop over the shadow stack's frames */
+ 	incsspq	%rdi
+ 	subq	$255, %rcx
+ 	cmpq	$255, %rcx

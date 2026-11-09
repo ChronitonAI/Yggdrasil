@@ -15,6 +15,10 @@
 # plugin explicitly (same GCC release, so it loads): the C and C++ ones through
 # CFLAGS/CXXFLAGS_FOR_TARGET, the Fortran ones (libgfortran's, libgomp's omp_lib) through
 # FCFLAGS in the environment, which their `configure` takes (GCC has no FCFLAGS_FOR_TARGET).
+# The plugin does not see the runtime libraries' hand-written assembly (libgcc's morestack.S
+# and -mcall-ms2sysv-xlogues stubs, libitm's sjlj.S), which ticks by hand
+# (bundled/patches/gcc-14.2.0-rr-softticks-asm.patch; the plugin predefines __RR_SOFTTICKS__
+# for .S files too) and is checked in the object code after the build.
 using BinaryBuilder2
 using BinaryBuilder2: get_default_target_spec
 
@@ -25,6 +29,8 @@ cd ${WORKSPACE}/srcdir/gcc-*/
 for proj in mpfr mpc isl gmp; do
     mv ${proj}-* ${proj}
 done
+# Software ticks in the runtime libraries' x86-64 assembly (a no-op without __RR_SOFTTICKS__)
+atomic_patch -p1 ${WORKSPACE}/srcdir/patches/gcc-14.2.0-rr-softticks-asm.patch
 # Target library configure scripts must not run what they compile: it is linked against the
 # image's glibc, which the build machine does not have. Only the target libraries': GCC's
 # own configure must still see a native compiler (a "cross" one looks for target-prefixed
@@ -86,6 +92,22 @@ fi
 rm -f ${prefix}/lib/*.la
 rm -rf ${prefix}/share/man ${prefix}/share/info
 ln -sf gcc ${prefix}/bin/cc
+
+# The software ticks of the hand-written assembly, checked in the object code by OpenBLAS's
+# softticks/check.pl: every assembled member of libgcc.a, libgcc_eh.a and libitm.a, and of the
+# shared libitm's objects, ticks on every cycle and on every path from a function's entry,
+# without clobbering a live flag (GTM_longjmp's indirect jump is its longjmp out); and
+# libitm.so has the note and the initializer. It fails the build if the patch's ticks did not
+# land (a compiler that does not predefine __RR_SOFTTICKS__ for .S files, a hunk that applies
+# elsewhere after a version bump) or a new version brings assembly without them. Compiled
+# code is the plugin's (--asm-only). The self-test first: an objdump whose output the check
+# misreads cannot pass as "no findings".
+gcc_libdir=${prefix}/lib/gcc/${target}/$(echo ${WORKSPACE}/srcdir/gcc-* | sed 's/.*gcc-//')
+perl ${WORKSPACE}/srcdir/softticks/check.pl --selftest
+perl ${WORKSPACE}/srcdir/softticks/check.pl --jobs ${nproc} --asm-only --longjmp GTM_longjmp \
+    --so ${prefix}/lib/libitm.so.1.0.0 \
+    ${gcc_libdir}/libgcc.a ${gcc_libdir}/libgcc_eh.a ${prefix}/lib/libitm.a \
+    ${WORKSPACE}/srcdir/gcc_build/*/libitm/.libs/*.o
 # collect2 looks for real-ld and collect-ld next to it, then (in this build) a target-prefixed
 # name, never a plain `ld`: point real-ld at the image's /usr/bin/ld (from Binutils).
 gcc_libexecdir=${prefix}/libexec/gcc/${target}/$(echo ${WORKSPACE}/srcdir/gcc-* | sed 's/.*gcc-//')
@@ -212,6 +234,9 @@ build_tarballs(;
         # The software ticks plugin (tools/softticks).
         GitSource("https://github.com/ChronitonAI/rift.git",
                   "62a65ffdc8be28ce166bcdd6dd51db7ec32702c6"),
+        DirectorySource("./bundled"),
+        # The binary check of the software ticks, OpenBLAS's (run after the install)
+        DirectorySource(joinpath(@__DIR__, "..", "..", "O", "OpenBLAS", "softticks"); target="softticks"),
     ],
     script,
     platforms = [Platform("x86_64", "linux"; rr_softticks="1")],

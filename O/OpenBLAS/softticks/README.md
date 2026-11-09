@@ -41,11 +41,14 @@ decodes everything the kernels use (AMX, AVX-512): binutils 2.41 does, 2.35 does
 kind and one without, which must give exactly those findings, so that an objdump whose output
 the script misreads cannot pass as "no findings".
 
-Other recipes run it too (XZ, Libffi). `--allow FILE` takes known exceptions, one per line
-with its justification (`KIND[,KIND...] OBJECT-GLOB FUNCTION-GLOB[,...] # why`, matched by the
-function symbol that holds the finding); OpenBLAS needs none. Libffi's
+Other recipes run it too (XZ, Libffi, Python, GCC, GCCRuntimes-toolchain). `--allow FILE` takes
+known exceptions, one per line with its justification (`KIND[,KIND...] OBJECT-GLOB FUNCTION-GLOB[,...] # why`,
+matched by the function symbol that holds the finding); OpenBLAS needs none. Libffi's
 (`L/Libffi/bundled/softticks.allow`) has its trampolines and the indirect jumps into its
-return-value tables.
+return-value tables. `--longjmp NAME` declares a longjmp written in assembly (libitm's
+`GTM_longjmp`: a call to it does not return, its indirect jump leaves the function), and
+`--asm-only` checks only the assembled objects of an archive (GCC's runtimes: their compiled
+members are the compiler pass's, and their noreturn calls into other members are not known here).
 
 ## What is ticked (0.3.34, DYNAMIC_ARCH on x86-64)
 
