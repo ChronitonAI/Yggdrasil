@@ -39,6 +39,9 @@ if [[ "${bb_full_target}" == *rr_softticks* ]]; then
     # ygglet images install this prefix as /usr: look for terminfo there (and in the usual
     # system places) rather than only in the build prefix compiled in as the default.
     args+=(--with-terminfo-dirs=/usr/share/terminfo:/etc/terminfo:/lib/terminfo)
+    # Keep the programs' symbol tables (`install -s` strips them by default), as the libraries
+    # keep theirs: the image's binary tick check attributes what it finds to functions.
+    args+=(--disable-stripping)
 fi
 
 if [[ ${target} == *-darwin* ]]; then
