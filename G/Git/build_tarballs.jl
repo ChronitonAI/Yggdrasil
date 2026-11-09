@@ -70,11 +70,20 @@ if [[ "${target}" == *-linux-* ]]; then
     fi
 fi
 
+ICONV_FLAGS=(--with-iconv=${prefix})
+if [[ "${bb_full_target}" == *rr_softticks* ]]; then
+    # ygglet images: glibc's iconv (GNU libiconv's iconv and iconv.h would clash with glibc's),
+    # and git finds its helpers, templates and system config relative to its executable (the
+    # image has no JLL wrapper to set GIT_EXEC_PATH and the like).
+    ICONV_FLAGS=()
+    MAKE_VARIABLES+=(RUNTIME_PREFIX=YesPlease)
+fi
+
 ./configure --prefix=${prefix} --build=${MACHTYPE} --host=${target} \
     --with-curl \
     --with-expat \
     --with-openssl \
-    --with-iconv=${prefix} \
+    "${ICONV_FLAGS[@]}" \
     --with-libpcre2 \
     --with-zlib=${prefix} \
     --with-tcltk=no \
@@ -143,7 +152,8 @@ dependencies = [
     Dependency("LibCURL_jll"; compat="7.73.0,8"),
     Dependency("Expat_jll"; compat="2.6.5"),
     Dependency("OpenSSL_jll"; compat="3.0.16"),
-    Dependency("Libiconv_jll"),
+    # ygglet (rr_softticks platforms) uses glibc's iconv, see the script
+    (any(contains("rr_softticks"), ARGS) ? [] : [Dependency("Libiconv_jll")])...,
     Dependency("PCRE2_jll"; compat="10.42.0"),
     Dependency("Zlib_jll"; compat="1.2.12"),
 ]
