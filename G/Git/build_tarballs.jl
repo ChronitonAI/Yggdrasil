@@ -76,7 +76,8 @@ if [[ "${bb_full_target}" == *rr_softticks* ]]; then
     # and git finds its helpers, templates and system config relative to its executable (the
     # image has no JLL wrapper to set GIT_EXEC_PATH and the like).
     ICONV_FLAGS=()
-    MAKE_VARIABLES+=(RUNTIME_PREFIX=YesPlease)
+    MAKE_VARIABLES+=(RUNTIME_PREFIX=YesPlease gitexecdir=libexec/git-core
+                     template_dir=share/git-core/templates sysconfdir=etc)
 fi
 
 ./configure --prefix=${prefix} --build=${MACHTYPE} --host=${target} \
