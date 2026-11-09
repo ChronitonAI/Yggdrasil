@@ -1,0 +1,56 @@
+Software ticks (rr's tracee ABI version 1, https://github.com/rr-debugger/rr/pull/4104) for the
+x86-64 perf trampoline: a tick at the entry of _Py_trampoline_func_start, after the endbr64.
+The copies that perf_trampoline.c makes of the trampoline tick as well. A no-op unless the
+compiler predefines __RR_SOFTTICKS__: without it the object is byte-identical.
+
+--- a/Python/asm_trampoline.S
++++ b/Python/asm_trampoline.S
+@@ -1,5 +1,5 @@
+ #include "asm_trampoline_aarch64.h"
+-
++#include "asm_trampoline_softticks.h"
+     .text
+     .globl	_Py_trampoline_func_start
+ # The following assembly is equivalent to:
+@@ -14,7 +14,7 @@
+ #if defined(__CET__) && (__CET__ & 1)
+     endbr64
+ #endif
+-    sub    $8, %rsp
++    RR_SOFTTICK sub    $8, %rsp
+     call    *%rcx
+     add    $8, %rsp
+     ret
+--- /dev/null
++++ b/Python/asm_trampoline_softticks.h
+@@ -0,0 +1,30 @@
++#ifndef ASM_TRAMPOLINE_SOFTTICKS_H_
++#define ASM_TRAMPOLINE_SOFTTICKS_H_
++
++/*
++ * rr software ticks (rr's include/rr/softticks.h, https://github.com/rr-debugger/rr/pull/4104).
++ * A compiler with a software-ticks pass predefines __RR_SOFTTICKS__ (the ABI version, also
++ * for .S files) and puts a tick at the entry of every function it compiles; the trampoline
++ * is assembled, so it ticks itself: RR_SOFTTICK at its entry, after the endbr64. The
++ * sequence is the ABI's x86-64 tick, byte for byte. It only uses absolute addresses and
++ * rel8 jumps inside itself, so the copies that perf_trampoline.c makes of
++ * [_Py_trampoline_func_start, _Py_trampoline_func_end) tick too, wherever they land. It
++ * clobbers the arithmetic flags, which are dead at a function's entry, and ends at the
++ * local label 7731 instead of the ABI's 1. Another ABI version, or another architecture's
++ * trampoline (which has no tick), is an error. Without __RR_SOFTTICKS__, RR_SOFTTICK is
++ * empty, and it is used on the line of the trampoline's first instruction, so that the
++ * object (its line table included) is the same as without this header.
++ */
++#if defined(__RR_SOFTTICKS__)
++  #if __RR_SOFTTICKS__ != 1
++    #error "the trampoline's software tick is rr's ABI version 1; __RR_SOFTTICKS__ asks for another"
++  #endif
++  #if !defined(__x86_64__)
++    #error "only the x86-64 trampoline has a software tick"
++  #endif
++  #define RR_SOFTTICK testb $0x80, 0x70001807; jnz 7731f; decq 0x70001800; jnz 7731f; int3; 7731:
++#else
++  #define RR_SOFTTICK
++#endif
++
++#endif
