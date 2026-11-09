@@ -24,16 +24,22 @@ atomic_patch -p1 ${WORKSPACE}/srcdir/patches/cmlibuv-musl-pthread_getname_np.pat
 # tick in lzma_decode(). X/XZ ticks that loop by hand, so CMake links the image's liblzma
 # instead of its own copy, and with it the image's zlib, zstd, bzip2 and expat (the
 # dependencies below): one copy of each in the image. The other bundled libraries (curl,
-# nghttp2, libarchive, libuv, jsoncpp, librhash, cppdap) have no asm loops and stay. Elsewhere
-# the command line is unchanged.
-system_libraries=()
+# nghttp2, libarchive, libuv, jsoncpp, librhash, cppdap) have no asm loops and stay.
+# And no RUNPATH into the build's prefix: CMake's CMakeLists.txt defaults
+# CMAKE_INSTALL_RPATH_USE_LINK_PATH to ON, which records ${libdir} (the build sandbox's
+# prefix, where OpenSSL and these libraries are) as a RUNPATH of the programs, and
+# BinaryBuilder2's audit keeps it (it only rewrites RPATHs under the prefix it extracts
+# from); the audit adds the $ORIGIN-relative ones itself. Elsewhere the command line is
+# unchanged.
+softticks_flags=()
 if [[ "${bb_full_target}" == *rr_softticks* ]]; then
-    system_libraries=(
+    softticks_flags=(
         -DCMAKE_USE_SYSTEM_LIBRARY_LIBLZMA=ON
         -DCMAKE_USE_SYSTEM_LIBRARY_ZLIB=ON
         -DCMAKE_USE_SYSTEM_LIBRARY_ZSTD=ON
         -DCMAKE_USE_SYSTEM_LIBRARY_BZIP2=ON
         -DCMAKE_USE_SYSTEM_LIBRARY_EXPAT=ON
+        -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF
     )
 fi
 
@@ -42,7 +48,7 @@ cmake -B build -G Ninja \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TARGET_TOOLCHAIN} \
     -DBUILD_TESTING:BOOL=OFF \
-    "${system_libraries[@]}"
+    "${softticks_flags[@]}"
 # ninja directly rather than `cmake --build`/`cmake --install`: BinaryBuilder2's cmake wrapper
 # prepends -DCMAKE_TOOLCHAIN_FILE=... to every cmake command line, which breaks those modes.
 ninja -C build -j${nproc}
@@ -51,20 +57,36 @@ ninja -C build install
 install_license LICENSE.rst
 
 # rr_softticks: the programs link the image's libraries and carry no copy of them, so none
-# of the bundled liblzma's asm. (The binary tick check of the programs is the image's: the
-# OpenBLAS recipe's check.pl does not know the noreturn functions of compiled C++, and would
-# see thousands of cycles through calls to them.)
+# of the bundled liblzma's asm, and have no RPATH to an absolute directory. (The binary tick
+# check of the programs is the image's: the OpenBLAS recipe's check.pl does not know the
+# noreturn functions of compiled C++, and would see thousands of cycles through calls to
+# them.) Each tool's output is captured first, so a tool that fails stops the script (set -e)
+# and one that prints nothing fails a check instead of passing it.
 if [[ "${bb_full_target}" == *rr_softticks* ]]; then
     for exe in ${bindir}/cmake ${bindir}/ctest ${bindir}/cpack; do
+        dynamic=$(${READELF} -d ${exe})
+        needed=$(grep '(NEEDED)' <<< "${dynamic}" || true)
+        rpaths=$(grep -E '\((RPATH|RUNPATH)\)' <<< "${dynamic}" || true)
+        echo "${exe}:"
+        echo "${needed}"
+        echo "${rpaths}"
         for lib in liblzma.so.5 libz.so.1 libzstd.so.1 libbz2.so.1.0 libexpat.so.1; do
-            if ! ${READELF} -d ${exe} | grep '(NEEDED)' | grep -F "[${lib}]" > /dev/null; then
+            if ! grep -qF "[${lib}]" <<< "${needed}"; then
                 echo "${exe} does not link ${lib}" >&2
                 exit 1
             fi
         done
+        if grep -qE '(\[|:)/' <<< "${rpaths}"; then
+            echo "${exe} has an RPATH to an absolute directory (above)" >&2
+            exit 1
+        fi
         # (global symbols only: libarchive's xz filter has static functions named lzma_*)
-        if ${NM} --defined-only --extern-only ${exe} | awk '{ print $NF }' |
-                grep -E '^(lzma_|cm_zlib_|deflate$|inflate$|ZSTD_|ZDICT_|BZ2_|XML_)'; then
+        symbols=$(${NM} --defined-only --extern-only ${exe} | awk '{ print $NF }')
+        if ! grep -qx main <<< "${symbols}"; then
+            echo "${NM} lists no main in ${exe}" >&2
+            exit 1
+        fi
+        if grep -E '^(lzma_|cm_zlib_|deflate$|inflate$|ZSTD_|ZDICT_|BZ2_|XML_)' <<< "${symbols}"; then
             echo "${exe} defines symbols of a bundled liblzma, zlib, zstd, bzip2 or expat (above)" >&2
             exit 1
         fi
