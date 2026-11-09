@@ -1,0 +1,3092 @@
+rr software ticks (rr's tracee ABI version 1) on the loops of glibc's x86-64 assembly.
+
+Every cycle in the code of every function assembled from x86-64 assembly source (the string,
+memory and wide-character functions of every ISA level, __mpn_*, the spin lock, libm's x87
+functions, libmvec's vector math: in libc.so.6, ld.so, libm.so.6, libmvec.so.1 and the
+static archives) gets an RR_SOFTTICK (glibc-101) on each way round.  A tick goes on a line of
+its own before the first instruction of a source line (after the labels that start it), where
+no arithmetic flag is live in any object that assembles that line, since it clobbers them;
+where possible in a block that every cycle of the loop passes, so that one tick per iteration
+cuts them all.  A tick in a shared template (memmove-vec-unaligned-erms.S, strcmp-avx2.S,
+...) is in every variant that includes it.
+
+The places were chosen from the machine code of a build with glibc-101 (its control-flow
+graph, the jump tables, the flags' liveness, and gas's DWARF line table back to the source);
+softticks/ticks-2.41.json lists each tick, where it is assembled, and which loop it cuts.
+Without __RR_SOFTTICKS__ RR_SOFTTICK is empty: the object code is the same.
+
+diff --git a/sysdeps/x86_64/addmul_1.S b/sysdeps/x86_64/addmul_1.S
+--- a/sysdeps/x86_64/addmul_1.S
++++ b/sysdeps/x86_64/addmul_1.S
+@@ -72,7 +72,9 @@ L(odd):	add	$1, %rbx
+ 	jmp	L(e)
+ 
+ 	.p2align 4
+-L(top):	mul	%rcx
++L(top):
++	RR_SOFTTICK
++	mul	%rcx
+ 	ADDSUB	%r8, %r10
+ 	lea	(%rax), %r8
+ 	mov	(up,%rbx,8), %rax
+diff --git a/sysdeps/x86_64/fpu/e_fmodl.S b/sysdeps/x86_64/fpu/e_fmodl.S
+--- a/sysdeps/x86_64/fpu/e_fmodl.S
++++ b/sysdeps/x86_64/fpu/e_fmodl.S
+@@ -11,7 +11,9 @@ RCSID("$NetBSD: $")
+ ENTRY(__ieee754_fmodl)
+ 	fldt	24(%rsp)
+ 	fldt	8(%rsp)
+-1:	fprem
++1:
++	RR_SOFTTICK
++	fprem
+ 	fstsw	%ax
+ 	and	$04,%ah
+ 	jnz	1b
+diff --git a/sysdeps/x86_64/fpu/e_powl.S b/sysdeps/x86_64/fpu/e_powl.S
+--- a/sysdeps/x86_64/fpu/e_powl.S
++++ b/sysdeps/x86_64/fpu/e_powl.S
+@@ -163,7 +163,9 @@ ENTRY(__ieee754_powl)
+ 	jnz	6f
+ 	fabs
+ 
+-6:	shrdl	$1, %edx, %eax
++6:
++	RR_SOFTTICK
++	shrdl	$1, %edx, %eax
+ 	jnc	5f
+ 	fxch
+ 	fabs
+diff --git a/sysdeps/x86_64/fpu/e_remainderl.S b/sysdeps/x86_64/fpu/e_remainderl.S
+--- a/sysdeps/x86_64/fpu/e_remainderl.S
++++ b/sysdeps/x86_64/fpu/e_remainderl.S
+@@ -9,7 +9,9 @@
+ ENTRY(__ieee754_remainderl)
+ 	fldt	24(%rsp)
+ 	fldt	8(%rsp)
+-1:	fprem1
++1:
++	RR_SOFTTICK
++	fprem1
+ 	fstsw	%ax
+ 	testl	$0x400,%eax
+ 	jnz	1b
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_acos2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_acos2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_acos2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_acos2_core_sse4.S
+@@ -189,6 +189,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_acos4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_acos4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_acos4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_acos4_core_avx2.S
+@@ -168,6 +168,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_acos8_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_acos8_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_acos8_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_acos8_core_avx512.S
+@@ -190,6 +190,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_acosh2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_acosh2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_acosh2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_acosh2_core_sse4.S
+@@ -285,6 +285,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_acosh4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_acosh4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_acosh4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_acosh4_core_avx2.S
+@@ -330,6 +330,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_acosh8_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_acosh8_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_acosh8_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_acosh8_core_avx512.S
+@@ -275,6 +275,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_asin2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_asin2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_asin2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_asin2_core_sse4.S
+@@ -178,6 +178,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_asin4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_asin4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_asin4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_asin4_core_avx2.S
+@@ -160,6 +160,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_asin8_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_asin8_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_asin8_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_asin8_core_avx512.S
+@@ -182,6 +182,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_asinh2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_asinh2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_asinh2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_asinh2_core_sse4.S
+@@ -438,6 +438,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_asinh4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_asinh4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_asinh4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_asinh4_core_avx2.S
+@@ -387,6 +387,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_asinh8_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_asinh8_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_asinh8_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_asinh8_core_avx512.S
+@@ -301,6 +301,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_atan22_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_atan22_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_atan22_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_atan22_core_sse4.S
+@@ -283,6 +283,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_atan24_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_atan24_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_atan24_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_atan24_core_avx2.S
+@@ -235,6 +235,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_atan28_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_atan28_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_atan28_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_atan28_core_avx512.S
+@@ -253,6 +253,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_atanh2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_atanh2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_atanh2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_atanh2_core_sse4.S
+@@ -331,6 +331,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_atanh4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_atanh4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_atanh4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_atanh4_core_avx2.S
+@@ -297,6 +297,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_atanh8_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_atanh8_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_atanh8_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_atanh8_core_avx512.S
+@@ -232,6 +232,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_cbrt2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_cbrt2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_cbrt2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_cbrt2_core_sse4.S
+@@ -208,6 +208,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_cbrt4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_cbrt4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_cbrt4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_cbrt4_core_avx2.S
+@@ -220,6 +220,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_cos2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_cos2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_cos2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_cos2_core_sse4.S
+@@ -164,6 +164,7 @@ ENTRY (_ZGVbN2v_cos_sse4)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_cos4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_cos4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_cos4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_cos4_core_avx2.S
+@@ -146,6 +146,7 @@ ENTRY (_ZGVdN4v_cos_avx2)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_cos8_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_cos8_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_cos8_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_cos8_core_avx512.S
+@@ -166,6 +166,7 @@ ENTRY (_ZGVeN8v_cos_knl)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+@@ -376,6 +377,7 @@ ENTRY (_ZGVeN8v_cos_skx)
+         cfi_remember_state
+ 
+ .LBL_2_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_2_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_cosh2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_cosh2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_cosh2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_cosh2_core_sse4.S
+@@ -227,6 +227,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_cosh4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_cosh4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_cosh4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_cosh4_core_avx2.S
+@@ -240,6 +240,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_cosh8_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_cosh8_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_cosh8_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_cosh8_core_avx512.S
+@@ -189,6 +189,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_erfc2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_erfc2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_erfc2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_erfc2_core_sse4.S
+@@ -218,6 +218,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_erfc4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_erfc4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_erfc4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_erfc4_core_avx2.S
+@@ -216,6 +216,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_erfc8_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_erfc8_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_erfc8_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_erfc8_core_avx512.S
+@@ -219,6 +219,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_exp102_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_exp102_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_exp102_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_exp102_core_sse4.S
+@@ -181,6 +181,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_exp104_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_exp104_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_exp104_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_exp104_core_avx2.S
+@@ -189,6 +189,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_exp108_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_exp108_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_exp108_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_exp108_core_avx512.S
+@@ -149,6 +149,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_exp22_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_exp22_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_exp22_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_exp22_core_sse4.S
+@@ -168,6 +168,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_exp24_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_exp24_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_exp24_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_exp24_core_avx2.S
+@@ -181,6 +181,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_exp28_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_exp28_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_exp28_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_exp28_core_avx512.S
+@@ -185,6 +185,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_exp2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_exp2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_exp2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_exp2_core_sse4.S
+@@ -166,6 +166,7 @@ ENTRY (_ZGVbN2v_exp_sse4)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_exp4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_exp4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_exp4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_exp4_core_avx2.S
+@@ -151,6 +151,7 @@ ENTRY (_ZGVdN4v_exp_avx2)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_exp8_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_exp8_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_exp8_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_exp8_core_avx512.S
+@@ -168,6 +168,7 @@ ENTRY (_ZGVeN8v_exp_knl)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+@@ -377,6 +378,7 @@ ENTRY (_ZGVeN8v_exp_skx)
+         cfi_remember_state
+ 
+ .LBL_2_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_2_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_expm12_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_expm12_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_expm12_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_expm12_core_sse4.S
+@@ -170,6 +170,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_expm14_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_expm14_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_expm14_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_expm14_core_avx2.S
+@@ -163,6 +163,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_expm18_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_expm18_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_expm18_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_expm18_core_avx512.S
+@@ -169,6 +169,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_hypot2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_hypot2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_hypot2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_hypot2_core_sse4.S
+@@ -182,6 +182,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_hypot4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_hypot4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_hypot4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_hypot4_core_avx2.S
+@@ -189,6 +189,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_hypot8_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_hypot8_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_hypot8_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_hypot8_core_avx512.S
+@@ -152,6 +152,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_log102_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_log102_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_log102_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_log102_core_sse4.S
+@@ -191,6 +191,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_log104_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_log104_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_log104_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_log104_core_avx2.S
+@@ -183,6 +183,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_log108_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_log108_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_log108_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_log108_core_avx512.S
+@@ -165,6 +165,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_log1p2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_log1p2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_log1p2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_log1p2_core_sse4.S
+@@ -229,6 +229,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_log1p4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_log1p4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_log1p4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_log1p4_core_avx2.S
+@@ -221,6 +221,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_log1p8_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_log1p8_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_log1p8_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_log1p8_core_avx512.S
+@@ -183,6 +183,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_log22_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_log22_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_log22_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_log22_core_sse4.S
+@@ -189,6 +189,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_log24_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_log24_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_log24_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_log24_core_avx2.S
+@@ -181,6 +181,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_log28_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_log28_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_log28_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_log28_core_avx512.S
+@@ -163,6 +163,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_log2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_log2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_log2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_log2_core_sse4.S
+@@ -170,6 +170,7 @@ ENTRY (_ZGVbN2v_log_sse4)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_log4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_log4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_log4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_log4_core_avx2.S
+@@ -149,6 +149,7 @@ ENTRY (_ZGVdN4v_log_avx2)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_log8_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_log8_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_log8_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_log8_core_avx512.S
+@@ -167,6 +167,7 @@ ENTRY (_ZGVeN8v_log_knl)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+@@ -381,6 +382,7 @@ ENTRY (_ZGVeN8v_log_skx)
+         cfi_remember_state
+ 
+ .LBL_2_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_2_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_pow2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_pow2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_pow2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_pow2_core_sse4.S
+@@ -379,6 +379,7 @@ ENTRY (_ZGVbN2vv_pow_sse4)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_pow4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_pow4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_pow4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_pow4_core_avx2.S
+@@ -329,6 +329,7 @@ ENTRY (_ZGVdN4vv_pow_avx2)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_pow8_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_pow8_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_pow8_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_pow8_core_avx512.S
+@@ -336,6 +336,7 @@ ENTRY (_ZGVeN8vv_pow_knl)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+@@ -658,6 +659,7 @@ ENTRY (_ZGVeN8vv_pow_skx)
+         cfi_remember_state
+ 
+ .LBL_2_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_2_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_sin2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_sin2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_sin2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_sin2_core_sse4.S
+@@ -170,6 +170,7 @@ ENTRY (_ZGVbN2v_sin_sse4)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_sin4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_sin4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_sin4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_sin4_core_avx2.S
+@@ -149,6 +149,7 @@ ENTRY (_ZGVdN4v_sin_avx2)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_sin8_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_sin8_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_sin8_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_sin8_core_avx512.S
+@@ -167,6 +167,7 @@ ENTRY (_ZGVeN8v_sin_knl)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+@@ -378,6 +379,7 @@ ENTRY (_ZGVeN8v_sin_skx)
+         cfi_remember_state
+ 
+ .LBL_2_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_2_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_sincos2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_sincos2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_sincos2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_sincos2_core_sse4.S
+@@ -248,6 +248,7 @@ ENTRY (_ZGVbN2vl8l8_sincos_sse4)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r13d, %r14d
+         jc        .LBL_1_13
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_sincos4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_sincos4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_sincos4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_sincos4_core_avx2.S
+@@ -207,6 +207,7 @@ ENTRY (_ZGVdN4vl8l8_sincos_avx2)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r13d, %r14d
+         jc        .LBL_1_13
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_sincos8_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_sincos8_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_sincos8_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_sincos8_core_avx512.S
+@@ -220,6 +220,7 @@ ENTRY (_ZGVeN8vl8l8_sincos_knl)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r13d, %r14d
+         jc        .LBL_1_13
+ 
+@@ -494,6 +495,7 @@ ENTRY (_ZGVeN8vl8l8_sincos_skx)
+         cfi_remember_state
+ 
+ .LBL_2_6:
++	RR_SOFTTICK
+         btl       %r13d, %r14d
+         jc        .LBL_2_13
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_sinh2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_sinh2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_sinh2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_sinh2_core_sse4.S
+@@ -227,6 +227,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_sinh4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_sinh4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_sinh4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_sinh4_core_avx2.S
+@@ -238,6 +238,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_sinh8_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_sinh8_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_sinh8_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_sinh8_core_avx512.S
+@@ -229,6 +229,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_tan2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_tan2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_tan2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_tan2_core_sse4.S
+@@ -231,6 +231,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_tan4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_tan4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_tan4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_tan4_core_avx2.S
+@@ -225,6 +225,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_tan8_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_tan8_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_tan8_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_tan8_core_avx512.S
+@@ -197,6 +197,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_tanh2_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_d_tanh2_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_tanh2_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_tanh2_core_sse4.S
+@@ -226,6 +226,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_tanh4_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_d_tanh4_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_tanh4_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_tanh4_core_avx2.S
+@@ -230,6 +230,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_d_tanh8_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_d_tanh8_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_d_tanh8_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_d_tanh8_core_avx512.S
+@@ -244,6 +244,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_acosf16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_acosf16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_acosf16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_acosf16_core_avx512.S
+@@ -163,6 +163,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_acosf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_acosf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_acosf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_acosf4_core_sse4.S
+@@ -165,6 +165,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_acosf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_acosf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_acosf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_acosf8_core_avx2.S
+@@ -156,6 +156,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_acoshf16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_acoshf16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_acoshf16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_acoshf16_core_avx512.S
+@@ -248,6 +248,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_acoshf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_acoshf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_acoshf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_acoshf4_core_sse4.S
+@@ -266,6 +266,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_acoshf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_acoshf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_acoshf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_acoshf8_core_avx2.S
+@@ -244,6 +244,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_asinf16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_asinf16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_asinf16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_asinf16_core_avx512.S
+@@ -156,6 +156,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_asinf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_asinf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_asinf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_asinf4_core_sse4.S
+@@ -151,6 +151,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_asinf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_asinf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_asinf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_asinf8_core_avx2.S
+@@ -145,6 +145,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_asinhf16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_asinhf16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_asinhf16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_asinhf16_core_avx512.S
+@@ -271,6 +271,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_asinhf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_asinhf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_asinhf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_asinhf4_core_sse4.S
+@@ -370,6 +370,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_asinhf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_asinhf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_asinhf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_asinhf8_core_avx2.S
+@@ -319,6 +319,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_atan2f16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_atan2f16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_atan2f16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_atan2f16_core_avx512.S
+@@ -215,6 +215,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_atan2f4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_atan2f4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_atan2f4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_atan2f4_core_sse4.S
+@@ -211,6 +211,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_atan2f8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_atan2f8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_atan2f8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_atan2f8_core_avx2.S
+@@ -196,6 +196,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_atanhf16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_atanhf16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_atanhf16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_atanhf16_core_avx512.S
+@@ -218,6 +218,7 @@ L(SPECIAL_VALUES_LOOP):
+ 	   to rsp is always [0, 56] so we can restore rsp by realigning to 64.
+ 	   Essentially the tradeoff is 1 extra save/restore vs 2 extra instructions
+ 	   in the loop. Realigning also costs more code size.  */
++	RR_SOFTTICK
+ 	xorl	%ebp, %ebp
+ 	tzcntl	%ebx, %ebp
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_atanhf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_atanhf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_atanhf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_atanhf4_core_sse4.S
+@@ -239,6 +239,7 @@ L(SPECIAL_VALUES_LOOP):
+ 	   to rsp is always [0, 12] so we can restore rsp by realigning to 64.
+ 	   Essentially the tradeoff is 1 extra save/restore vs 2 extra instructions
+ 	   in the loop.  */
++	RR_SOFTTICK
+ 	xorl	%ebp, %ebp
+ 	bsfl	%ebx, %ebp
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_atanhf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_atanhf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_atanhf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_atanhf8_core_avx2.S
+@@ -227,6 +227,7 @@ L(SPECIAL_VALUES_LOOP):
+ 	   to rsp is always [0, 28] so we can restore rsp by realigning to 64.
+ 	   Essentially the tradeoff is 1 extra save/restore vs 2 extra instructions
+ 	   in the loop. Realigning also costs more code size.  */
++	RR_SOFTTICK
+ 	xorl	%ebp, %ebp
+ 	tzcntl	%ebx, %ebp
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_cbrtf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_cbrtf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_cbrtf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_cbrtf4_core_sse4.S
+@@ -240,6 +240,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_cbrtf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_cbrtf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_cbrtf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_cbrtf8_core_avx2.S
+@@ -262,6 +262,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_cosf16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_cosf16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_cosf16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_cosf16_core_avx512.S
+@@ -171,6 +171,7 @@ ENTRY (_ZGVeN16v_cosf_knl)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+@@ -383,6 +384,7 @@ ENTRY (_ZGVeN16v_cosf_skx)
+         cfi_remember_state
+ 
+ .LBL_2_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_2_12
+ .LBL_2_7:
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_cosf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_cosf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_cosf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_cosf4_core_sse4.S
+@@ -171,6 +171,7 @@ ENTRY (_ZGVbN4v_cosf_sse4)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_cosf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_cosf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_cosf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_cosf8_core_avx2.S
+@@ -156,6 +156,7 @@ ENTRY (_ZGVdN8v_cosf_avx2)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_coshf16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_coshf16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_coshf16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_coshf16_core_avx512.S
+@@ -186,6 +186,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_coshf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_coshf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_coshf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_coshf4_core_sse4.S
+@@ -200,6 +200,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_coshf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_coshf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_coshf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_coshf8_core_avx2.S
+@@ -200,6 +200,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_erfcf16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_erfcf16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_erfcf16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_erfcf16_core_avx512.S
+@@ -176,6 +176,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_erfcf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_erfcf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_erfcf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_erfcf4_core_sse4.S
+@@ -186,6 +186,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_erfcf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_erfcf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_erfcf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_erfcf8_core_avx2.S
+@@ -201,6 +201,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_exp10f16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_exp10f16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_exp10f16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_exp10f16_core_avx512.S
+@@ -144,6 +144,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_exp10f4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_exp10f4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_exp10f4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_exp10f4_core_sse4.S
+@@ -179,6 +179,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_exp10f8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_exp10f8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_exp10f8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_exp10f8_core_avx2.S
+@@ -196,6 +196,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_exp2f16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_exp2f16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_exp2f16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_exp2f16_core_avx512.S
+@@ -167,6 +167,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_exp2f4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_exp2f4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_exp2f4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_exp2f4_core_sse4.S
+@@ -142,6 +142,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_exp2f8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_exp2f8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_exp2f8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_exp2f8_core_avx2.S
+@@ -146,6 +146,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_expf16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_expf16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_expf16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_expf16_core_avx512.S
+@@ -158,6 +158,7 @@ ENTRY (_ZGVeN16v_expf_knl)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+@@ -361,6 +362,7 @@ ENTRY (_ZGVeN16v_expf_skx)
+ 
+ 
+ .LBL_2_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_2_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_expf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_expf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_expf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_expf4_core_sse4.S
+@@ -155,6 +155,7 @@ ENTRY (_ZGVbN4v_expf_sse4)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_expf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_expf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_expf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_expf8_core_avx2.S
+@@ -143,6 +143,7 @@ ENTRY(_ZGVdN8v_expf_avx2)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_expm1f16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_expm1f16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_expm1f16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_expm1f16_core_avx512.S
+@@ -152,6 +152,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_expm1f4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_expm1f4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_expm1f4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_expm1f4_core_sse4.S
+@@ -171,6 +171,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_expm1f8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_expm1f8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_expm1f8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_expm1f8_core_avx2.S
+@@ -170,6 +170,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_hypotf16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_hypotf16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_hypotf16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_hypotf16_core_avx512.S
+@@ -160,6 +160,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_hypotf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_hypotf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_hypotf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_hypotf4_core_sse4.S
+@@ -183,6 +183,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_hypotf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_hypotf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_hypotf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_hypotf8_core_avx2.S
+@@ -184,6 +184,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_log10f16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_log10f16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_log10f16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_log10f16_core_avx512.S
+@@ -119,6 +119,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_log10f4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_log10f4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_log10f4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_log10f4_core_sse4.S
+@@ -135,6 +135,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_log10f8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_log10f8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_log10f8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_log10f8_core_avx2.S
+@@ -132,6 +132,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_log1pf16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_log1pf16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_log1pf16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_log1pf16_core_avx512.S
+@@ -165,6 +165,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_log1pf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_log1pf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_log1pf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_log1pf4_core_sse4.S
+@@ -149,6 +149,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_log1pf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_log1pf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_log1pf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_log1pf8_core_avx2.S
+@@ -148,6 +148,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_log2f16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_log2f16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_log2f16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_log2f16_core_avx512.S
+@@ -116,6 +116,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_log2f4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_log2f4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_log2f4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_log2f4_core_sse4.S
+@@ -127,6 +127,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_log2f8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_log2f8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_log2f8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_log2f8_core_avx2.S
+@@ -127,6 +127,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_logf16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_logf16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_logf16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_logf16_core_avx512.S
+@@ -143,6 +143,7 @@ ENTRY (_ZGVeN16v_logf_knl)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+@@ -330,6 +331,7 @@ ENTRY (_ZGVeN16v_logf_skx)
+         cfi_remember_state
+ 
+ .LBL_2_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_2_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_logf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_logf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_logf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_logf4_core_sse4.S
+@@ -137,6 +137,7 @@ ENTRY (_ZGVbN4v_logf_sse4)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_logf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_logf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_logf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_logf8_core_avx2.S
+@@ -125,6 +125,7 @@ ENTRY(_ZGVdN8v_logf_avx2)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_powf16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_powf16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_powf16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_powf16_core_avx512.S
+@@ -289,6 +289,7 @@ ENTRY (_ZGVeN16vv_powf_knl)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+@@ -570,6 +571,7 @@ ENTRY (_ZGVeN16vv_powf_skx)
+         cfi_remember_state
+ 
+ .LBL_2_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_2_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_powf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_powf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_powf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_powf4_core_sse4.S
+@@ -323,6 +323,7 @@ ENTRY (_ZGVbN4vv_powf_sse4)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_powf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_powf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_powf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_powf8_core_avx2.S
+@@ -283,6 +283,7 @@ ENTRY(_ZGVdN8vv_powf_avx2)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_sincosf16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_sincosf16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_sincosf16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_sincosf16_core_avx512.S
+@@ -186,6 +186,7 @@ ENTRY (_ZGVeN16vl4l4_sincosf_knl)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r13d, %r14d
+         jc        .LBL_1_13
+ 
+@@ -408,6 +409,7 @@ ENTRY (_ZGVeN16vl4l4_sincosf_skx)
+         cfi_remember_state
+ 
+ .LBL_2_6:
++	RR_SOFTTICK
+         btl       %r13d, %r14d
+         jc        .LBL_2_13
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_sincosf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_sincosf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_sincosf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_sincosf4_core_sse4.S
+@@ -203,6 +203,7 @@ ENTRY (_ZGVbN4vl4l4_sincosf_sse4)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r13d, %r14d
+         jc        .LBL_1_13
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_sincosf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_sincosf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_sincosf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_sincosf8_core_avx2.S
+@@ -172,6 +172,7 @@ ENTRY (_ZGVdN8vl4l4_sincosf_avx2)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r13d, %r14d
+         jc        .LBL_1_13
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_sinf16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_sinf16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_sinf16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_sinf16_core_avx512.S
+@@ -175,6 +175,7 @@ ENTRY(_ZGVeN16v_sinf_knl)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+@@ -394,6 +395,7 @@ ENTRY (_ZGVeN16v_sinf_skx)
+         cfi_remember_state
+ 
+ .LBL_2_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_2_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_sinf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_sinf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_sinf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_sinf4_core_sse4.S
+@@ -167,6 +167,7 @@ ENTRY(_ZGVbN4v_sinf_sse4)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_sinf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_sinf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_sinf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_sinf8_core_avx2.S
+@@ -160,6 +160,7 @@ ENTRY(_ZGVdN8v_sinf_avx2)
+         cfi_remember_state
+ 
+ .LBL_1_6:
++	RR_SOFTTICK
+         btl       %r14d, %r13d
+         jc        .LBL_1_12
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_sinhf16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_sinhf16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_sinhf16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_sinhf16_core_avx512.S
+@@ -210,6 +210,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_sinhf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_sinhf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_sinhf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_sinhf4_core_sse4.S
+@@ -203,6 +203,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_sinhf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_sinhf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_sinhf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_sinhf8_core_avx2.S
+@@ -201,6 +201,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_tanf16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_tanf16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_tanf16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_tanf16_core_avx512.S
+@@ -193,6 +193,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_tanf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_tanf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_tanf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_tanf4_core_sse4.S
+@@ -225,6 +225,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%r12d, %r13d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_tanf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_tanf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_tanf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_tanf8_core_avx2.S
+@@ -223,6 +223,7 @@ L(SPECIAL_VALUES_BRANCH):
+ 	 */
+ 
+ L(RANGEMASK_CHECK):
++	RR_SOFTTICK
+ 	btl	%ebx, %r12d
+ 
+ 	/* Call scalar math function */
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_tanhf16_core_avx512.S b/sysdeps/x86_64/fpu/multiarch/svml_s_tanhf16_core_avx512.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_tanhf16_core_avx512.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_tanhf16_core_avx512.S
+@@ -217,6 +217,7 @@ L(SPECIAL_VALUES_LOOP):
+ 	   to rsp is always [0, 56] so we can restore rsp by realigning to 64.
+ 	   Essentially the tradeoff is 1 extra save/restore vs 2 extra instructions
+ 	   in the loop. Realigning also costs more code size.  */
++	RR_SOFTTICK
+ 	xorl	%ebp, %ebp
+ 	tzcntl	%ebx, %ebp
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_tanhf4_core_sse4.S b/sysdeps/x86_64/fpu/multiarch/svml_s_tanhf4_core_sse4.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_tanhf4_core_sse4.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_tanhf4_core_sse4.S
+@@ -214,6 +214,7 @@ L(SPECIAL_VALUES_LOOP):
+ 	   to rsp is always [0, 12] so we can restore rsp by realigning to 64.
+ 	   Essentially the tradeoff is 1 extra save/restore vs 2 extra instructions
+ 	   in the loop.  */
++	RR_SOFTTICK
+ 	xorl	%ebp, %ebp
+ 	bsfl	%ebx, %ebp
+ 
+diff --git a/sysdeps/x86_64/fpu/multiarch/svml_s_tanhf8_core_avx2.S b/sysdeps/x86_64/fpu/multiarch/svml_s_tanhf8_core_avx2.S
+--- a/sysdeps/x86_64/fpu/multiarch/svml_s_tanhf8_core_avx2.S
++++ b/sysdeps/x86_64/fpu/multiarch/svml_s_tanhf8_core_avx2.S
+@@ -236,6 +236,7 @@ L(SPECIAL_VALUES_LOOP):
+ 	   to rsp is always [0, 28] so we can restore rsp by realigning to 64.
+ 	   Essentially the tradeoff is 1 extra save/restore vs 2 extra instructions
+ 	   in the loop. Realigning also costs more code size.  */
++	RR_SOFTTICK
+ 	xorl	%ebp, %ebp
+ 	tzcntl	%ebx, %ebp
+ 
+diff --git a/sysdeps/x86_64/lshift.S b/sysdeps/x86_64/lshift.S
+--- a/sysdeps/x86_64/lshift.S
++++ b/sysdeps/x86_64/lshift.S
+@@ -89,7 +89,9 @@ L(b11):	/* n = 3, 7, 11, ... */
+ 	jb	L(end)
+ 
+ 	.p2align 4
+-L(top):	shld	%cl, %r8, %r11
++L(top):
++	RR_SOFTTICK
++	shld	%cl, %r8, %r11
+ 	mov	(up), %r10
+ 	mov	%r11, (rp)
+ L(10):	shld	%cl, %r9, %r8
+diff --git a/sysdeps/x86_64/mul_1.S b/sysdeps/x86_64/mul_1.S
+--- a/sysdeps/x86_64/mul_1.S
++++ b/sysdeps/x86_64/mul_1.S
+@@ -87,7 +87,9 @@ L(b2):	lea	-16(up,n,8), up
+ 	jmp	L(L2)
+ 
+ 	.p2align 4
+-L(top): mov	%r10, (rp,n,8)
++L(top):
++	RR_SOFTTICK
++	mov	%r10, (rp,n,8)
+ 	add	%rax, %r9
+ 	mov	(up,n,8), %rax
+ 	adc	%rdx, %r8
+diff --git a/sysdeps/x86_64/multiarch/memchr-avx2.S b/sysdeps/x86_64/multiarch/memchr-avx2.S
+--- a/sysdeps/x86_64/multiarch/memchr-avx2.S
++++ b/sysdeps/x86_64/multiarch/memchr-avx2.S
+@@ -221,6 +221,7 @@ L(cross_page_continue):
+ 	/* Compare 4 * VEC at a time forward.  */
+ 	.p2align 4
+ L(loop_4x_vec):
++	RR_SOFTTICK
+ 	VPCMPEQ	1(%rdi), %ymm0, %ymm1
+ 	VPCMPEQ	(VEC_SIZE + 1)(%rdi), %ymm0, %ymm2
+ 	VPCMPEQ	(VEC_SIZE * 2 + 1)(%rdi), %ymm0, %ymm3
+diff --git a/sysdeps/x86_64/multiarch/memchr-evex-base.S b/sysdeps/x86_64/multiarch/memchr-evex-base.S
+--- a/sysdeps/x86_64/multiarch/memchr-evex-base.S
++++ b/sysdeps/x86_64/multiarch/memchr-evex-base.S
+@@ -226,6 +226,7 @@ L(align_more):
+ 	.p2align 5,,11
+ L(loop):
+ 
++	RR_SOFTTICK
+ 	VPCMPNE	(VEC_SIZE * 4)(%rdi), %VMM(1), %k1
+ 	vpxorq  (VEC_SIZE * 5)(%rdi), %VMM(1), %VMM(2)
+ 	vpxorq  (VEC_SIZE * 6)(%rdi), %VMM(1), %VMM(3)
+diff --git a/sysdeps/x86_64/multiarch/memchr-evex.S b/sysdeps/x86_64/multiarch/memchr-evex.S
+--- a/sysdeps/x86_64/multiarch/memchr-evex.S
++++ b/sysdeps/x86_64/multiarch/memchr-evex.S
+@@ -451,8 +451,10 @@ L(loop_4x_vec):
+ 	/* vptern can only accept masks for epi32/epi64 so can only save
+ 	   instruction using not equals mask on vptern with wmemchr.
+ 	 */
++	RR_SOFTTICK
+ 	VPCMP	$4, (VEC_SIZE * 0)(%rdi), %VMATCH, %k1
+ #  else
++	RR_SOFTTICK
+ 	VPCMPEQ	(VEC_SIZE * 0)(%rdi), %VMATCH, %k1
+ #  endif
+ 	/* Compare 3x with vpcmpeq and or them all together with vptern.
+@@ -476,6 +478,7 @@ L(loop_4x_vec):
+ 
+ # else
+ 	/* Loop version that uses EVEX encoding.  */
++	RR_SOFTTICK
+ 	VPCMP	$4, (VEC_SIZE * 0)(%rdi), %VMATCH, %k1
+ 	vpxorq	(VEC_SIZE * 1)(%rdi), %VMATCH, %VMM(2)
+ 	vpxorq	(VEC_SIZE * 2)(%rdi), %VMATCH, %VMM(3)
+diff --git a/sysdeps/x86_64/multiarch/memchr-sse2.S b/sysdeps/x86_64/multiarch/memchr-sse2.S
+--- a/sysdeps/x86_64/multiarch/memchr-sse2.S
++++ b/sysdeps/x86_64/multiarch/memchr-sse2.S
+@@ -192,6 +192,7 @@ L(loop_prolog):
+ 
+ 	.p2align 4
+ L(align64_loop):
++	RR_SOFTTICK
+ 	sub	$(CHAR_PER_VEC * 4), %rdx
+ 	jbe	L(exit_loop)
+ 	movdqa	(%rdi), %xmm0
+diff --git a/sysdeps/x86_64/multiarch/memcmp-avx2-movbe.S b/sysdeps/x86_64/multiarch/memcmp-avx2-movbe.S
+--- a/sysdeps/x86_64/multiarch/memcmp-avx2-movbe.S
++++ b/sysdeps/x86_64/multiarch/memcmp-avx2-movbe.S
+@@ -249,6 +249,7 @@ L(more_8x_vec):
+ L(loop_4x_vec):
+ 	/* rsi has s2 - s1 so get correct address by adding s1 (in rdi).
+ 	 */
++	RR_SOFTTICK
+ 	vmovdqu	(%rsi, %rdi), %ymm1
+ 	VPCMPEQ	(%rdi), %ymm1, %ymm1
+ 
+diff --git a/sysdeps/x86_64/multiarch/memcmp-evex-movbe.S b/sysdeps/x86_64/multiarch/memcmp-evex-movbe.S
+--- a/sysdeps/x86_64/multiarch/memcmp-evex-movbe.S
++++ b/sysdeps/x86_64/multiarch/memcmp-evex-movbe.S
+@@ -335,6 +335,7 @@ L(more_8x_vec):
+ 
+ 	.p2align 4
+ L(loop_4x_vec):
++	RR_SOFTTICK
+ 	VMOVU	(%rsi, %rdi), %VMM(1)
+ 	vpxorq	(%rdi), %VMM(1), %VMM(1)
+ 	VMOVU	VEC_SIZE(%rsi, %rdi), %VMM(2)
+diff --git a/sysdeps/x86_64/multiarch/memcmp-sse2.S b/sysdeps/x86_64/multiarch/memcmp-sse2.S
+--- a/sysdeps/x86_64/multiarch/memcmp-sse2.S
++++ b/sysdeps/x86_64/multiarch/memcmp-sse2.S
+@@ -482,6 +482,7 @@ L(more_8x_vec):
+ 	addq	%rdi, %rsi
+ 	.p2align 4
+ L(loop_4x):
++	RR_SOFTTICK
+ 	movups	(VEC_SIZE * 2)(%rsi), %xmm0
+ 	movups	(VEC_SIZE * 3)(%rsi), %xmm1
+ 
+diff --git a/sysdeps/x86_64/multiarch/memcmpeq-avx2.S b/sysdeps/x86_64/multiarch/memcmpeq-avx2.S
+--- a/sysdeps/x86_64/multiarch/memcmpeq-avx2.S
++++ b/sysdeps/x86_64/multiarch/memcmpeq-avx2.S
+@@ -207,6 +207,7 @@ L(more_8x_vec):
+ 	.p2align 4
+ L(loop_4x_vec):
+ 	/* rsi has s2 - s1 so get correct address by adding s1 (in rdi).  */
++	RR_SOFTTICK
+ 	vmovdqu	(%rsi, %rdi), %ymm1
+ 	VPCMPEQ	(%rdi), %ymm1, %ymm1
+ 
+diff --git a/sysdeps/x86_64/multiarch/memcmpeq-evex.S b/sysdeps/x86_64/multiarch/memcmpeq-evex.S
+--- a/sysdeps/x86_64/multiarch/memcmpeq-evex.S
++++ b/sysdeps/x86_64/multiarch/memcmpeq-evex.S
+@@ -220,6 +220,7 @@ L(more_8x_vec):
+ 	.p2align 5,, 12
+ 	.p2align 4,, 8
+ L(loop_4x_vec):
++	RR_SOFTTICK
+ 	VMOVU	(%rsi, %rdi), %VMM(1)
+ 	vpxorq	(%rdi), %VMM(1), %VMM(1)
+ 
+diff --git a/sysdeps/x86_64/multiarch/memmove-avx512-no-vzeroupper.S b/sysdeps/x86_64/multiarch/memmove-avx512-no-vzeroupper.S
+--- a/sysdeps/x86_64/multiarch/memmove-avx512-no-vzeroupper.S
++++ b/sysdeps/x86_64/multiarch/memmove-avx512-no-vzeroupper.S
+@@ -238,6 +238,7 @@ L(1024bytesormore):
+ 
+ /* Loop with unaligned memory access.  */
+ L(gobble_512bytes_loop):
++	RR_SOFTTICK
+ 	vmovups	(%rsi), %zmm0
+ 	vmovups 0x40(%rsi), %zmm1
+ 	vmovups 0x80(%rsi), %zmm2
+@@ -297,6 +298,7 @@ L(1024bytesormore_bkw):
+ 
+ /* Backward loop with unaligned memory access.  */
+ L(gobble_512bytes_loop_bkw):
++	RR_SOFTTICK
+ 	vmovups -0x40(%rcx), %zmm0
+ 	vmovups -0x80(%rcx), %zmm1
+ 	vmovups -0xC0(%rcx), %zmm2
+@@ -350,6 +352,7 @@ L(preloop_large):
+ 	sub	%r8, %rsi
+ 	add	%r8, %rdx
+ L(gobble_256bytes_nt_loop):
++	RR_SOFTTICK
+ 	prefetcht1 0x200(%rsi)
+ 	prefetcht1 0x240(%rsi)
+ 	prefetcht1 0x280(%rsi)
+@@ -388,6 +391,7 @@ L(preloop_large_bkw):
+ 	sub	%r8, %rdx
+ 	add	%r9, %r8
+ L(gobble_256bytes_nt_loop_bkw):
++	RR_SOFTTICK
+ 	prefetcht1 -0x400(%rcx)
+ 	prefetcht1 -0x3C0(%rcx)
+ 	prefetcht1 -0x380(%rcx)
+diff --git a/sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S b/sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S
+--- a/sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S
++++ b/sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S
+@@ -480,6 +480,7 @@ L(more_8x_vec_forward):
+ 	.p2align 4,, 11
+ L(loop_4x_vec_forward):
+ 	/* Copy 4 * VEC a time forward.  */
++	RR_SOFTTICK
+ 	VMOVU	(%rsi), %VMM(1)
+ 	VMOVU	VEC_SIZE(%rsi), %VMM(2)
+ 	VMOVU	(VEC_SIZE * 2)(%rsi), %VMM(3)
+@@ -532,6 +533,7 @@ L(more_8x_vec_backward):
+ 	.p2align 4,, 11
+ L(loop_4x_vec_backward):
+ 	/* Copy 4 * VEC a time backward.  */
++	RR_SOFTTICK
+ 	VMOVU	(VEC_SIZE * 3)(%rsi), %VMM(1)
+ 	VMOVU	(VEC_SIZE * 2)(%rsi), %VMM(2)
+ 	VMOVU	(VEC_SIZE * 1)(%rsi), %VMM(3)
+@@ -752,6 +754,7 @@ L(loop_large_memcpy_2x_outer):
+ 	/* ecx stores inner loop counter.  */
+ 	movl	$(PAGE_SIZE / LARGE_LOAD_SIZE), %ecx
+ L(loop_large_memcpy_2x_inner):
++	RR_SOFTTICK
+ 	PREFETCH_ONE_SET(1, (%rsi), PREFETCHED_LOAD_SIZE)
+ 	PREFETCH_ONE_SET(1, (%rsi), PREFETCHED_LOAD_SIZE * 2)
+ 	PREFETCH_ONE_SET(1, (%rsi), PAGE_SIZE + PREFETCHED_LOAD_SIZE)
+@@ -779,6 +782,7 @@ L(loop_large_memcpy_2x_inner):
+ 	/* Handle the last 2 * PAGE_SIZE bytes.  */
+ L(loop_large_memcpy_2x_tail):
+ 	/* Copy 4 * VEC a time forward with non-temporal stores.  */
++	RR_SOFTTICK
+ 	PREFETCH_ONE_SET (1, (%rsi), PREFETCHED_LOAD_SIZE)
+ 	PREFETCH_ONE_SET (1, (%rdi), PREFETCHED_LOAD_SIZE)
+ 	VMOVU	(%rsi), %VMM(0)
+@@ -822,6 +826,7 @@ L(loop_large_memcpy_4x_outer):
+ L(loop_large_memcpy_4x_inner):
+ 	/* Only one prefetch set per page as doing 4 pages give more
+ 	   time for prefetcher to keep up.  */
++	RR_SOFTTICK
+ 	PREFETCH_ONE_SET(1, (%rsi), PREFETCHED_LOAD_SIZE)
+ 	PREFETCH_ONE_SET(1, (%rsi), PAGE_SIZE + PREFETCHED_LOAD_SIZE)
+ 	PREFETCH_ONE_SET(1, (%rsi), PAGE_SIZE * 2 + PREFETCHED_LOAD_SIZE)
+@@ -852,6 +857,7 @@ L(loop_large_memcpy_4x_inner):
+ 	/* Handle the last 4  * PAGE_SIZE bytes.  */
+ L(loop_large_memcpy_4x_tail):
+ 	/* Copy 4 * VEC a time forward with non-temporal stores.  */
++	RR_SOFTTICK
+ 	PREFETCH_ONE_SET (1, (%rsi), PREFETCHED_LOAD_SIZE)
+ 	PREFETCH_ONE_SET (1, (%rdi), PREFETCHED_LOAD_SIZE)
+ 	VMOVU	(%rsi), %VMM(0)
+diff --git a/sysdeps/x86_64/multiarch/memrchr-avx2.S b/sysdeps/x86_64/multiarch/memrchr-avx2.S
+--- a/sysdeps/x86_64/multiarch/memrchr-avx2.S
++++ b/sysdeps/x86_64/multiarch/memrchr-avx2.S
+@@ -248,6 +248,7 @@ L(more_4x_vec):
+ 	.p2align 4
+ L(loop_4x_vec):
+ 	/* Need this comparison next no matter what.  */
++	RR_SOFTTICK
+ 	vpcmpeqb -(VEC_SIZE * 1 - 1)(%rax), %ymm0, %ymm1
+ 	vpcmpeqb -(VEC_SIZE * 2 - 1)(%rax), %ymm0, %ymm2
+ 	vpcmpeqb -(VEC_SIZE * 3 - 1)(%rax), %ymm0, %ymm3
+diff --git a/sysdeps/x86_64/multiarch/memrchr-evex.S b/sysdeps/x86_64/multiarch/memrchr-evex.S
+--- a/sysdeps/x86_64/multiarch/memrchr-evex.S
++++ b/sysdeps/x86_64/multiarch/memrchr-evex.S
+@@ -169,6 +169,7 @@ L(loop_last_4x_vec):
+ 	/* Compute remaining length.  */
+ 	subl	%edi, %eax
+ L(last_4x_vec):
++	RR_SOFTTICK
+ 	cmpl	$(VEC_SIZE * 2), %eax
+ 	jle	L(last_2x_vec)
+ # if VEC_SIZE == 32
+@@ -318,6 +319,7 @@ L(loop_4x_vec):
+ 	   memchr it may not be worth the extra code size, but if the
+ 	   need arises it an easy ~15% perf improvement to the loop.  */
+ 
++	RR_SOFTTICK
+ 	cmpq	%rdx, %rax
+ 	je	L(loop_last_4x_vec)
+ 	/* Store 1 were not-equals and 0 where equals in k1 (used to
+diff --git a/sysdeps/x86_64/multiarch/memrchr-sse2.S b/sysdeps/x86_64/multiarch/memrchr-sse2.S
+--- a/sysdeps/x86_64/multiarch/memrchr-sse2.S
++++ b/sysdeps/x86_64/multiarch/memrchr-sse2.S
+@@ -266,6 +266,7 @@ L(more_4x_vec):
+ 
+ 	.p2align 4,, 11
+ L(loop_4x_vec):
++	RR_SOFTTICK
+ 	movaps	(VEC_SIZE * -1)(%rcx), %xmm1
+ 	movaps	(VEC_SIZE * -2)(%rcx), %xmm2
+ 	movaps	(VEC_SIZE * -3)(%rcx), %xmm3
+diff --git a/sysdeps/x86_64/multiarch/memset-avx512-no-vzeroupper.S b/sysdeps/x86_64/multiarch/memset-avx512-no-vzeroupper.S
+--- a/sysdeps/x86_64/multiarch/memset-avx512-no-vzeroupper.S
++++ b/sysdeps/x86_64/multiarch/memset-avx512-no-vzeroupper.S
+@@ -153,6 +153,7 @@ L(1024bytesormore):
+ 	add	$0x40, %rdi
+ 
+ L(gobble_256bytes_loop):
++	RR_SOFTTICK
+ 	vmovaps	%zmm2, (%rdi)
+ 	vmovaps	%zmm2, 0x40(%rdi)
+ 	vmovaps	%zmm2, 0x80(%rdi)
+@@ -175,6 +176,7 @@ L(preloop_large):
+ 	sub	$0x200, %rsi
+ 
+ L(gobble_512bytes_nt_loop):
++	RR_SOFTTICK
+ 	vmovntdq %zmm2, (%rdi)
+ 	vmovntdq %zmm2, 0x40(%rdi)
+ 	vmovntdq %zmm2, 0x80(%rdi)
+diff --git a/sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S b/sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S
+--- a/sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S
++++ b/sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S
+@@ -288,6 +288,7 @@ L(more_2x_vec):
+ 	andq	$(VEC_SIZE * -1), %LOOP_REG
+ 	.p2align 4
+ L(loop):
++	RR_SOFTTICK
+ 	VMOVA	%VMM(0), LOOP_4X_OFFSET(%LOOP_REG)
+ 	VMOVA	%VMM(0), (VEC_SIZE + LOOP_4X_OFFSET)(%LOOP_REG)
+ 	VMOVA	%VMM(0), (VEC_SIZE * 2 + LOOP_4X_OFFSET)(%LOOP_REG)
+@@ -441,6 +442,7 @@ L(nt_memset):
+ 	incq	%rdi
+ 	.p2align 4,, 7
+ L(nt_loop):
++	RR_SOFTTICK
+ 	VMOVNT	%VMM(0), (VEC_SIZE * 0)(%rdi)
+ 	VMOVNT	%VMM(0), (VEC_SIZE * 1)(%rdi)
+ 	VMOVNT	%VMM(0), (VEC_SIZE * 2)(%rdi)
+diff --git a/sysdeps/x86_64/multiarch/rawmemchr-evex.S b/sysdeps/x86_64/multiarch/rawmemchr-evex.S
+--- a/sysdeps/x86_64/multiarch/rawmemchr-evex.S
++++ b/sysdeps/x86_64/multiarch/rawmemchr-evex.S
+@@ -194,6 +194,7 @@ L(loop_4x_vec):
+ # if USE_TERN_IN_LOOP
+ 	/* Since vptern can only take 3x vectors fastest to do 1 vec
+ 	   separately with EVEX vpcmp.  */
++	RR_SOFTTICK
+ 	VPCMPEQ	(VEC_SIZE * 4)(%rdi), %VMATCH, %k1
+ 	/* Compare 3x with vpcmpeq and or them all together with vptern.
+ 	 */
+@@ -216,6 +217,7 @@ L(loop_4x_vec):
+ 	add	%rax, %rcx
+ # else
+ 	/* Loop version that uses EVEX encoding.  */
++	RR_SOFTTICK
+ 	VPCMP	$4, (VEC_SIZE * 4)(%rdi), %VMATCH, %k1
+ 	vpxorq	(VEC_SIZE * 5)(%rdi), %VMATCH, %VMM(2)
+ 	vpxorq	(VEC_SIZE * 6)(%rdi), %VMATCH, %VMM(3)
+diff --git a/sysdeps/x86_64/multiarch/rawmemchr-sse2.S b/sysdeps/x86_64/multiarch/rawmemchr-sse2.S
+--- a/sysdeps/x86_64/multiarch/rawmemchr-sse2.S
++++ b/sysdeps/x86_64/multiarch/rawmemchr-sse2.S
+@@ -136,6 +136,7 @@ L(loop_prolog):
+ 
+ 	.p2align 4
+ L(align64_loop):
++	RR_SOFTTICK
+ 	movdqa	(%rdi), %xmm0
+ 	movdqa	16(%rdi), %xmm2
+ 	movdqa	32(%rdi), %xmm3
+diff --git a/sysdeps/x86_64/multiarch/strcat-sse2-unaligned.S b/sysdeps/x86_64/multiarch/strcat-sse2-unaligned.S
+--- a/sysdeps/x86_64/multiarch/strcat-sse2-unaligned.S
++++ b/sysdeps/x86_64/multiarch/strcat-sse2-unaligned.S
+@@ -197,6 +197,7 @@ L(align16_start):
+ 	add	$16, %rax
+ 	.p2align 4
+ 	L(align64_loop):
++	RR_SOFTTICK
+ 	movaps	(%rax),	%xmm4
+ 	pminub	16(%rax),	%xmm4
+ 	movaps	32(%rax),	%xmm5
+diff --git a/sysdeps/x86_64/multiarch/strcat-sse2.S b/sysdeps/x86_64/multiarch/strcat-sse2.S
+--- a/sysdeps/x86_64/multiarch/strcat-sse2.S
++++ b/sysdeps/x86_64/multiarch/strcat-sse2.S
+@@ -42,7 +42,9 @@ ENTRY (STRCAT)
+ 	neg %ecx		/* We need to align to 8 bytes.  */
+ 	addl $8,%ecx
+ 	/* Search the first bytes directly.  */
+-0:	cmpb $0x0,(%rax)	/* is byte NUL? */
++0:
++	RR_SOFTTICK
++	cmpb $0x0,(%rax)	/* is byte NUL? */
+ 	je 2f			/* yes => start copy */
+ 	incq %rax		/* increment pointer */
+ 	decl %ecx
+@@ -54,6 +56,7 @@ ENTRY (STRCAT)
+ 	.p2align 4
+ 4:
+ 	/* First unroll.  */
++	RR_SOFTTICK
+ 	movq (%rax), %rcx	/* get double word (= 8 bytes) in question */
+ 	addq $8,%rax		/* adjust pointer for next word */
+ 	movq %r8, %rdx		/* magic value */
+@@ -154,6 +157,7 @@ ENTRY (STRCAT)
+ 	addl	$8, %ecx
+ 	/* Align the source pointer.  */
+ 21:
++	RR_SOFTTICK
+ 	movb	(%rsi), %al	/* Fetch a byte */
+ 	testb	%al, %al	/* Is it NUL? */
+ 	movb	%al, (%rdx)	/* Store it */
+@@ -169,6 +173,7 @@ ENTRY (STRCAT)
+ 	.p2align 4
+ 22:
+ 	/* 1st unroll.  */
++	RR_SOFTTICK
+ 	movq	(%rsi), %rax	/* Read double word (8 bytes).  */
+ 	addq	$8, %rsi	/* Adjust pointer for next word.  */
+ 	movq	%rax, %r9	/* Save a copy for NUL finding.  */
+@@ -245,6 +250,7 @@ ENTRY (STRCAT)
+ 	   The loop is unrolled twice.  */
+ 	.p2align 4
+ 23:
++	RR_SOFTTICK
+ 	movb	%al, (%rdx)	/* 1st byte.  */
+ 	testb	%al, %al	/* Is it NUL.  */
+ 	jz	24f		/* yes, finish.  */
+diff --git a/sysdeps/x86_64/multiarch/strcat-strlen-avx2.h.S b/sysdeps/x86_64/multiarch/strcat-strlen-avx2.h.S
+--- a/sysdeps/x86_64/multiarch/strcat-strlen-avx2.h.S
++++ b/sysdeps/x86_64/multiarch/strcat-strlen-avx2.h.S
+@@ -56,6 +56,7 @@
+ 	orq	$(VEC_SIZE * 4 - 1), %rdi
+ 	.p2align 4,, 8
+ L(loop_2x_vec):
++	RR_SOFTTICK
+ 	VMOVA	(VEC_SIZE * 0 + 1)(%rdi), %VMM(0)
+ 	VPMIN	(VEC_SIZE * 1 + 1)(%rdi), %VMM(0), %VMM(1)
+ 	VMOVA	(VEC_SIZE * 2 + 1)(%rdi), %VMM(2)
+diff --git a/sysdeps/x86_64/multiarch/strcat-strlen-evex.h.S b/sysdeps/x86_64/multiarch/strcat-strlen-evex.h.S
+--- a/sysdeps/x86_64/multiarch/strcat-strlen-evex.h.S
++++ b/sysdeps/x86_64/multiarch/strcat-strlen-evex.h.S
+@@ -65,6 +65,7 @@
+ 	andq	$-(VEC_SIZE * 4), %rdi
+ 	.p2align 4,, 8
+ L(loop_2x_vec):
++	RR_SOFTTICK
+ 	VMOVA	(VEC_SIZE * 4)(%rdi), %VMM(0)
+ 	VPMIN	(VEC_SIZE * 5)(%rdi), %VMM(0), %VMM(1)
+ 	VMOVA	(VEC_SIZE * 6)(%rdi), %VMM(2)
+diff --git a/sysdeps/x86_64/multiarch/strchr-avx2.S b/sysdeps/x86_64/multiarch/strchr-avx2.S
+--- a/sysdeps/x86_64/multiarch/strchr-avx2.S
++++ b/sysdeps/x86_64/multiarch/strchr-avx2.S
+@@ -195,6 +195,7 @@ L(cross_page_continue):
+ 	.p2align 4
+ L(loop_4x_vec):
+ 	/* Compare 4 * VEC at a time forward.  */
++	RR_SOFTTICK
+ 	vmovdqa	1(%rdi), %ymm6
+ 	vmovdqa	(VEC_SIZE + 1)(%rdi), %ymm7
+ 
+diff --git a/sysdeps/x86_64/multiarch/strchr-evex-base.S b/sysdeps/x86_64/multiarch/strchr-evex-base.S
+--- a/sysdeps/x86_64/multiarch/strchr-evex-base.S
++++ b/sysdeps/x86_64/multiarch/strchr-evex-base.S
+@@ -206,6 +206,7 @@ L(align_more):
+ L(loop):
+ 	/* VPMINU and VPCMP combination provide better performance as
+ 	   compared to alternative combinations.  */
++	RR_SOFTTICK
+ 	VMOVA	(VEC_SIZE * 4)(%rdi), %VMM(1)
+ 	VMOVA	(VEC_SIZE * 5)(%rdi), %VMM(2)
+ 	VMOVA	(VEC_SIZE * 6)(%rdi), %VMM(3)
+diff --git a/sysdeps/x86_64/multiarch/strchr-evex.S b/sysdeps/x86_64/multiarch/strchr-evex.S
+--- a/sysdeps/x86_64/multiarch/strchr-evex.S
++++ b/sysdeps/x86_64/multiarch/strchr-evex.S
+@@ -282,6 +282,7 @@ L(cross_page_continue):
+ L(loop_4x_vec):
+ 	/* Check 4x VEC at a time. No penalty for imm32 offset with evex
+ 	   encoding (if offset % VEC_SIZE == 0).  */
++	RR_SOFTTICK
+ 	VMOVA	(VEC_SIZE * 4)(%LOOP_REG), %VMM(1)
+ 	VMOVA	(VEC_SIZE * 5)(%LOOP_REG), %VMM(2)
+ 	VMOVA	(VEC_SIZE * 6)(%LOOP_REG), %VMM(3)
+diff --git a/sysdeps/x86_64/multiarch/strchr-sse2-no-bsf.S b/sysdeps/x86_64/multiarch/strchr-sse2-no-bsf.S
+--- a/sysdeps/x86_64/multiarch/strchr-sse2-no-bsf.S
++++ b/sysdeps/x86_64/multiarch/strchr-sse2-no-bsf.S
+@@ -52,6 +52,7 @@ ENTRY (__strchr_sse2_no_bsf)
+ 	jnz	L(return_null)
+ 
+ L(loop):
++	RR_SOFTTICK
+ 	movdqa	(%rdi), %xmm0
+ 	leaq	16(%rdi), %rdi
+ 	movdqa	%xmm0, %xmm3
+diff --git a/sysdeps/x86_64/multiarch/strchr-sse2.S b/sysdeps/x86_64/multiarch/strchr-sse2.S
+--- a/sysdeps/x86_64/multiarch/strchr-sse2.S
++++ b/sysdeps/x86_64/multiarch/strchr-sse2.S
+@@ -92,6 +92,7 @@ L(loop_start):
+ 	andq	$-64, %rdi
+ 	.p2align 3
+ L(loop64):
++	RR_SOFTTICK
+ 	addq	$64, %rdi
+ 	movdqa	(%rdi), %xmm5
+ 	movdqa	16(%rdi), %xmm2
+diff --git a/sysdeps/x86_64/multiarch/strcmp-avx2.S b/sysdeps/x86_64/multiarch/strcmp-avx2.S
+--- a/sysdeps/x86_64/multiarch/strcmp-avx2.S
++++ b/sysdeps/x86_64/multiarch/strcmp-avx2.S
+@@ -536,6 +536,7 @@ L(loop):
+ 	jbe	L(ret_zero)
+ # endif
+ 
++	RR_SOFTTICK
+ 	subq	$-(VEC_SIZE * 4), %rdi
+ 	subq	$-(VEC_SIZE * 4), %rsi
+ 
+@@ -991,6 +992,7 @@ L(page_cross):
+ 	.p2align 4,, 10
+ L(page_cross_loop):
+ 
++	RR_SOFTTICK
+ 	VMOVU	(%rdi, %OFFSET_REG64), %ymm0
+ 	CMP_R1_S2_ymm (%ymm0, (%rsi, %OFFSET_REG64), %ymm2, %ymm1)
+ 	VPCMPEQ	%ymm0, %ymmZERO, %ymm2
+@@ -1285,6 +1287,7 @@ L(less_4_till_page):
+ 	subq	%rdi, %rsi
+ 	/* Extremely slow byte comparison loop.  */
+ L(less_4_loop):
++	RR_SOFTTICK
+ 	movzbl	(%rdi), %eax
+ 	movzbl	(%rsi, %rdi), %ecx
+ 	TOLOWER_gpr (%rax, %eax)
+diff --git a/sysdeps/x86_64/multiarch/strcmp-evex.S b/sysdeps/x86_64/multiarch/strcmp-evex.S
+--- a/sysdeps/x86_64/multiarch/strcmp-evex.S
++++ b/sysdeps/x86_64/multiarch/strcmp-evex.S
+@@ -606,6 +606,7 @@ L(loop):
+ 	jbe	L(ret_zero)
+ # endif
+ 
++	RR_SOFTTICK
+ 	subq	$-(VEC_SIZE * 4), %rdi
+ 	subq	$-(VEC_SIZE * 4), %rsi
+ 
+@@ -1190,6 +1191,7 @@ L(page_cross):
+ 	   loadable memory until within 1x VEC of page cross.  */
+ 	.p2align 4,, 8
+ L(page_cross_loop):
++	RR_SOFTTICK
+ 	VMOVU	(%rdi, %OFFSET_REG64, SIZE_OF_CHAR), %VMM(0)
+ 	VPTESTM	%VMM(0), %VMM(0), %k2
+ 	CMP_R1_S2_VMM (%VMM(0), (%rsi, %OFFSET_REG64, SIZE_OF_CHAR), %VMM(1), %k1){%k2}
+@@ -1569,6 +1571,7 @@ L(less_4_till_page):
+ 	subq	%rdi, %rsi
+ 	/* Extremely slow byte comparison loop.  */
+ L(less_4_loop):
++	RR_SOFTTICK
+ 	movzbl	(%rdi), %eax
+ 	movzbl	(%rsi, %rdi), %ecx
+ 	TOLOWER_gpr (%rax, %eax)
+diff --git a/sysdeps/x86_64/multiarch/strcmp-sse2-unaligned.S b/sysdeps/x86_64/multiarch/strcmp-sse2-unaligned.S
+--- a/sysdeps/x86_64/multiarch/strcmp-sse2-unaligned.S
++++ b/sysdeps/x86_64/multiarch/strcmp-sse2-unaligned.S
+@@ -97,6 +97,7 @@ L(main_loop_header):
+ 
+ 	.p2align 4
+ L(loop):
++	RR_SOFTTICK
+ 	addq	$64, %rax
+ 	addq	$64, %rdx
+ L(loop_start):
+@@ -203,6 +204,7 @@ L(loop_cross_page):
+ 
+ 	.p2align 4
+ L(cross_page_loop):
++	RR_SOFTTICK
+ 	cmpb	%cl, %al
+ 	jne	L(different)
+ 	addq	$1, %rdx
+diff --git a/sysdeps/x86_64/multiarch/strcmp-sse2.S b/sysdeps/x86_64/multiarch/strcmp-sse2.S
+--- a/sysdeps/x86_64/multiarch/strcmp-sse2.S
++++ b/sysdeps/x86_64/multiarch/strcmp-sse2.S
+@@ -257,6 +257,7 @@ LABEL(ashr_0):
+ 	 */
+ 	.p2align 4
+ LABEL(loop_ashr_0):
++	RR_SOFTTICK
+ 	movdqa	(%rsi, %rcx), %xmm1
+ 	movdqa	(%rdi, %rcx), %xmm2
+ 	TOLOWER (%xmm1, %xmm2)
+@@ -331,6 +332,7 @@ LABEL(loop_ashr_1):
+ 	jg	LABEL(nibble_ashr_1)	/* cross page boundary */
+ 
+ LABEL(gobble_ashr_1):
++	RR_SOFTTICK
+ 	movdqa	(%rsi, %rcx), %xmm1
+ 	movdqa	(%rdi, %rcx), %xmm2
+ 	movdqa	%xmm2, %xmm4		 /* store for next cycle */
+@@ -455,6 +457,7 @@ LABEL(loop_ashr_2):
+ 	jg	LABEL(nibble_ashr_2)
+ 
+ LABEL(gobble_ashr_2):
++	RR_SOFTTICK
+ 	movdqa	(%rsi, %rcx), %xmm1
+ 	movdqa	(%rdi, %rcx), %xmm2
+ 	movdqa	%xmm2, %xmm4
+@@ -574,6 +577,7 @@ LABEL(loop_ashr_3):
+ 	jg	LABEL(nibble_ashr_3)
+ 
+ LABEL(gobble_ashr_3):
++	RR_SOFTTICK
+ 	movdqa	(%rsi, %rcx), %xmm1
+ 	movdqa	(%rdi, %rcx), %xmm2
+ 	movdqa	%xmm2, %xmm4
+@@ -693,6 +697,7 @@ LABEL(loop_ashr_4):
+ 	jg	LABEL(nibble_ashr_4)
+ 
+ LABEL(gobble_ashr_4):
++	RR_SOFTTICK
+ 	movdqa	(%rsi, %rcx), %xmm1
+ 	movdqa	(%rdi, %rcx), %xmm2
+ 	movdqa	%xmm2, %xmm4
+@@ -812,6 +817,7 @@ LABEL(loop_ashr_5):
+ 	jg	LABEL(nibble_ashr_5)
+ 
+ LABEL(gobble_ashr_5):
++	RR_SOFTTICK
+ 	movdqa	(%rsi, %rcx), %xmm1
+ 	movdqa	(%rdi, %rcx), %xmm2
+ 	movdqa	%xmm2, %xmm4
+@@ -931,6 +937,7 @@ LABEL(loop_ashr_6):
+ 	jg	LABEL(nibble_ashr_6)
+ 
+ LABEL(gobble_ashr_6):
++	RR_SOFTTICK
+ 	movdqa	(%rsi, %rcx), %xmm1
+ 	movdqa	(%rdi, %rcx), %xmm2
+ 	movdqa	%xmm2, %xmm4
+@@ -1050,6 +1057,7 @@ LABEL(loop_ashr_7):
+ 	jg	LABEL(nibble_ashr_7)
+ 
+ LABEL(gobble_ashr_7):
++	RR_SOFTTICK
+ 	movdqa	(%rsi, %rcx), %xmm1
+ 	movdqa	(%rdi, %rcx), %xmm2
+ 	movdqa	%xmm2, %xmm4
+@@ -1169,6 +1177,7 @@ LABEL(loop_ashr_8):
+ 	jg	LABEL(nibble_ashr_8)
+ 
+ LABEL(gobble_ashr_8):
++	RR_SOFTTICK
+ 	movdqa	(%rsi, %rcx), %xmm1
+ 	movdqa	(%rdi, %rcx), %xmm2
+ 	movdqa	%xmm2, %xmm4
+@@ -1288,6 +1297,7 @@ LABEL(loop_ashr_9):
+ 	jg	LABEL(nibble_ashr_9)
+ 
+ LABEL(gobble_ashr_9):
++	RR_SOFTTICK
+ 	movdqa	(%rsi, %rcx), %xmm1
+ 	movdqa	(%rdi, %rcx), %xmm2
+ 	movdqa	%xmm2, %xmm4
+@@ -1407,6 +1417,7 @@ LABEL(loop_ashr_10):
+ 	jg	LABEL(nibble_ashr_10)
+ 
+ LABEL(gobble_ashr_10):
++	RR_SOFTTICK
+ 	movdqa	(%rsi, %rcx), %xmm1
+ 	movdqa	(%rdi, %rcx), %xmm2
+ 	movdqa	%xmm2, %xmm4
+@@ -1526,6 +1537,7 @@ LABEL(loop_ashr_11):
+ 	jg	LABEL(nibble_ashr_11)
+ 
+ LABEL(gobble_ashr_11):
++	RR_SOFTTICK
+ 	movdqa	(%rsi, %rcx), %xmm1
+ 	movdqa	(%rdi, %rcx), %xmm2
+ 	movdqa	%xmm2, %xmm4
+@@ -1645,6 +1657,7 @@ LABEL(loop_ashr_12):
+ 	jg	LABEL(nibble_ashr_12)
+ 
+ LABEL(gobble_ashr_12):
++	RR_SOFTTICK
+ 	movdqa	(%rsi, %rcx), %xmm1
+ 	movdqa	(%rdi, %rcx), %xmm2
+ 	movdqa	%xmm2, %xmm4
+@@ -1764,6 +1777,7 @@ LABEL(loop_ashr_13):
+ 	jg	LABEL(nibble_ashr_13)
+ 
+ LABEL(gobble_ashr_13):
++	RR_SOFTTICK
+ 	movdqa	(%rsi, %rcx), %xmm1
+ 	movdqa	(%rdi, %rcx), %xmm2
+ 	movdqa	%xmm2, %xmm4
+@@ -1883,6 +1897,7 @@ LABEL(loop_ashr_14):
+ 	jg	LABEL(nibble_ashr_14)
+ 
+ LABEL(gobble_ashr_14):
++	RR_SOFTTICK
+ 	movdqa	(%rsi, %rcx), %xmm1
+ 	movdqa	(%rdi, %rcx), %xmm2
+ 	movdqa	%xmm2, %xmm4
+@@ -2004,6 +2019,7 @@ LABEL(loop_ashr_15):
+ 	jg	LABEL(nibble_ashr_15)
+ 
+ LABEL(gobble_ashr_15):
++	RR_SOFTTICK
+ 	movdqa	(%rsi, %rcx), %xmm1
+ 	movdqa	(%rdi, %rcx), %xmm2
+ 	movdqa	%xmm2, %xmm4
+diff --git a/sysdeps/x86_64/multiarch/strcmp-sse4_2.S b/sysdeps/x86_64/multiarch/strcmp-sse4_2.S
+--- a/sysdeps/x86_64/multiarch/strcmp-sse4_2.S
++++ b/sysdeps/x86_64/multiarch/strcmp-sse4_2.S
+@@ -273,6 +273,7 @@ LABEL(ashr_0):
+ 	mov	%rcx, %rdx	/* only for offset of sse4 instruction loop*/
+ 	.p2align 4
+ LABEL(ashr_0_use):
++	RR_SOFTTICK
+ 	movdqa	(%rdi,%rdx), %xmm0
+ # if !defined USE_AS_STRCASECMP_L && !defined USE_AS_STRNCASECMP_L
+ 	pcmpistri      $0x1a,(%rsi,%rdx), %xmm0
+@@ -362,6 +363,7 @@ LABEL(loop_ashr_1_use):
+ 	jg	LABEL(nibble_ashr_1_use)
+ 
+ LABEL(nibble_ashr_1_restart_use):
++	RR_SOFTTICK
+ 	movdqa	(%rdi, %rdx), %xmm0
+ 	palignr $1, -16(%rdi, %rdx), %xmm0
+ # if !defined USE_AS_STRCASECMP_L && !defined USE_AS_STRNCASECMP_L
+@@ -450,6 +452,7 @@ LABEL(loop_ashr_2_use):
+ 	jg	LABEL(nibble_ashr_2_use)
+ 
+ LABEL(nibble_ashr_2_restart_use):
++	RR_SOFTTICK
+ 	movdqa	(%rdi, %rdx), %xmm0
+ 	palignr $2, -16(%rdi, %rdx), %xmm0
+ # if !defined USE_AS_STRCASECMP_L && !defined USE_AS_STRNCASECMP_L
+@@ -538,6 +541,7 @@ LABEL(loop_ashr_3_use):
+ 	jg	LABEL(nibble_ashr_3_use)
+ 
+ LABEL(nibble_ashr_3_restart_use):
++	RR_SOFTTICK
+ 	movdqa	(%rdi, %rdx), %xmm0
+ 	palignr $3, -16(%rdi, %rdx), %xmm0
+ # if !defined USE_AS_STRCASECMP_L && !defined USE_AS_STRNCASECMP_L
+@@ -627,6 +631,7 @@ LABEL(loop_ashr_4_use):
+ 	jg	LABEL(nibble_ashr_4_use)
+ 
+ LABEL(nibble_ashr_4_restart_use):
++	RR_SOFTTICK
+ 	movdqa	(%rdi, %rdx), %xmm0
+ 	palignr $4, -16(%rdi, %rdx), %xmm0
+ # if !defined USE_AS_STRCASECMP_L && !defined USE_AS_STRNCASECMP_L
+@@ -716,6 +721,7 @@ LABEL(loop_ashr_5_use):
+ 	jg	LABEL(nibble_ashr_5_use)
+ 
+ LABEL(nibble_ashr_5_restart_use):
++	RR_SOFTTICK
+ 	movdqa	(%rdi, %rdx), %xmm0
+ 	palignr $5, -16(%rdi, %rdx), %xmm0
+ # if !defined USE_AS_STRCASECMP_L && !defined USE_AS_STRNCASECMP_L
+@@ -806,6 +812,7 @@ LABEL(loop_ashr_6_use):
+ 	jg	LABEL(nibble_ashr_6_use)
+ 
+ LABEL(nibble_ashr_6_restart_use):
++	RR_SOFTTICK
+ 	movdqa	(%rdi, %rdx), %xmm0
+ 	palignr $6, -16(%rdi, %rdx), %xmm0
+ # if !defined USE_AS_STRCASECMP_L && !defined USE_AS_STRNCASECMP_L
+@@ -895,6 +902,7 @@ LABEL(loop_ashr_7_use):
+ 	jg	LABEL(nibble_ashr_7_use)
+ 
+ LABEL(nibble_ashr_7_restart_use):
++	RR_SOFTTICK
+ 	movdqa	(%rdi, %rdx), %xmm0
+ 	palignr $7, -16(%rdi, %rdx), %xmm0
+ # if !defined USE_AS_STRCASECMP_L && !defined USE_AS_STRNCASECMP_L
+@@ -984,6 +992,7 @@ LABEL(loop_ashr_8_use):
+ 	jg	LABEL(nibble_ashr_8_use)
+ 
+ LABEL(nibble_ashr_8_restart_use):
++	RR_SOFTTICK
+ 	movdqa	(%rdi, %rdx), %xmm0
+ 	palignr $8, -16(%rdi, %rdx), %xmm0
+ # if !defined USE_AS_STRCASECMP_L && !defined USE_AS_STRNCASECMP_L
+@@ -1073,6 +1082,7 @@ LABEL(loop_ashr_9_use):
+ 	jg	LABEL(nibble_ashr_9_use)
+ 
+ LABEL(nibble_ashr_9_restart_use):
++	RR_SOFTTICK
+ 	movdqa	(%rdi, %rdx), %xmm0
+ 
+ 	palignr $9, -16(%rdi, %rdx), %xmm0
+@@ -1163,6 +1173,7 @@ LABEL(loop_ashr_10_use):
+ 	jg	LABEL(nibble_ashr_10_use)
+ 
+ LABEL(nibble_ashr_10_restart_use):
++	RR_SOFTTICK
+ 	movdqa	(%rdi, %rdx), %xmm0
+ 	palignr $10, -16(%rdi, %rdx), %xmm0
+ # if !defined USE_AS_STRCASECMP_L && !defined USE_AS_STRNCASECMP_L
+@@ -1252,6 +1263,7 @@ LABEL(loop_ashr_11_use):
+ 	jg	LABEL(nibble_ashr_11_use)
+ 
+ LABEL(nibble_ashr_11_restart_use):
++	RR_SOFTTICK
+ 	movdqa	(%rdi, %rdx), %xmm0
+ 	palignr $11, -16(%rdi, %rdx), %xmm0
+ # if !defined USE_AS_STRCASECMP_L && !defined USE_AS_STRNCASECMP_L
+@@ -1341,6 +1353,7 @@ LABEL(loop_ashr_12_use):
+ 	jg	LABEL(nibble_ashr_12_use)
+ 
+ LABEL(nibble_ashr_12_restart_use):
++	RR_SOFTTICK
+ 	movdqa	(%rdi, %rdx), %xmm0
+ 	palignr $12, -16(%rdi, %rdx), %xmm0
+ # if !defined USE_AS_STRCASECMP_L && !defined USE_AS_STRNCASECMP_L
+@@ -1431,6 +1444,7 @@ LABEL(loop_ashr_13_use):
+ 	jg	LABEL(nibble_ashr_13_use)
+ 
+ LABEL(nibble_ashr_13_restart_use):
++	RR_SOFTTICK
+ 	movdqa	(%rdi, %rdx), %xmm0
+ 	palignr $13, -16(%rdi, %rdx), %xmm0
+ # if !defined USE_AS_STRCASECMP_L && !defined USE_AS_STRNCASECMP_L
+@@ -1521,6 +1535,7 @@ LABEL(loop_ashr_14_use):
+ 	jg	LABEL(nibble_ashr_14_use)
+ 
+ LABEL(nibble_ashr_14_restart_use):
++	RR_SOFTTICK
+ 	movdqa	(%rdi, %rdx), %xmm0
+ 	palignr $14, -16(%rdi, %rdx), %xmm0
+ # if !defined USE_AS_STRCASECMP_L && !defined USE_AS_STRNCASECMP_L
+@@ -1613,6 +1628,7 @@ LABEL(loop_ashr_15_use):
+ 	jg	LABEL(nibble_ashr_15_use)
+ 
+ LABEL(nibble_ashr_15_restart_use):
++	RR_SOFTTICK
+ 	movdqa	(%rdi, %rdx), %xmm0
+ 	palignr $15, -16(%rdi, %rdx), %xmm0
+ # if !defined USE_AS_STRCASECMP_L && !defined USE_AS_STRNCASECMP_L
+diff --git a/sysdeps/x86_64/multiarch/strcpy-avx2.S b/sysdeps/x86_64/multiarch/strcpy-avx2.S
+--- a/sysdeps/x86_64/multiarch/strcpy-avx2.S
++++ b/sysdeps/x86_64/multiarch/strcpy-avx2.S
+@@ -219,6 +219,7 @@ L(more_1x_vec):
+ 	.p2align 4,, 11
+ L(loop_4x_vec):
+ 
++	RR_SOFTTICK
+ 	VMOVU	%VMM(0), (VEC_SIZE * 0 + 1)(%rdi)
+ 	VMOVU	%VMM(1), (VEC_SIZE * 1 + 1)(%rdi)
+ 	subq	$(VEC_SIZE * -4), %rsi
+diff --git a/sysdeps/x86_64/multiarch/strcpy-evex.S b/sysdeps/x86_64/multiarch/strcpy-evex.S
+--- a/sysdeps/x86_64/multiarch/strcpy-evex.S
++++ b/sysdeps/x86_64/multiarch/strcpy-evex.S
+@@ -308,6 +308,7 @@ L(more_1x_vec):
+ 	.p2align 4,, 11
+ L(loop_4x_vec):
+ 
++	RR_SOFTTICK
+ 	VMOVU	%VMM(0), (VEC_SIZE * 0 + 0)(%rdi, %rsi)
+ 	VMOVU	%VMM(1), (VEC_SIZE * 1 + 0)(%rdi, %rsi)
+ 	VMOVU	%VMM(2), (VEC_SIZE * 2 + 0)(%rdi, %rsi)
+diff --git a/sysdeps/x86_64/multiarch/strcpy-sse2-unaligned.S b/sysdeps/x86_64/multiarch/strcpy-sse2-unaligned.S
+--- a/sysdeps/x86_64/multiarch/strcpy-sse2-unaligned.S
++++ b/sysdeps/x86_64/multiarch/strcpy-sse2-unaligned.S
+@@ -233,6 +233,7 @@ L(Unaligned64Loop):
+ 	jnz	L(Unaligned64Leave)
+ 
+ L(Unaligned64Loop_start):
++	RR_SOFTTICK
+ 	add	$64, %rdi
+ 	add	$64, %rsi
+ 	movdqu	%xmm4, -64(%rdi)
+@@ -1672,6 +1673,7 @@ L(StrncpyFillTailWithZero):
+ 	jb	L(StrncpyFillLess64)
+ 
+ L(StrncpyFillLoopMovdqa):
++	RR_SOFTTICK
+ 	movdqa	%xmm0, (%rdi)
+ 	movdqa	%xmm0, 16(%rdi)
+ 	movdqa	%xmm0, 32(%rdi)
+diff --git a/sysdeps/x86_64/multiarch/strcpy-sse2.S b/sysdeps/x86_64/multiarch/strcpy-sse2.S
+--- a/sysdeps/x86_64/multiarch/strcpy-sse2.S
++++ b/sysdeps/x86_64/multiarch/strcpy-sse2.S
+@@ -38,6 +38,7 @@ ENTRY (STRCPY)
+ 	addl $8,%ecx
+ 	/* Search the first bytes directly.  */
+ 0:
++	RR_SOFTTICK
+ 	movb	(%rsi), %al	/* Fetch a byte */
+ 	testb	%al, %al	/* Is it NUL? */
+ 	movb	%al, (%rdx)	/* Store it */
+@@ -56,6 +57,7 @@ ENTRY (STRCPY)
+ 	.p2align 4
+ 1:
+ 	/* 1st unroll.  */
++	RR_SOFTTICK
+ 	movq	(%rsi), %rax	/* Read double word (8 bytes).  */
+ 	addq	$8, %rsi	/* Adjust pointer for next word.  */
+ 	movq	%rax, %r9	/* Save a copy for NUL finding.  */
+@@ -134,6 +136,7 @@ ENTRY (STRCPY)
+ 3:
+ 	/* Note that stpcpy needs to return with the value of the NUL
+ 	   byte.  */
++	RR_SOFTTICK
+ 	movb	%al, (%rdx)	/* 1st byte.  */
+ 	testb	%al, %al	/* Is it NUL.  */
+ 	jz	4f		/* yes, finish.  */
+diff --git a/sysdeps/x86_64/multiarch/strlen-avx2.S b/sysdeps/x86_64/multiarch/strlen-avx2.S
+--- a/sysdeps/x86_64/multiarch/strlen-avx2.S
++++ b/sysdeps/x86_64/multiarch/strlen-avx2.S
+@@ -289,6 +289,7 @@ L(loop_4x_vec):
+ 	   Since the matches in ymm2/ymm4 can only be returned if there
+ 	   where no matches in ymm1/ymm3 respectively there is no issue
+ 	   with overlap.  */
++	RR_SOFTTICK
+ 	vmovdqa	1(%rdi), %ymm1
+ 	VPMINU	(VEC_SIZE + 1)(%rdi), %ymm1, %ymm2
+ 	vmovdqa	(VEC_SIZE * 2 + 1)(%rdi), %ymm3
+diff --git a/sysdeps/x86_64/multiarch/strlen-evex-base.S b/sysdeps/x86_64/multiarch/strlen-evex-base.S
+--- a/sysdeps/x86_64/multiarch/strlen-evex-base.S
++++ b/sysdeps/x86_64/multiarch/strlen-evex-base.S
+@@ -140,6 +140,7 @@ L(cross_page_continue):
+ 	/* Compare 4 * VEC at a time forward.  */
+ 	.p2align 4
+ L(loop_4x_vec):
++	RR_SOFTTICK
+ 	VMOVA	(VEC_SIZE * 4)(%rdi), %VMM(1)
+ 	VPMINU	(VEC_SIZE * 5)(%rdi), %VMM(1), %VMM(2)
+ 	VMOVA	(VEC_SIZE * 6)(%rdi), %VMM(3)
+diff --git a/sysdeps/x86_64/multiarch/strlen-sse2.S b/sysdeps/x86_64/multiarch/strlen-sse2.S
+--- a/sysdeps/x86_64/multiarch/strlen-sse2.S
++++ b/sysdeps/x86_64/multiarch/strlen-sse2.S
+@@ -194,6 +194,7 @@ L(loop_init):
+ 	.p2align 4
+ L(loop):
+ 
++	RR_SOFTTICK
+ 	addq	$64, %rax
+ 	cmpq	%rax, %r10
+ 	je	L(exit_end)
+@@ -240,6 +241,7 @@ L(exit):
+ 	.p2align 4
+ L(loop):
+ 
++	RR_SOFTTICK
+ 	movdqa	64(%rax), %xmm0
+ 	PMINU	80(%rax), %xmm0
+ 	PMINU	96(%rax), %xmm0
+diff --git a/sysdeps/x86_64/multiarch/strncat-avx2.S b/sysdeps/x86_64/multiarch/strncat-avx2.S
+--- a/sysdeps/x86_64/multiarch/strncat-avx2.S
++++ b/sysdeps/x86_64/multiarch/strncat-avx2.S
+@@ -204,6 +204,7 @@ L(ret_vec_x1):
+ 
+ 	.p2align 4,, 8
+ L(last_4x_vec):
++	RR_SOFTTICK
+ 	subq	$-(VEC_SIZE * 4), %rsi
+ 	VMOVA	0(%rsi), %VMM(1)
+ 	VPCMPEQ	%VMM(1), %VZERO, %VMM(6)
+@@ -320,6 +321,7 @@ L(more_4x_vec):
+ 	.p2align 4,, 11
+ L(loop_4x_vec):
+ 
++	RR_SOFTTICK
+ 	VMOVU	%VMM(0), (VEC_SIZE * 0 + 0)(%rdi)
+ 	VMOVU	%VMM(1), (VEC_SIZE * 1 + 0)(%rdi)
+ 	subq	$(VEC_SIZE * -4), %rsi
+diff --git a/sysdeps/x86_64/multiarch/strncat-evex.S b/sysdeps/x86_64/multiarch/strncat-evex.S
+--- a/sysdeps/x86_64/multiarch/strncat-evex.S
++++ b/sysdeps/x86_64/multiarch/strncat-evex.S
+@@ -294,6 +294,7 @@ L(ret_vec_x1):
+ 
+ 	.p2align 4,, 8
+ L(last_4x_vec):
++	RR_SOFTTICK
+ 	addl	$-(CHAR_PER_VEC * 4), %edx
+ 	VMOVA	(VEC_SIZE * 5)(%rsi), %VMM(1)
+ 	VPTESTN	%VMM(1), %VMM(1), %k0
+@@ -420,6 +421,7 @@ L(more_4x_vec):
+ 
+ 	.p2align 4,, 11
+ L(loop_4x_vec):
++	RR_SOFTTICK
+ 	VMOVU	%VMM(0), (VEC_SIZE * 1 + 0)(%rdi, %rsi)
+ 	VMOVU	%VMM(1), (VEC_SIZE * 2 + 0)(%rdi, %rsi)
+ 	VMOVU	%VMM(2), (VEC_SIZE * 3 + 0)(%rdi, %rsi)
+diff --git a/sysdeps/x86_64/multiarch/strncpy-avx2.S b/sysdeps/x86_64/multiarch/strncpy-avx2.S
+--- a/sysdeps/x86_64/multiarch/strncpy-avx2.S
++++ b/sysdeps/x86_64/multiarch/strncpy-avx2.S
+@@ -112,6 +112,7 @@ L(page_cross_continue):
+ 	orq	$(VEC_SIZE - 1), %rsi
+ 	incq	%rsi
+ L(last_4x_vec):
++	RR_SOFTTICK
+ 	addq	%rsi, %rdi
+ L(loop_last_4x_vec):
+ 	subq	%rsi, %rdx
+@@ -322,6 +323,7 @@ L(more_4x_vec):
+ 	.p2align 4,, 11
+ L(loop_4x_vec):
+ 
++	RR_SOFTTICK
+ 	VMOVU	%VMM(0), (VEC_SIZE * 0 + 0)(%rdi)
+ 	VMOVU	%VMM(1), (VEC_SIZE * 1 + 0)(%rdi)
+ 	subq	$(VEC_SIZE * -4), %rsi
+@@ -436,6 +438,7 @@ L(zfill_more_2x_vec):
+ 	andq	$-(VEC_SIZE), %rdi
+ 	.p2align 4,, 12
+ L(zfill_loop_4x_vec):
++	RR_SOFTTICK
+ 	VMOVA	%VZERO, (VEC_SIZE * 0)(%rdi)
+ 	VMOVA	%VZERO, (VEC_SIZE * 1)(%rdi)
+ 	VMOVA	%VZERO, (VEC_SIZE * 2)(%rdi)
+diff --git a/sysdeps/x86_64/multiarch/strncpy-evex.S b/sysdeps/x86_64/multiarch/strncpy-evex.S
+--- a/sysdeps/x86_64/multiarch/strncpy-evex.S
++++ b/sysdeps/x86_64/multiarch/strncpy-evex.S
+@@ -302,6 +302,7 @@ L(last_4x_vec):
+ # if CHAR_PER_VEC == 64
+ 	movzbl	%dl, %edx
+ # else
++	RR_SOFTTICK
+ 	andl	$(CHAR_PER_VEC * 4 - 1), %edx
+ # endif
+ 	VMOVA	(VEC_SIZE * 5)(%rsi), %VMM(1)
+@@ -457,6 +458,7 @@ L(more_4x_vec):
+ 
+ 	.p2align 4,, 11
+ L(loop_4x_vec):
++	RR_SOFTTICK
+ 	VMOVU	%VMM(0), (VEC_SIZE * 1 + 0)(%rdi, %rsi)
+ 	VMOVU	%VMM(1), (VEC_SIZE * 2 + 0)(%rdi, %rsi)
+ 	VMOVU	%VMM(2), (VEC_SIZE * 3 + 0)(%rdi, %rsi)
+@@ -591,6 +593,7 @@ L(zfill_more_2x_vec):
+ 	andq	$-(VEC_SIZE), %rdi
+ 	.p2align 4,, 12
+ L(zfill_loop_4x_vec):
++	RR_SOFTTICK
+ 	VMOVA	%VZERO, (VEC_SIZE * 0)(%rdi)
+ 	VMOVA	%VZERO, (VEC_SIZE * 1)(%rdi)
+ 	VMOVA	%VZERO, (VEC_SIZE * 2)(%rdi)
+diff --git a/sysdeps/x86_64/multiarch/strnlen-evex-base.S b/sysdeps/x86_64/multiarch/strnlen-evex-base.S
+--- a/sysdeps/x86_64/multiarch/strnlen-evex-base.S
++++ b/sysdeps/x86_64/multiarch/strnlen-evex-base.S
+@@ -187,6 +187,7 @@ L(last_vec_check):
+ 	P2ALIGN_CLAMPED(4, 8)
+ #endif
+ L(last_4x_vec_or_less):
++	RR_SOFTTICK
+ 	addl	$(CHAR_PER_VEC * -4), %eax
+ 	VPCMPEQ	(VEC_SIZE * 5)(%rdi), %VZERO, %k0
+ 
+@@ -335,6 +336,7 @@ L(more_4x_vec):
+ L(loop):
+ 	/* VPMINU and VPCMP combination provide better performance as
+ 	   compared to alternative combinations.  */
++	RR_SOFTTICK
+ 	VMOVA	(VEC_SIZE * 4)(%rdi), %VMM(1)
+ 	VPMINU	(VEC_SIZE * 5)(%rdi), %VMM(1), %VMM(2)
+ 	VMOVA	(VEC_SIZE * 6)(%rdi), %VMM(3)
+diff --git a/sysdeps/x86_64/multiarch/strrchr-avx2.S b/sysdeps/x86_64/multiarch/strrchr-avx2.S
+--- a/sysdeps/x86_64/multiarch/strrchr-avx2.S
++++ b/sysdeps/x86_64/multiarch/strrchr-avx2.S
+@@ -177,6 +177,7 @@ L(aligned_more):
+ L(first_aligned_loop):
+ 	/* Do 2x VEC at a time. Any more and the cost of finding the
+ 	   match outweighs loop benefit.  */
++	RR_SOFTTICK
+ 	vmovdqa	(VEC_SIZE * 0)(%rdi), %ymm4
+ 	vmovdqa	(VEC_SIZE * 1)(%rdi), %ymm5
+ 
+@@ -261,6 +262,7 @@ L(second_aligned_loop_prep):
+ 	.p2align 4
+ L(second_aligned_loop):
+ 	/* Search 2x at at time.  */
++	RR_SOFTTICK
+ 	vmovdqa	(VEC_SIZE * 0)(%rdi), %ymm4
+ 	vmovdqa	(VEC_SIZE * 1)(%rdi), %ymm5
+ 
+diff --git a/sysdeps/x86_64/multiarch/strrchr-evex-base.S b/sysdeps/x86_64/multiarch/strrchr-evex-base.S
+--- a/sysdeps/x86_64/multiarch/strrchr-evex-base.S
++++ b/sysdeps/x86_64/multiarch/strrchr-evex-base.S
+@@ -207,6 +207,7 @@ L(aligned_more):
+ L(first_aligned_loop):
+ 	/* Preserve VEC(1), VEC(2), VEC(3), and VEC(4) until we can
+ 	   gurantee they don't store a match.  */
++	RR_SOFTTICK
+ 	VMOVA	(VEC_SIZE * 4)(%rdi), %VMM(5)
+ 	VMOVA	(VEC_SIZE * 5)(%rdi), %VMM(6)
+ 
+@@ -285,6 +286,7 @@ L(second_aligned_loop_set_furthest_match):
+ 	VMOVA	%VMM(6), %VMM(8)
+ 	.p2align 4
+ L(second_aligned_loop):
++	RR_SOFTTICK
+ 	VMOVU	(VEC_SIZE * 4)(%rdi), %VMM(5)
+ 	VMOVU	(VEC_SIZE * 5)(%rdi), %VMM(6)
+ 	VPCMP	$4, %VMM(5), %VMATCH, %k2
+diff --git a/sysdeps/x86_64/multiarch/strrchr-sse2.S b/sysdeps/x86_64/multiarch/strrchr-sse2.S
+--- a/sysdeps/x86_64/multiarch/strrchr-sse2.S
++++ b/sysdeps/x86_64/multiarch/strrchr-sse2.S
+@@ -164,6 +164,7 @@ L(aligned_more):
+ 	.p2align 4
+ L(first_loop):
+ 	/* Do 2x VEC at a time.  */
++	RR_SOFTTICK
+ 	movaps	(VEC_SIZE * 2)(%rdi), %xmm4
+ 	movaps	(VEC_SIZE * 3)(%rdi), %xmm5
+ 	/* Since SSE2 no pminud so wcsrchr needs separate logic for
+@@ -266,6 +267,7 @@ L(second_loop_match):
+ 
+ 	.p2align 4
+ L(second_loop):
++	RR_SOFTTICK
+ 	movaps	(VEC_SIZE * 2)(%rdi), %xmm4
+ 	movaps	(VEC_SIZE * 3)(%rdi), %xmm5
+ 	/* Since SSE2 no pminud so wcsrchr needs separate logic for
+diff --git a/sysdeps/x86_64/multiarch/strstr-sse2-unaligned.S b/sysdeps/x86_64/multiarch/strstr-sse2-unaligned.S
+--- a/sysdeps/x86_64/multiarch/strstr-sse2-unaligned.S
++++ b/sysdeps/x86_64/multiarch/strstr-sse2-unaligned.S
+@@ -61,6 +61,7 @@ ENTRY(__strstr_sse2_unaligned)
+ 	orq	%rax, %r8
+ 	je	L(next_32_bytes)
+ L(next_pair_index):
++	RR_SOFTTICK
+ 	bsf	%r8, %rax
+ 	addq	%rdi, %rax
+ 	cmpb	$0, (%rax)
+@@ -80,6 +81,7 @@ L(strchr):
+ 
+ 	.p2align 4
+ L(pair_loop):
++	RR_SOFTTICK
+ 	addq	$1, %rdx
+ 	cmpb	2(%rax,%rdx), %cl
+ 	jne	L(next_pair)
+@@ -125,6 +127,7 @@ L(next_32_bytes):
+ 	orq	%rax, %r8
+ 	je	L(loop_header)
+ L(next_pair2_index):
++	RR_SOFTTICK
+ 	bsfq	%r8, %rax
+ 	addq	%rdi, %rax
+ 	cmpb	$0, (%rax)
+@@ -139,6 +142,7 @@ L(next_pair2_index):
+ 
+ 	.p2align 4
+ L(pair_loop2):
++	RR_SOFTTICK
+ 	addq	$1, %rdx
+ 	cmpb	2(%rax,%rdx), %cl
+ 	jne	L(next_pair2)
+@@ -169,6 +173,7 @@ L(loop_header):
+ 
+ 	.p2align 4
+ L(loop):
++	RR_SOFTTICK
+ 	movdqa	64(%rdi), %xmm3
+ 	movdqu	63(%rdi), %xmm6
+ 	movdqa	%xmm3, %xmm0
+@@ -228,6 +233,7 @@ L(loop):
+ 	orq	%rax, %r8
+ 	je	L(loop)
+ L(next_pair_index3):
++	RR_SOFTTICK
+ 	bsfq	%r8, %rcx
+ 	addq	%rdi, %rcx
+ 	cmpb	$0, (%rcx)
+@@ -242,6 +248,7 @@ L(next_pair_index3):
+ 
+ 	.p2align 4
+ L(pair_loop3):
++	RR_SOFTTICK
+ 	addq	$1, %rax
+ 	cmpb	1(%rcx,%rax), %dl
+ 	jne	L(next_pair3)
+@@ -325,6 +332,7 @@ L(cross_page):
+ 	shrq	%cl, %r8
+ 	je	L(loop_header)
+ L(next_pair_index4):
++	RR_SOFTTICK
+ 	bsfq	%r8, %rax
+ 	addq	%rdi, %rax
+ 	cmpb	$0, (%rax)
+@@ -343,6 +351,7 @@ L(next_pair_index4):
+ 
+ 	.p2align 4
+ L(pair_loop4):
++	RR_SOFTTICK
+ 	addq	$1, %rdx
+ 	cmpb	1(%rax,%rdx), %cl
+ 	jne	L(next_pair4)
+diff --git a/sysdeps/x86_64/multiarch/wcschr-sse2.S b/sysdeps/x86_64/multiarch/wcschr-sse2.S
+--- a/sysdeps/x86_64/multiarch/wcschr-sse2.S
++++ b/sysdeps/x86_64/multiarch/wcschr-sse2.S
+@@ -100,6 +100,7 @@ L(unaligned_no_match):
+ 	.p2align 4
+ /* Loop start on aligned string.  */
+ L(loop):
++	RR_SOFTTICK
+ 	movdqa	(%rdi), %xmm0
+ 	pcmpeqd	%xmm0, %xmm2
+ 	add	$16, %rdi
+diff --git a/sysdeps/x86_64/multiarch/wcscmp-sse2.S b/sysdeps/x86_64/multiarch/wcscmp-sse2.S
+--- a/sysdeps/x86_64/multiarch/wcscmp-sse2.S
++++ b/sysdeps/x86_64/multiarch/wcscmp-sse2.S
+@@ -62,6 +62,7 @@ L(continue_48):
+ 
+ 	.p2align 4
+ L(continue_48_48):
++	RR_SOFTTICK
+ 	mov	(%rsi), %ecx
+ 	cmp	%ecx, (%rdi)
+ 	jne	L(nequal)
+@@ -129,6 +130,7 @@ L(continue_0):
+ 
+ 	.p2align 4
+ L(continue_0_48):
++	RR_SOFTTICK
+ 	mov	(%rsi), %ecx
+ 	cmp	%ecx, (%rdi)
+ 	jne	L(nequal)
+@@ -212,6 +214,7 @@ L(continue_00):
+ 
+ 	.p2align 4
+ L(continue_00_48):
++	RR_SOFTTICK
+ 	pcmpeqd	(%rdi), %xmm0
+ 	mov	(%rdi), %eax
+ 	pmovmskb %xmm0, %ecx
+@@ -274,6 +277,7 @@ L(continue_32):
+ 
+ 	.p2align 4
+ L(continue_32_48):
++	RR_SOFTTICK
+ 	mov	(%rsi), %ecx
+ 	cmp	%ecx, (%rdi)
+ 	jne	L(nequal)
+@@ -357,6 +361,7 @@ L(continue_16):
+ 
+ 	.p2align 4
+ L(continue_16_48):
++	RR_SOFTTICK
+ 	mov	(%rsi), %ecx
+ 	cmp	%ecx, (%rdi)
+ 	jne	L(nequal)
+@@ -429,6 +434,7 @@ L(continue_16_48):
+ 
+ 	.p2align 4
+ L(continue_00_00):
++	RR_SOFTTICK
+ 	movdqa	(%rdi), %xmm1
+ 	pcmpeqd	%xmm1, %xmm0		/* Any null double_word? */
+ 	pcmpeqd	(%rsi), %xmm1		/* compare first 4 double_words for equality */
+@@ -533,6 +539,7 @@ L(continue_00_0):
+ 
+ 	.p2align 4
+ L(continue_48_00):
++	RR_SOFTTICK
+ 	pcmpeqd	(%rsi), %xmm0
+ 	mov	(%rdi), %eax
+ 	pmovmskb %xmm0, %ecx
+diff --git a/sysdeps/x86_64/multiarch/wcscpy-ssse3.S b/sysdeps/x86_64/multiarch/wcscpy-ssse3.S
+--- a/sysdeps/x86_64/multiarch/wcscpy-ssse3.S
++++ b/sysdeps/x86_64/multiarch/wcscpy-ssse3.S
+@@ -147,6 +147,7 @@ L(Align16Both):
+ 
+ 	.p2align 4
+ L(Aligned64Loop):
++	RR_SOFTTICK
+ 	movaps	(%rcx), %xmm2
+ 	movaps	%xmm2, %xmm4
+ 	movaps	16(%rcx), %xmm5
+@@ -267,6 +268,7 @@ L(Shl4Start):
+ 
+ 	.p2align 4
+ L(Shl4LoopStart):
++	RR_SOFTTICK
+ 	movaps	12(%rcx), %xmm2
+ 	movaps	28(%rcx), %xmm3
+ 	movaps	%xmm3, %xmm6
+@@ -366,6 +368,7 @@ L(Shl8Start):
+ 
+ 	.p2align 4
+ L(Shl8LoopStart):
++	RR_SOFTTICK
+ 	movaps	8(%rcx), %xmm2
+ 	movaps	24(%rcx), %xmm3
+ 	movaps	%xmm3, %xmm6
+@@ -465,6 +468,7 @@ L(Shl12Start):
+ 
+ 	.p2align 4
+ L(Shl12LoopStart):
++	RR_SOFTTICK
+ 	movaps	4(%rcx), %xmm2
+ 	movaps	20(%rcx), %xmm3
+ 	movaps	%xmm3, %xmm6
+diff --git a/sysdeps/x86_64/multiarch/wcslen-sse2.S b/sysdeps/x86_64/multiarch/wcslen-sse2.S
+--- a/sysdeps/x86_64/multiarch/wcslen-sse2.S
++++ b/sysdeps/x86_64/multiarch/wcslen-sse2.S
+@@ -131,6 +131,7 @@ ENTRY (WCSLEN)
+ 
+ 	.p2align 4
+ L(aligned_64_loop):
++	RR_SOFTTICK
+ 	movaps	(%rax), %xmm0
+ 	movaps	16(%rax), %xmm1
+ 	movaps	32(%rax), %xmm2
+diff --git a/sysdeps/x86_64/nptl/pthread_spin_lock.S b/sysdeps/x86_64/nptl/pthread_spin_lock.S
+--- a/sysdeps/x86_64/nptl/pthread_spin_lock.S
++++ b/sysdeps/x86_64/nptl/pthread_spin_lock.S
+@@ -29,6 +29,7 @@ ENTRY(__pthread_spin_lock)
+ 	.align	16
+ 1:
+ 	/* `rep nop` == `pause`.  */
++	RR_SOFTTICK
+ 	rep
+ 	nop
+ 	cmpl	%eax, 0(%rdi)
+diff --git a/sysdeps/x86_64/rshift.S b/sysdeps/x86_64/rshift.S
+--- a/sysdeps/x86_64/rshift.S
++++ b/sysdeps/x86_64/rshift.S
+@@ -87,7 +87,9 @@ L(b11):	/* n = 3, 7, 11, ... */
+ 	jb	L(end)
+ 
+ 	.p2align 4
+-L(top):	shrd	%cl, %r8, %r11
++L(top):
++	RR_SOFTTICK
++	shrd	%cl, %r8, %r11
+ 	mov	-8(up), %r10
+ 	mov	%r11, (rp)
+ L(10):	shrd	%cl, %r9, %r8
