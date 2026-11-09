@@ -5,7 +5,7 @@
 # The pass takes care of compiled C and Fortran; this checks the object code, so that it
 # covers the hand-written kernels (the ticks of 90/91-rr-softticks-*.patch) and whatever else.
 #
-#   check.pl [--jobs N] [--so LIB] ARCHIVE|OBJECT...
+#   check.pl [--jobs N] [--so LIB] [--allow FILE]... ARCHIVE|OBJECT...
 #   check.pl --selftest
 #
 # Per object and executable section, from `objdump -d -r -t -h` (GNU or LLVM; $OBJDUMP):
@@ -29,6 +29,12 @@
 #
 # --so LIB: also check that the shared library carries the software ticks note (ABI
 # version 1) and the initializer that maps the countdown's page outside rr.
+# --allow FILE: known exceptions, one per line, each with its justification:
+#   KIND[,KIND...] OBJECT-GLOB FUNCTION-GLOB[,FUNCTION-GLOB...] # why
+# allows the findings of those kinds in the objects whose name (as reported; an archive
+# member's is ARCHIVE(MEMBER)) ends in OBJECT-GLOB, at addresses inside a function symbol
+# that matches a FUNCTION-GLOB (by its value and size; * and ? are wildcards). A line
+# without "# why", or one that allows nothing, is an error.
 # --selftest: assembles (with $CC, else cc) an object with one fault of each kind the
 # hand-written kernels could have (an unticked loop, an entry path without a tick, a flag
 # live after a tick, a stray countdown access) and one without, and checks that exactly
@@ -41,9 +47,11 @@ use File::Temp qw(tempdir);
 use POSIX ();
 use Getopt::Long;
 
-my ($so, $jobs, $selftest) = (undef, 1, 0);
-GetOptions("so=s" => \$so, "jobs=i" => \$jobs, "selftest" => \$selftest) or exit 2;
-die "usage: $0 [--jobs N] [--so LIB] ARCHIVE|OBJECT... | --selftest\n" unless @ARGV || $selftest;
+my ($so, $jobs, $selftest, @allow_files) = (undef, 1, 0);
+GetOptions("so=s" => \$so, "jobs=i" => \$jobs, "selftest" => \$selftest,
+           "allow=s" => \@allow_files) or exit 2;
+die "usage: $0 [--jobs N] [--so LIB] [--allow FILE]... ARCHIVE|OBJECT... | --selftest\n"
+    unless @ARGV || $selftest;
 my $OBJDUMP = $ENV{OBJDUMP} || "objdump";
 
 # ---------------------------------------------------------------- flags
@@ -152,9 +160,9 @@ sub read_object {
         } elsif ($mode eq "t") {
             # GNU: ADDR FLAGS SECTION\tSIZE [.hidden] NAME; LLVM: ADDR FLAGS SECTION SIZE NAME
             if ($ln =~ /^([0-9a-f]{8,16}) (.{7}) (\S+)\s+([0-9a-f]+)\s+(.*)$/) {
-                my ($addr, $fl, $s, $n) = (hex $1, $2, $3, $5);
+                my ($addr, $fl, $s, $size, $n) = (hex $1, $2, $3, hex $4, $5);
                 my @nt = split ' ', $n;
-                push @{$o{syms}}, [$addr, $fl, $s, $nt[-1] // ""];
+                push @{$o{syms}}, [$addr, $fl, $s, $nt[-1] // "", $size];
             }
         } elsif ($mode eq "d") {
             next unless defined $sec;
@@ -370,6 +378,65 @@ sub analyze_section {
              unknown => \%unknown };
 }
 
+# ---------------------------------------------------------------- allowlist
+sub glob_re {
+    my ($g) = @_;
+    my $r = join "", map { $_ eq "*" ? ".*" : $_ eq "?" ? "." : quotemeta } split /([*?])/, $g;
+    return qr/^$r$/;
+}
+
+# [kinds, object regex, [function regexes], "FILE:LINE"]
+sub read_allowlist {
+    my ($f) = @_;
+    my @rules;
+    open(my $fh, "<", $f) or die "$f: $!\n";
+    while (my $ln = <$fh>) {
+        chomp $ln;
+        next if $ln =~ /^\s*(?:#|$)/;
+        my ($rule, $why) = $ln =~ /^([^#]*?)\s*#\s*(\S.*)$/
+            or die "$f:$.: an allowlist line needs its justification (# why)\n";
+        my @w = split ' ', $rule;
+        die "$f:$.: KIND[,KIND...] OBJECT-GLOB FUNCTION-GLOB[,...] # why\n" unless @w == 3;
+        push @rules, [{ map { $_ => 1 } split /,/, $w[0] }, glob_re("*$w[1]"),
+                      [map { glob_re($_) } split /,/, $w[2]], "$f:$."];
+    }
+    close $fh;
+    return @rules;
+}
+my @ALLOW = map { read_allowlist($_) } @allow_files;
+
+# Moves the findings of a section's result that the allowlist covers to $r->{allowed}
+# ([rule, kind, detail]): those whose address (a detail's leading hex number) is inside a
+# function symbol of the section that a rule names (one without a size extends to the next).
+sub apply_allowlist {
+    my ($r, $o, $sec, $name) = @_;
+    return unless @ALLOW;
+    my @fns = sort { $a->[0] <=> $b->[0] } grep { $_->[2] eq $sec && $_->[1] =~ /F/ } @{$o->{syms}};
+    for my $i (0 .. $#fns) {
+        next if $fns[$i][4];
+        my ($next) = grep { $_->[0] > $fns[$i][0] } @fns[$i + 1 .. $#fns];
+        $fns[$i] = [@{$fns[$i]}[0 .. 3], $next ? $next->[0] - $fns[$i][0] : 2**62];
+    }
+    for my $kind (sort keys %{$r->{problems}}) {
+        my @keep;
+        for my $d (@{$r->{problems}{$kind}}) {
+            my ($addr) = $d =~ /^([0-9a-f]+)\b/;
+            my $rule;
+            if (defined $addr) {
+                $addr = hex $addr;
+                my @in = map { $_->[3] } grep { $_->[0] <= $addr && $addr < $_->[0] + $_->[4] } @fns;
+                ($rule) = grep {
+                    my $ru = $_;
+                    $ru->[0]{$kind} && $name =~ $ru->[1] &&
+                        grep { my $fn = $_; grep { $fn =~ $_ } @{$ru->[2]} } @in } @ALLOW;
+            }
+            if ($rule) { push @{$r->{allowed}}, [$rule->[3], $kind, $d]; }
+            else { push @keep, $d; }
+        }
+        if (@keep) { $r->{problems}{$kind} = \@keep; } else { delete $r->{problems}{$kind}; }
+    }
+}
+
 sub check_object {
     my ($path, $name) = @_;
     my $o = read_object($path);
@@ -391,6 +458,7 @@ sub check_object {
         my %u;
         my @e = grep { !$u{$_}++ } @ents;
         push @res, analyze_section($ins, \@e, $asm, "$name:$sec");
+        apply_allowlist($res[-1], $o, $sec, $name);
     }
     if ($code && !$asm && !$o->{has_note}) {
         push @res, { label => "$name", insns => 0, ticks => 0,
@@ -514,6 +582,25 @@ sub selftest {
             $t, $g, $pass ? "as expected" : "expected {$w}";
         $ok &&= $pass;
     }
+    # the allowlist: the bad object's cycle and unticked entry, by kind and function
+    open(my $fh, ">", "$dir/allow") or die "$dir/allow: $!\n";
+    print $fh "entry_unticked,unticked_scc bad.o entr?,loop # self-test\n";
+    close $fh;
+    my @save = @ALLOW;
+    @ALLOW = read_allowlist("$dir/allow");
+    my $r = check_object("$dir/bad.o", "$dir/bad.o");
+    @ALLOW = @save;
+    my (%got, %al);
+    for my $s (@{$r->{results}}) {
+        $got{$_} += scalar @{$s->{problems}{$_}} for keys %{$s->{problems}};
+        $al{$_->[1]}++ for @{$s->{allowed} // []};
+    }
+    my $g = join(" ", map { "$_=$got{$_}" } sort keys %got) . " / " .
+        join(" ", map { "$_=$al{$_}" } sort keys %al);
+    my $w = "bad_tick=1 flags_live=1 / entry_unticked=1 unticked_scc=1";
+    printf "softticks check self-test allowlist: findings {%s}, %s\n", $g,
+        $g eq $w ? "as expected" : "expected {$w}";
+    $ok &&= $g eq $w;
     return $ok ? 0 : 2;
 }
 exit selftest() if $selftest;
@@ -552,6 +639,9 @@ for my $j (0 .. $jobs - 1) {
                     printf $out "P\t%s\t%d\t%s\t%s\t%s\n", $member, $r->{asm}, $s->{label}, $kind,
                         join(" ", @{$s->{problems}{$kind}});
                 }
+                for my $al (@{$s->{allowed} // []}) {
+                    printf $out "A\t%s\t%s\t%s\t%s\n", $al->[0], $s->{label}, $al->[1], $al->[2];
+                }
                 for my $mn (sort keys %{$s->{unknown}}) {
                     printf $out "U\t%s\t%s\n", $mn, $s->{unknown}{$mn};
                 }
@@ -567,7 +657,7 @@ my $failed_kid = 0;
 for (@kids) { waitpid($_, 0); $failed_kid = 1 if $?; }
 if ($failed_kid) { print STDERR "softticks check: a worker failed\n"; exit 2; }
 
-my (%nobj, $sections, $insns, $ticks, %unknown, @fail);
+my (%nobj, $sections, $insns, $ticks, %unknown, @fail, %allowed);
 ($sections, $insns, $ticks) = (0, 0, 0);
 for my $j (0 .. $jobs - 1) {
     open(my $fh, "<", "$tmp/result.$j") or die;
@@ -577,6 +667,7 @@ for my $j (0 .. $jobs - 1) {
         if ($f[0] eq "O") { $nobj{$f[2] ? "asm" : "c"}++; }
         elsif ($f[0] eq "S") { $sections++; $insns += $f[3]; $ticks += $f[4]; }
         elsif ($f[0] eq "U") { $unknown{$f[1]} += $f[2]; }
+        elsif ($f[0] eq "A") { push @{$allowed{$f[1]}}, "$f[2] $f[3]: $f[4]"; }
         elsif ($f[0] eq "P") {
             my (undef, $name, $asm, $label, $kind, $det) = @f;
             push @fail, sprintf("%s %s: %s", $label, $kind, $det);
@@ -604,6 +695,13 @@ if (defined $so) {
 
 printf "softticks check: %d objects (%d assembled, %d compiled), %d sections, %d instructions, %d ticks\n",
     ($nobj{asm} // 0) + ($nobj{c} // 0), $nobj{asm} // 0, $nobj{c} // 0, $sections, $insns, $ticks;
+for my $rule (@ALLOW) {
+    my $hits = $allowed{$rule->[3]};
+    unless ($hits) { push @fail, "$rule->[3]: the allowlist line allows nothing"; next; }
+    my %k;
+    $k{$_}++ for map { / (\S+):/ ? $1 : () } @$hits;
+    printf "allowed by %s: %s\n", $rule->[3], join(", ", map { "$k{$_} $_" } sort keys %k);
+}
 printf "unknown mnemonics (taken to read all flags): %s\n",
     join(" ", map { "$_($unknown{$_})" } sort keys %unknown) if %unknown;
 if (@fail) {
